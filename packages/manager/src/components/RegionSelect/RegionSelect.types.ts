@@ -4,21 +4,9 @@ import type {
   Region,
   RegionSite,
 } from '@linode/api-v4';
+import type { EnhancedAutocompleteProps } from '@linode/ui';
 import type React from 'react';
-import type { EnhancedAutocompleteProps } from 'src/components/Autocomplete/Autocomplete';
-
-export interface DisableRegionOption {
-  /**
-   * The reason the region option is disabled.
-   * This is shown to the user as a tooltip.
-   */
-  reason: JSX.Element | string;
-  /**
-   * An optional minWith applied to the tooltip
-   * @default 215
-   */
-  tooltipWidth?: number;
-}
+import type { DisableItemOption } from 'src/components/ListItemOption';
 
 export type RegionFilterValue =
   | 'distributed-AF'
@@ -44,20 +32,27 @@ export interface RegionSelectProps<
    * The specified capability to filter the regions on. Any region that does not have the `currentCapability` will not appear in the RegionSelect dropdown.
    * Only use `undefined` for situations where there is no relevant capability for the RegionSelect - this will not filter any of the regions passed in.
    * Otherwise, a capability should always be passed in.
-   *
-   * See `ImageUpload.tsx` for an example of a RegionSelect with an undefined `currentCapability` - there is no capability associated with Images yet.
    */
   currentCapability: Capabilities | undefined;
   /**
    * A key/value object for disabling regions by their ID.
    */
-  disabledRegions?: Record<string, DisableRegionOption>;
+  disabledRegions?: Record<string, DisableItemOption>;
+  /**
+   * Used to override filtering done by the `currentCapability` prop
+   * @todo Remove this after Object Storage Gen2.
+   */
+  forcefullyShownRegionIds?: Set<string>;
   helperText?: string;
+  /**
+   * Ignores account availability information when rendering region options
+   * @default false
+   */
+  ignoreAccountAvailability?: boolean;
   label?: string;
   regionFilter?: RegionFilterValue;
   regions: Region[];
   required?: boolean;
-  showDistributedRegionIconHelperText?: boolean;
   tooltipText?: string;
   /**
    * The ID of the selected region.
@@ -76,7 +71,12 @@ export interface RegionMultiSelectProps
     selectedRegions: Region[];
   }>;
   currentCapability: Capabilities | undefined;
-  disabledRegions?: Record<string, DisableRegionOption>;
+  disabledRegions?: Record<string, DisableItemOption>;
+  /**
+   * Used to override filtering done by the `currentCapability` prop
+   * @todo Remove this after Object Storage Gen2.
+   */
+  forcefullyShownRegionIds?: Set<string>;
   helperText?: string;
   isClearable?: boolean;
   label?: string;

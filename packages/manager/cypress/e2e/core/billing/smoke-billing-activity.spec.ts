@@ -276,8 +276,9 @@ describe('Billing Activity Feed', () => {
       .within(() => {
         // Confirm that pagination page size selection is set to "Show 25".
         ui.pagination.findPageSizeSelect().click();
-
-        ui.select.findItemByText('Show 25').should('be.visible').click();
+        cy.get('[data-qa-pagination-page-size-option="25"]')
+          .should('exist')
+          .click();
 
         // Confirm that pagination controls list exactly 4 pages.
         ui.pagination
@@ -309,8 +310,9 @@ describe('Billing Activity Feed', () => {
 
         // Change page size selection from "Show 25" to "Show 100".
         ui.pagination.findPageSizeSelect().click();
-
-        ui.select.findItemByText('Show 100').should('be.visible').click();
+        cy.get('[data-qa-pagination-page-size-option="100"]')
+          .should('exist')
+          .click();
 
         // Confirm that all 100 invoices are shown.
         cy.get('tr').should('have.length', 101);
@@ -327,11 +329,14 @@ describe('Billing Activity Feed', () => {
     // Time zones against which to verify invoice and payment dates.
     const timeZonesList = [
       { key: 'America/New_York', human: 'Eastern Time - New York' },
-      { key: 'GMT', human: 'Coordinated Universal Time' },
+      { key: 'UTC', human: 'Coordinated Universal Time' },
       { key: 'Asia/Hong_Kong', human: 'Hong Kong Standard Time' },
     ];
 
-    const mockProfile = profileFactory.build();
+    const mockProfile = profileFactory.build({
+      timezone: 'Pacific/Honolulu',
+    });
+
     const mockInvoice = invoiceFactory.build({
       date: DateTime.now().minus({ days: 2 }).toISO(),
     });
@@ -347,11 +352,16 @@ describe('Billing Activity Feed', () => {
     cy.visitWithLogin('/profile/display');
     cy.wait('@getProfile');
 
+    // Verify the user's initial timezone is selected by default
+    cy.findByLabelText('Timezone')
+      .should('be.visible')
+      .should('contain.value', 'Hawaii-Aleutian Standard Time');
+
     // Iterate through each timezone and confirm that payment and invoice dates
     // reflect each timezone.
     timeZonesList.forEach((timezone) => {
       const timezoneId = timezone.key;
-      const humanReadable = timezone.human;
+      const timezoneLabel = timezone.human;
 
       mockUpdateProfile({
         ...mockProfile,
@@ -365,7 +375,7 @@ describe('Billing Activity Feed', () => {
       cy.findByText('Timezone')
         .should('be.visible')
         .click()
-        .type(`${humanReadable}{enter}`);
+        .type(`${timezoneLabel}{enter}`);
 
       ui.button
         .findByTitle('Update Timezone')
@@ -374,6 +384,11 @@ describe('Billing Activity Feed', () => {
         .click();
 
       cy.wait('@updateProfile');
+
+      // Verify the new timezone remains selected after clicking "Update Timezone"
+      cy.findByLabelText('Timezone')
+        .should('be.visible')
+        .should('contain.value', timezoneLabel);
 
       // Navigate back to Billing & Contact Information page to confirm that
       // invoice and payment data correctly reflects updated timezone.

@@ -1,16 +1,17 @@
-import { Image } from '@linode/api-v4';
+import { CircleProgress, Notice } from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { LandingHeader } from 'src/components/LandingHeader';
-import { Notice } from 'src/components/Notice/Notice';
 import { listToItemsByID } from 'src/queries/base';
 import { useAllImagesQuery } from 'src/queries/images';
 
 import StackScriptPanel from './StackScriptPanel/StackScriptPanel';
+
+import type { Image } from '@linode/api-v4';
 
 export const StackScriptsLanding = () => {
   const history = useHistory<{
@@ -30,7 +31,13 @@ export const StackScriptsLanding = () => {
 
   return (
     <React.Fragment>
-      <DocumentTitleSegment segment="StackScripts" />
+      <DocumentTitleSegment
+        segment={
+          history.location.pathname === '/stackscripts/community'
+            ? 'Community StackScripts'
+            : 'Account StackScripts'
+        }
+      />
       {!!history.location.state && !!history.location.state.successMessage ? (
         <Notice
           text={history.location.state.successMessage}
@@ -38,7 +45,7 @@ export const StackScriptsLanding = () => {
         />
       ) : null}
       <LandingHeader
-        docsLink="https://www.linode.com/docs/platform/stackscripts"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/stackscripts"
         entity="StackScript"
         onButtonClick={goToCreateStackScript}
         removeCrumbX={1}
@@ -63,3 +70,7 @@ export const StackScriptsLanding = () => {
 };
 
 export default StackScriptsLanding;
+
+export const stackScriptsLandingLazyRoute = createLazyRoute('/stackscripts')({
+  component: StackScriptsLanding,
+});

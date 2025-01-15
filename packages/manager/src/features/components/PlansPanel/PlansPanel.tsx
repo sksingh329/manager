@@ -1,9 +1,10 @@
+import { Notice } from '@linode/ui';
 import * as React from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { Notice } from 'src/components/Notice/Notice';
 import { isDistributedRegionSupported } from 'src/components/RegionSelect/RegionSelect.utils';
 import { getIsDistributedRegion } from 'src/components/RegionSelect/RegionSelect.utils';
+import { useIsGeckoEnabled } from 'src/components/RegionSelect/RegionSelect.utils';
 import { TabbedPanel } from 'src/components/TabbedPanel/TabbedPanel';
 import { useFlags } from 'src/hooks/useFlags';
 import { useRegionAvailabilityQuery } from 'src/queries/regions/regions';
@@ -19,6 +20,7 @@ import {
   getPlanSelectionsByPlanType,
   planTabInfoContent,
   replaceOrAppendPlaceholder512GbPlans,
+  useIsAcceleratedPlansEnabled,
 } from './utils';
 
 import type { PlanSelectionType } from './types';
@@ -35,8 +37,10 @@ export interface PlansPanelProps {
   disabledTabs?: string[];
   docsLink?: JSX.Element;
   error?: string;
+  handleTabChange?: (index: number) => void;
   header?: string;
   isCreate?: boolean;
+  isLegacyDatabase?: boolean;
   linodeID?: number | undefined;
   onSelect: (key: string) => void;
   regionsData?: Region[];
@@ -66,8 +70,10 @@ export const PlansPanel = (props: PlansPanelProps) => {
     disabledSmallerPlans,
     docsLink,
     error,
+    handleTabChange,
     header,
     isCreate,
+    isLegacyDatabase,
     linodeID,
     onSelect,
     regionsData,
@@ -78,20 +84,28 @@ export const PlansPanel = (props: PlansPanelProps) => {
   } = props;
 
   const flags = useFlags();
+  const { isGeckoLAEnabled } = useIsGeckoEnabled();
   const location = useLocation();
   const params = getQueryParamsFromQueryString<LinodeCreateQueryParams>(
     location.search
   );
+
+  const { isAcceleratedLinodePlansEnabled } = useIsAcceleratedPlansEnabled();
 
   const { data: regionAvailabilities } = useRegionAvailabilityQuery(
     selectedRegionID || '',
     Boolean(flags.soldOutChips) && selectedRegionID !== undefined
   );
 
-  const _types = types.filter(
-    (type) =>
+  const _types = types.filter((type) => {
+    if (!isAcceleratedLinodePlansEnabled && type.class === 'accelerated') {
+      return false;
+    }
+
+    return (
       !type.id.includes('dedicated-edge') && !type.id.includes('nanode-edge')
-  );
+    );
+  });
   const _plans = getPlanSelectionsByPlanType(
     flags.disableLargestGbPlans
       ? replaceOrAppendPlaceholder512GbPlans(_types)
@@ -108,9 +122,7 @@ export const PlansPanel = (props: PlansPanelProps) => {
   const getDedicatedDistributedRegionPlanType = () => {
     return types.filter(
       (type) =>
-        type.id.includes('dedicated-edge') ||
-        type.id.includes('nanode-edge') ||
-        type.class === 'edge'
+        type.id.includes('dedicated-edge') || type.id.includes('nanode-edge')
     );
   };
 
@@ -140,6 +152,7 @@ export const PlansPanel = (props: PlansPanelProps) => {
         disableLargestGbPlansFlag: flags.disableLargestGbPlans,
         disabledClasses,
         disabledSmallerPlans,
+        isLegacyDatabase,
         plans: plansMap,
         regionAvailabilities,
         selectedRegionId: selectedRegionID,
@@ -167,7 +180,7 @@ export const PlansPanel = (props: PlansPanelProps) => {
                 planType={plan}
                 regionsData={regionsData || []}
               />
-              {showDistributedRegionPlanTable && (
+              {showDistributedRegionPlanTable && !isGeckoLAEnabled && (
                 <Notice
                   text="Distributed region pricing is temporarily $0 during the beta period, after which billing will begin."
                   variant="warning"
@@ -190,7 +203,7 @@ export const PlansPanel = (props: PlansPanelProps) => {
             </>
           );
         },
-        title: planTabInfoContent[plan === 'edge' ? 'dedicated' : plan]?.title,
+        title: planTabInfoContent[plan]?.title,
       };
     }
   );
@@ -223,6 +236,7 @@ export const PlansPanel = (props: PlansPanelProps) => {
       data-qa-select-plan
       docsLink={docsLink}
       error={error}
+      handleTabChange={handleTabChange}
       header={header || 'Linode Plan'}
       initTab={initialTab >= 0 ? initialTab : 0}
       innerClass={props.tabbedPanelInnerClass}

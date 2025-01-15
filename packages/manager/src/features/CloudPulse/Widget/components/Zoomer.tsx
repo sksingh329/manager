@@ -1,6 +1,10 @@
-import ZoomInMap from '@mui/icons-material/ZoomInMap';
-import ZoomOutMap from '@mui/icons-material/ZoomOutMap';
+import { IconButton, useTheme } from '@mui/material';
 import * as React from 'react';
+
+import ZoomInMap from 'src/assets/icons/zoomin.svg';
+import ZoomOutMap from 'src/assets/icons/zoomout.svg';
+
+import { CloudPulseTooltip } from '../../shared/CloudPulseTooltip';
 
 export interface ZoomIconProperties {
   className?: string;
@@ -9,6 +13,8 @@ export interface ZoomIconProperties {
 }
 
 export const ZoomIcon = React.memo((props: ZoomIconProperties) => {
+  const theme = useTheme();
+
   const handleClick = (needZoomIn: boolean) => {
     props.handleZoomToggle(needZoomIn);
   };
@@ -16,20 +22,38 @@ export const ZoomIcon = React.memo((props: ZoomIconProperties) => {
   const ToggleZoomer = () => {
     if (props.zoomIn) {
       return (
-        <ZoomInMap
-          data-testid="zoom-in"
-          onClick={() => handleClick(false)}
-          style={{ color: 'grey', fontSize: 'x-large' }}
-        />
+        <CloudPulseTooltip placement="bottom-end" title="Minimize">
+          <IconButton
+            sx={{
+              color: theme.color.grey1,
+              fontSize: 'x-large',
+              padding: 0,
+            }}
+            aria-label="Zoom In"
+            data-testid="zoom-in"
+            onClick={() => handleClick(false)}
+          >
+            <ZoomInMap />
+          </IconButton>
+        </CloudPulseTooltip>
       );
     }
 
     return (
-      <ZoomOutMap
-        data-testid="zoom-out"
-        onClick={() => handleClick(true)}
-        style={{ color: 'grey', fontSize: 'x-large' }}
-      />
+      <CloudPulseTooltip placement="bottom-end" title="Maximize">
+        <IconButton
+          sx={{
+            color: theme.color.grey1,
+            fontSize: 'x-large',
+            padding: 0,
+          }}
+          aria-label="Zoom Out"
+          data-testid="zoom-out"
+          onClick={() => handleClick(true)}
+        >
+          <ZoomOutMap />
+        </IconButton>
+      </CloudPulseTooltip>
     );
   };
 

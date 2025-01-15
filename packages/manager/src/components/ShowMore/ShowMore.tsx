@@ -1,8 +1,9 @@
+import { Chip } from '@linode/ui';
 import Popover from '@mui/material/Popover';
 import { styled, useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
-import { Chip, ChipProps } from 'src/components/Chip';
+import type { ChipProps } from '@linode/ui';
 
 interface ShowMoreProps<T> {
   ariaItemType: string;
@@ -34,7 +35,7 @@ export const ShowMore = <T extends {}>(props: ShowMoreProps<T>) => {
           anchorEl
             ? {
                 backgroundColor: theme.palette.primary.main,
-                color: 'white',
+                color: theme.tokens.color.Neutrals.White,
               }
             : null
         }
@@ -68,11 +69,11 @@ const StyledChip = styled(Chip)(({ theme }) => ({
   },
   '&:focus': {
     backgroundColor: theme.bg.lightBlue1,
-    outline: '1px dotted #999',
+    outline: `1px dotted ${theme.tokens.color.Neutrals[50]}`,
   },
   '&:hover': {
     backgroundColor: theme.palette.primary.main,
-    color: 'white',
+    color: theme.tokens.color.Neutrals.White,
   },
   backgroundColor: theme.bg.lightBlue1,
   fontFamily: theme.font.bold,

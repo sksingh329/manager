@@ -1,10 +1,10 @@
+import { Typography } from '@linode/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { Typography } from 'src/components/Typography';
 import { useRemoveFirewallDeviceMutation } from 'src/queries/firewalls';
 import { linodeQueries } from 'src/queries/linodes/linodes';
 import { nodebalancerQueries } from 'src/queries/nodebalancers';
@@ -26,7 +26,7 @@ export const RemoveDeviceDialog = React.memo((props: Props) => {
   const { enqueueSnackbar } = useSnackbar();
   const deviceType = device?.entity.type;
 
-  const { error, isLoading, mutateAsync } = useRemoveFirewallDeviceMutation(
+  const { error, isPending, mutateAsync } = useRemoveFirewallDeviceMutation(
     firewallId,
     device?.id ?? -1
   );
@@ -93,7 +93,7 @@ export const RemoveDeviceDialog = React.memo((props: Props) => {
         <ActionsPanel
           primaryButtonProps={{
             label: primaryButtonText,
-            loading: isLoading,
+            loading: isPending,
             onClick: onDelete,
           }}
           secondaryButtonProps={{

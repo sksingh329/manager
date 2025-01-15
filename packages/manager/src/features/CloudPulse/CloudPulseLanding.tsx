@@ -1,3 +1,4 @@
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { Route, Switch } from 'react-router-dom';
 
@@ -10,8 +11,8 @@ export const CloudPulseLanding = () => {
     <>
       <LandingHeader
         breadcrumbProps={{ pathname: '/Akamai Cloud Pulse' }}
-        docsLabel="Getting Started"
-        docsLink="https://www.linode.com/docs/"
+        docsLabel="Docs"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/akamai-cloud-pulse"
       />
       <React.Suspense fallback={<SuspenseLoader />}>
         <Switch>
@@ -21,3 +22,7 @@ export const CloudPulseLanding = () => {
     </>
   );
 };
+
+export const cloudPulseLandingLazyRoute = createLazyRoute('/monitor')({
+  component: CloudPulseLanding,
+});

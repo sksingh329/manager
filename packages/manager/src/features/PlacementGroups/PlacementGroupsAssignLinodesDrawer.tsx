@@ -1,19 +1,21 @@
 import {
-  PLACEMENT_GROUP_TYPES,
   PLACEMENT_GROUP_POLICIES,
+  PLACEMENT_GROUP_TYPES,
 } from '@linode/api-v4';
+import {
+  Box,
+  Divider,
+  Notice,
+  Stack,
+  TooltipIcon,
+  Typography,
+} from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Box } from 'src/components/Box';
 import { DescriptionList } from 'src/components/DescriptionList/DescriptionList';
-import { Divider } from 'src/components/Divider';
 import { Drawer } from 'src/components/Drawer';
-import { Notice } from 'src/components/Notice/Notice';
-import { Stack } from 'src/components/Stack';
-import { TooltipIcon } from 'src/components/TooltipIcon';
-import { Typography } from 'src/components/Typography';
 import { useAllLinodesQuery } from 'src/queries/linodes/linodes';
 import {
   useAllPlacementGroupsQuery,
@@ -56,7 +58,7 @@ export const PlacementGroupsAssignLinodesDrawer = (
     region,
   });
   const {
-    isLoading,
+    isPending,
     mutateAsync: assignLinodes,
   } = useAssignLinodesToPlacementGroup(selectedPlacementGroup?.id ?? -1);
   const [selectedLinode, setSelectedLinode] = React.useState<Linode | null>(
@@ -176,7 +178,7 @@ export const PlacementGroupsAssignLinodesDrawer = (
                 setSelectedLinode(value);
               }}
               checkIsOptionEqualToValue
-              disabled={hasReachedCapacity || isLoading}
+              disabled={hasReachedCapacity || isPending}
               label={linodeSelectLabel}
               options={getLinodeSelectOptions()}
               placeholder="Select Linode or type to search"

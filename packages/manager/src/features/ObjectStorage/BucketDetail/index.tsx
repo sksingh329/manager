@@ -1,3 +1,4 @@
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { matchPath } from 'react-router-dom';
 
@@ -54,10 +55,11 @@ export const BucketDetailLanding = React.memo((props: Props) => {
   };
   const { bucketName, clusterId } = props.match.params;
 
-  const { endpoint_type: endpointType } =
-    bucketsData?.buckets.find(({ label }) => label === bucketName) ?? {};
+  const bucket = bucketsData?.buckets.find(({ label }) => label === bucketName);
 
-  const isSSLEnabled = endpointType !== 'E2' && endpointType === 'E3';
+  const { endpoint_type } = bucket ?? {};
+
+  const isGen2Endpoint = endpoint_type === 'E2' || endpoint_type === 'E3';
 
   const tabs = [
     {
@@ -68,7 +70,7 @@ export const BucketDetailLanding = React.memo((props: Props) => {
       routeName: `${props.match.url}/access`,
       title: 'Access',
     },
-    ...(!isSSLEnabled
+    ...(!isGen2Endpoint
       ? [
           {
             routeName: `${props.match.url}/ssl`,
@@ -112,16 +114,16 @@ export const BucketDetailLanding = React.memo((props: Props) => {
         <React.Suspense fallback={<SuspenseLoader />}>
           <TabPanels>
             <SafeTabPanel index={0}>
-              <ObjectList {...props} endpointType={endpointType} />
+              <ObjectList {...props} endpointType={endpoint_type} />
             </SafeTabPanel>
             <SafeTabPanel index={1}>
               <BucketAccess
                 bucketName={bucketName}
                 clusterId={clusterId}
-                endpointType={endpointType}
+                endpointType={endpoint_type}
               />
             </SafeTabPanel>
-            <SafeTabPanel index={2}>
+            <SafeTabPanel index={tabs.length - 1}>
               <BucketSSL bucketName={bucketName} clusterId={clusterId} />
             </SafeTabPanel>
           </TabPanels>
@@ -129,6 +131,12 @@ export const BucketDetailLanding = React.memo((props: Props) => {
       </Tabs>
     </>
   );
+});
+
+export const bucketDetailLandingLazyRoute = createLazyRoute(
+  '/object-storage/buckets/$clusterId/$bucketName'
+)({
+  component: BucketDetailLanding,
 });
 
 export default BucketDetailLanding;

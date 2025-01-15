@@ -1,12 +1,8 @@
-import { PriceObject } from '@linode/api-v4';
-import { Region } from '@linode/api-v4/lib/regions';
+import { Box, Button, Chip } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 
-import { Box } from 'src/components/Box';
-import { Button } from 'src/components/Button/Button';
-import { Chip } from 'src/components/Chip';
 import { EnhancedNumberInput } from 'src/components/EnhancedNumberInput/EnhancedNumberInput';
 import { Hidden } from 'src/components/Hidden';
 import { SelectionCard } from 'src/components/SelectionCard/SelectionCard';
@@ -22,6 +18,8 @@ import { renderMonthlyPriceToCorrectDecimalPlace } from 'src/utilities/pricing/d
 import { getLinodeRegionPrice } from 'src/utilities/pricing/linodes';
 import { convertMegabytesTo } from 'src/utilities/unitConversions';
 
+import type { PriceObject } from '@linode/api-v4';
+import type { Region } from '@linode/api-v4/lib/regions';
 import type { PlanWithAvailability } from 'src/features/components/PlansPanel/types';
 
 export interface KubernetesPlanSelectionProps {
@@ -55,10 +53,14 @@ export const KubernetesPlanSelection = (
     planBelongsToDisabledClass,
     planHasLimitedAvailability,
     planIsDisabled512Gb,
+    planIsTooSmallForAPL,
   } = plan;
 
   const rowIsDisabled =
-    wholePanelIsDisabled || planHasLimitedAvailability || planIsDisabled512Gb;
+    wholePanelIsDisabled ||
+    planHasLimitedAvailability ||
+    planIsDisabled512Gb ||
+    planIsTooSmallForAPL;
   const count = getTypeCount(plan.id);
   const price: PriceObject | undefined = getLinodeRegionPrice(
     plan,
@@ -71,6 +73,7 @@ export const KubernetesPlanSelection = (
     planIsDisabled512Gb,
     // So far, planIsTooSmall only applies to DbaaS plans (resize)
     planIsTooSmall: false,
+    planIsTooSmallForAPL,
     wholePanelIsDisabled,
   });
 
@@ -83,6 +86,7 @@ export const KubernetesPlanSelection = (
     !hasMajorityOfPlansDisabled &&
     (planBelongsToDisabledClass ||
       planIsDisabled512Gb ||
+      planIsTooSmallForAPL ||
       planHasLimitedAvailability);
 
   // We don't want flat-rate pricing or network information for LKE so we select only the second type element.

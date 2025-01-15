@@ -1,17 +1,14 @@
 import { yupResolver } from '@hookform/resolvers/yup';
+import { Autocomplete, Notice, TextField, Typography } from '@linode/ui';
 import { CreateBucketSchema } from '@linode/validation';
 import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
 import { Drawer } from 'src/components/Drawer';
-import { FormLabel } from 'src/components/FormLabel';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { TextField } from 'src/components/TextField';
-import { Typography } from 'src/components/Typography';
 import { BucketRateLimitTable } from 'src/features/ObjectStorage/BucketLanding/BucketRateLimitTable';
+import { useObjectStorageRegions } from 'src/features/ObjectStorage/hooks/useObjectStorageRegions';
 import {
   reportAgreementSigningError,
   useAccountAgreements,
@@ -22,11 +19,9 @@ import { useNetworkTransferPricesQuery } from 'src/queries/networkTransfer';
 import {
   useCreateBucketMutation,
   useObjectStorageBuckets,
-  useObjectStorageEndpoints,
   useObjectStorageTypesQuery,
 } from 'src/queries/object-storage/queries';
 import { useProfile } from 'src/queries/profile/profile';
-import { useRegionsQuery } from 'src/queries/regions/regions';
 import { sendCreateBucketEvent } from 'src/utilities/analytics/customEventAnalytics';
 import { getGDPRDetails } from 'src/utilities/formatRegion';
 import { PRICES_RELOAD_ERROR_NOTICE_TEXT } from 'src/utilities/pricing/constants';
@@ -70,12 +65,12 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
   const { data: profile } = useProfile();
   const { isOpen, onClose } = props;
   const isRestrictedUser = profile?.restricted;
-  const {
-    data: endpoints,
-    isFetching: isEndpointLoading,
-  } = useObjectStorageEndpoints();
 
-  const { data: regions } = useRegionsQuery();
+  const {
+    availableStorageRegions,
+    isStorageEndpointsLoading,
+    storageEndpoints,
+  } = useObjectStorageRegions();
 
   const { data: bucketsData } = useObjectStorageBuckets();
 
@@ -95,7 +90,7 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
   const isInvalidPrice =
     !objTypes || !transferTypes || isErrorTypes || isErrorTransferTypes;
 
-  const { isLoading, mutateAsync: createBucket } = useCreateBucketMutation();
+  const { isPending, mutateAsync: createBucket } = useCreateBucketMutation();
   const { data: agreements } = useAccountAgreements();
   const { mutateAsync: updateAccountAgreements } = useMutateAccountAgreements();
   const { data: accountSettings } = useAccountSettings();
@@ -124,7 +119,7 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
       region: '',
       s3_endpoint: undefined,
     },
-    mode: 'onChange',
+    mode: 'onBlur',
     resolver: yupResolver(CreateBucketSchema),
   });
 
@@ -146,12 +141,17 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
         }
       }
 
-      onClose();
+      handleClose();
     } catch (errors) {
       for (const error of errors) {
         setError(error?.field ?? 'root', { message: error.reason });
       }
     }
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
   };
 
   const handleBucketFormSubmit = async (
@@ -164,9 +164,9 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
     // Custom validation in the handleBucketFormSubmit function
     // to catch missing endpoint_type values before form submission
     // since this is optional in the schema.
-    if (Boolean(endpoints) && !formValues.endpoint_type) {
+    if (Boolean(storageEndpoints) && !formValues.endpoint_type) {
       setError('endpoint_type', {
-        message: 'Endpoint Type is required',
+        message: 'Endpoint Type is required.',
         type: 'manual',
       });
       return;
@@ -180,10 +180,10 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
   };
 
   const selectedRegion = watchRegion
-    ? regions?.find((region) => watchRegion.includes(region.id))
+    ? availableStorageRegions?.find((region) => watchRegion === region.id)
     : undefined;
 
-  const filteredEndpoints = endpoints?.filter(
+  const filteredEndpoints = storageEndpoints?.filter(
     (endpoint) => selectedRegion?.id === endpoint.region
   );
 
@@ -236,15 +236,10 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
     );
   }, [filteredEndpointOptions, watch]);
 
-  const isGen2EndpointType =
-    selectedEndpointOption &&
-    selectedEndpointOption.endpoint_type !== 'E0' &&
-    selectedEndpointOption.endpoint_type !== 'E1';
-
   const { showGDPRCheckbox } = getGDPRDetails({
     agreements,
     profile,
-    regions,
+    regions: availableStorageRegions,
     selectedRegionId: selectedRegion?.id ?? '',
   });
 
@@ -283,12 +278,7 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
   }, [watchRegion]);
 
   return (
-    <Drawer
-      onClose={onClose}
-      onExited={reset}
-      open={isOpen}
-      title="Create Bucket"
-    >
+    <Drawer onClose={handleClose} open={isOpen} title="Create Bucket">
       <form onSubmit={handleBucketFormSubmit}>
         {isRestrictedUser && (
           <Notice
@@ -334,7 +324,7 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
           name="region"
         />
         {selectedRegion?.id && <OveragePricing regionId={selectedRegion.id} />}
-        {Boolean(endpoints) && (
+        {Boolean(storageEndpoints) && selectedRegion && (
           <>
             <Controller
               render={({ field }) => (
@@ -343,11 +333,21 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
                     updateEndpointType(endpointOption)
                   }
                   textFieldProps={{
+                    containerProps: {
+                      sx: {
+                        '> .MuiFormHelperText-root': {
+                          marginBottom: 1,
+                        },
+                      },
+                    },
                     helperText: (
                       <Typography component="span">
                         Endpoint types impact the performance, capacity, and
                         rate limits for your bucket. Understand{' '}
-                        <Link to="#">endpoint types</Link>.
+                        <Link to="https://techdocs.akamai.com/cloud-computing/docs/object-storage">
+                          endpoint types
+                        </Link>
+                        .
                       </Typography>
                     ),
                     helperTextPosition: 'top',
@@ -355,7 +355,7 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
                   disableClearable={hasSingleEndpointType}
                   errorText={errors.endpoint_type?.message}
                   label="Object Storage Endpoint Type"
-                  loading={isEndpointLoading}
+                  loading={isStorageEndpointsLoading}
                   onBlur={field.onBlur}
                   options={filteredEndpointOptions ?? []}
                   placeholder="Object Storage Endpoint Type"
@@ -365,24 +365,13 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
               control={control}
               name="endpoint_type"
             />
-            {selectedEndpointOption && (
-              <>
-                <FormLabel>
-                  <Typography marginBottom={1} marginTop={2} variant="inherit">
-                    Bucket Rate Limits
-                  </Typography>
-                </FormLabel>
-                <Typography marginBottom={isGen2EndpointType ? 2 : 3}>
-                  {isGen2EndpointType
-                    ? 'Specifies the maximum Requests Per Second (RPS) for a bucket. To increase it to High, open a support ticket. '
-                    : 'This endpoint type supports up to 750 Requests Per Second (RPS). '}
-                  Understand <Link to="#">bucket rate limits</Link>.
-                </Typography>
-              </>
-            )}
-            {isGen2EndpointType && (
+            {Boolean(storageEndpoints) && selectedEndpointOption && (
               <BucketRateLimitTable
-                endpointType={selectedEndpointOption.endpoint_type}
+                typographyProps={{
+                  marginTop: 1,
+                  variant: 'inherit',
+                }}
+                endpointType={selectedEndpointOption?.endpoint_type}
               />
             )}
           </>
@@ -404,14 +393,14 @@ export const OMC_CreateBucketDrawer = (props: Props) => {
             disabled:
               (showGDPRCheckbox && !state.hasSignedAgreement) || isErrorTypes,
             label: 'Create Bucket',
-            loading: isLoading || Boolean(selectedRegion?.id && isLoadingTypes),
+            loading: isPending || Boolean(selectedRegion?.id && isLoadingTypes),
             tooltipText:
               !isLoadingTypes && isInvalidPrice
                 ? PRICES_RELOAD_ERROR_NOTICE_TEXT
                 : '',
             type: 'submit',
           }}
-          secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
+          secondaryButtonProps={{ label: 'Cancel', onClick: handleClose }}
         />
         <EnableObjectStorageModal
           onClose={() =>

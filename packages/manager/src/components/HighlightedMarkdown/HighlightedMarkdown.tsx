@@ -1,3 +1,4 @@
+import { Typography } from '@linode/ui';
 import * as hljs from 'highlight.js';
 import apache from 'highlight.js/lib/languages/apache';
 import bash from 'highlight.js/lib/languages/bash';
@@ -8,13 +9,12 @@ import HLJSDarkTheme from 'highlight.js/styles/a11y-dark.css?raw';
 import HLJSLightTheme from 'highlight.js/styles/a11y-light.css?raw';
 import * as React from 'react';
 
-import { Typography } from 'src/components/Typography';
 import 'src/formatted-text.css';
 import { unsafe_MarkdownIt } from 'src/utilities/markdown';
 import { sanitizeHTML } from 'src/utilities/sanitizeHTML';
 import { useColorMode } from 'src/utilities/theme';
 
-import type { ThemeName } from 'src/foundations/themes';
+import type { ThemeName } from '@linode/ui';
 import type { SanitizeOptions } from 'src/utilities/sanitizeHTML';
 
 hljs.registerLanguage('apache', apache);

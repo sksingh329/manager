@@ -1,9 +1,9 @@
+import { Typography } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { Typography } from 'src/components/Typography';
 import {
   localStorageWarning,
   nodesDeletionWarning,
@@ -22,7 +22,7 @@ export const RecycleNodePoolDialog = (props: Props) => {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const { error, isLoading, mutateAsync } = useRecycleNodePoolMutation(
+  const { error, isPending, mutateAsync } = useRecycleNodePoolMutation(
     clusterId,
     nodePoolId
   );
@@ -41,7 +41,7 @@ export const RecycleNodePoolDialog = (props: Props) => {
       primaryButtonProps={{
         'data-testid': 'confirm',
         label: 'Recycle Pool Nodes',
-        loading: isLoading,
+        loading: isPending,
         onClick: onRecycle,
       }}
       secondaryButtonProps={{

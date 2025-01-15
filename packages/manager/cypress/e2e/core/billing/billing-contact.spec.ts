@@ -2,13 +2,9 @@ import { mockGetAccount, mockUpdateAccount } from 'support/intercepts/account';
 import { accountFactory } from 'src/factories/account';
 import type { Account } from '@linode/api-v4';
 import { ui } from 'support/ui';
-import { makeFeatureFlagData } from 'support/util/feature-flags';
 import { TAX_ID_HELPER_TEXT } from 'src/features/Billing/constants';
-import {
-  mockAppendFeatureFlags,
-  mockGetFeatureFlagClientstream,
-} from 'support/intercepts/feature-flags';
-import type { Flags } from 'src/featureFlags';
+import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
+import { mockGetUserPreferences } from 'support/intercepts/profile';
 
 /* eslint-disable sonarjs/no-duplicate-string */
 const accountData = accountFactory.build({
@@ -72,13 +68,36 @@ const checkAccountContactDisplay = (accountInfo: Account) => {
 describe('Billing Contact', () => {
   beforeEach(() => {
     mockAppendFeatureFlags({
-      taxId: makeFeatureFlagData<Flags['taxId']>({
+      taxId: {
         enabled: true,
-      }),
+      },
     });
-    mockGetFeatureFlagClientstream();
+  });
+  it('Mask Contact Info', () => {
+    mockGetUserPreferences({ maskSensitiveData: true }).as(
+      'getUserPreferences'
+    );
+    mockGetAccount(accountData).as('getAccount');
+    cy.visitWithLogin('/account/billing');
+
+    cy.contains('This data is sensitive and hidden for privacy.');
+
+    // Confirm edit button and contact info is hidden when setting is enabled.
+    cy.findByText('Edit').should('not.exist');
+    cy.get('[data-qa-contact-name]').should('not.exist');
+
+    cy.findByRole('button', { name: 'Show' }).should('be.visible').click();
+
+    // Confirm edit button and contact info is visible when setting is disabled.
+    cy.findByText('Edit').should('be.visible');
+    cy.get('[data-qa-contact-name]').should('be.visible');
+
+    cy.findByRole('button', { name: 'Hide' }).should('be.visible').click();
   });
   it('Edit Contact Info', () => {
+    mockGetUserPreferences({ maskSensitiveData: false }).as(
+      'getUserPreferences'
+    );
     // mock the user's account data and confirm that it is displayed correctly upon page load
     mockGetAccount(accountData).as('getAccount');
     cy.visitWithLogin('/account/billing');

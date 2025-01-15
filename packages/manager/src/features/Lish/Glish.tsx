@@ -1,25 +1,22 @@
 /* eslint-disable no-unused-expressions */
+import { Box, CircleProgress } from '@linode/ui';
 import * as React from 'react';
 import { VncScreen } from 'react-vnc';
 
-import { Box } from 'src/components/Box';
-import { CircleProgress } from 'src/components/CircleProgress';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 
 import type { LinodeLishData } from '@linode/api-v4/lib/linodes';
 import type { Linode } from '@linode/api-v4/lib/linodes';
 import type { VncScreenHandle } from 'react-vnc';
 
-interface Props {
+interface Props extends Omit<LinodeLishData, 'weblish_url'> {
   linode: Linode;
   refreshToken: () => Promise<void>;
 }
 
-type CombinedProps = Props & Omit<LinodeLishData, 'weblish_url'>;
-
 let monitor: WebSocket;
 
-const Glish = (props: CombinedProps) => {
+const Glish = (props: Props) => {
   const { glish_url, linode, monitor_url, refreshToken, ws_protocols } = props;
   const ref = React.useRef<VncScreenHandle>(null);
   const [powered, setPowered] = React.useState(linode.status === 'running');

@@ -1,20 +1,41 @@
-import _Dialog, { DialogProps as _DialogProps } from '@mui/material/Dialog';
+import { Box, CircleProgress, Notice, omittedProps } from '@linode/ui';
+import _Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import { styled, useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
-import { Box } from 'src/components/Box';
 import { DialogTitle } from 'src/components/DialogTitle/DialogTitle';
-import { Notice } from 'src/components/Notice/Notice';
-import { omittedProps } from 'src/utilities/omittedProps';
 import { convertForAria } from 'src/utilities/stringUtils';
 
+import type { DialogProps as _DialogProps } from '@mui/material/Dialog';
+
 export interface DialogProps extends _DialogProps {
+  /**
+   * Additional CSS to be applied to the Dialog.
+   */
   className?: string;
+  /**
+   * Error that will be shown in the dialog.
+   */
   error?: string;
+  /**
+   * Let the Dialog take up the entire height of the viewport.
+   */
   fullHeight?: boolean;
+  /**
+   * Whether the drawer is fetching the entity's data.
+   *
+   * If true, the drawer will feature a loading spinner for its content.
+   */
+  isFetching?: boolean;
+  /**
+   * Subtitle that will be shown in the dialog.
+   */
+  subtitle?: string;
+  /**
+   * Title that will be shown in the dialog.
+   */
   title: string;
-  titleBottomBorder?: boolean;
 }
 
 /**
@@ -30,69 +51,100 @@ export interface DialogProps extends _DialogProps {
  * - **Confirmation**
  *  - Users must confirm a choice
  * - **Deletion**
- *  - The user must confirm the deleteion of an entity
+ *  - The user must confirm the deletion of an entity
  *  - Can require user to type the entity name to confirm deletion
  *
  * > Clicking off of the modal will not close it.
  * > A modal can only be closed by taking direct action, clicking on a button or the “X” button, or using the `esc` key.
  *
  */
-export const Dialog = (props: DialogProps) => {
-  const theme = useTheme();
-  const {
-    children,
-    className,
-    error,
-    fullHeight,
-    fullWidth,
-    maxWidth = 'md',
-    onClose,
-    title,
-    titleBottomBorder,
-    ...rest
-  } = props;
+export const Dialog = React.forwardRef(
+  (props: DialogProps, ref: React.Ref<HTMLDivElement>) => {
+    const theme = useTheme();
+    const {
+      children,
+      className,
+      error,
+      fullHeight,
+      fullWidth,
+      isFetching,
+      maxWidth = 'md',
+      onClose,
+      open,
+      subtitle,
+      title,
+      ...rest
+    } = props;
 
-  const titleID = convertForAria(title);
+    const titleID = convertForAria(title);
 
-  return (
-    <StyledDialog
-      aria-labelledby={titleID}
-      data-qa-dialog
-      data-qa-drawer
-      data-testid="drawer"
-      fullHeight={fullHeight}
-      fullWidth={fullWidth}
-      maxWidth={(fullWidth && maxWidth) ?? undefined}
-      onClose={onClose}
-      role="dialog"
-      title={title}
-      {...rest}
-    >
-      <Box
-        sx={{
-          alignItems: 'center',
+    // Store the last valid children and title in refs
+    // This is to prevent flashes of content during the drawer's closing transition,
+    // and its content becomes potentially undefined
+    const lastChildrenRef = React.useRef(children);
+    const lastTitleRef = React.useRef(title);
+    // Update refs when the drawer is open and content is matched
+    if (open && children) {
+      lastChildrenRef.current = children;
+      lastTitleRef.current = title;
+    }
+
+    return (
+      <StyledDialog
+        onClose={(_, reason) => {
+          if (onClose && reason !== 'backdropClick') {
+            onClose({}, 'escapeKeyDown');
+          }
         }}
+        aria-labelledby={titleID}
+        closeAfterTransition={false}
+        data-qa-dialog
+        data-qa-drawer
+        data-testid="drawer"
+        fullHeight={fullHeight}
+        fullWidth={fullWidth}
+        maxWidth={(fullWidth && maxWidth) ?? undefined}
+        open={open}
+        ref={ref}
+        role="dialog"
+        title={title}
+        {...rest}
       >
-        <DialogTitle
-          id={titleID}
-          onClose={() => onClose && onClose({}, 'backdropClick')}
-          title={title}
-        />
-        {titleBottomBorder && <StyledHr />}
-        <DialogContent
+        <Box
           sx={{
-            overflowX: 'hidden',
-            paddingBottom: theme.spacing(3),
+            alignItems: 'center',
           }}
-          className={className}
         >
-          {error && <Notice text={error} variant="error" />}
-          {children}
-        </DialogContent>
-      </Box>
-    </StyledDialog>
-  );
-};
+          <DialogTitle
+            id={titleID}
+            isFetching={isFetching}
+            onClose={() => onClose?.({}, 'escapeKeyDown')}
+            subtitle={subtitle}
+            title={lastTitleRef.current}
+          />
+          <DialogContent
+            sx={{
+              overflowX: 'hidden',
+              paddingBottom: theme.spacing(3),
+            }}
+            className={className}
+          >
+            {isFetching ? (
+              <Box display="flex" justifyContent="center" my={4}>
+                <CircleProgress size="md" />
+              </Box>
+            ) : (
+              <>
+                {error && <Notice text={error} variant="error" />}
+                {lastChildrenRef.current}
+              </>
+            )}
+          </DialogContent>
+        </Box>
+      </StyledDialog>
+    );
+  }
+);
 
 const StyledDialog = styled(_Dialog, {
   shouldForwardProp: omittedProps(['fullHeight', 'title']),
@@ -100,19 +152,10 @@ const StyledDialog = styled(_Dialog, {
   '& .MuiDialog-paper': {
     height: props.fullHeight ? '100vh' : undefined,
     maxHeight: '100%',
+    minWidth: '500px',
     padding: 0,
-  },
-  '& .MuiDialogActions-root': {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    marginTop: theme.spacing(2),
+    [theme.breakpoints.down('md')]: {
+      minWidth: '380px',
+    },
   },
 }));
-
-const StyledHr = styled('hr')({
-  backgroundColor: '#e3e5e8',
-  border: 'none',
-  height: 1,
-  margin: '-2em 8px 0px 8px',
-  width: '100%',
-});

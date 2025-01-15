@@ -1,3 +1,4 @@
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { Waypoint } from 'react-waypoint';
 
@@ -11,11 +12,9 @@ import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
 import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
 import { EVENTS_LIST_FILTER } from 'src/features/Events/constants';
-import { useFlags } from 'src/hooks/useFlags';
 import { useEventsInfiniteQuery } from 'src/queries/events/events';
 
 import { EventRow } from './EventRow';
-import { EventRowV2 } from './EventRowV2';
 import {
   StyledH1Header,
   StyledLabelTableCell,
@@ -32,7 +31,6 @@ interface Props {
 
 export const EventsLanding = (props: Props) => {
   const { emptyMessage, entityId } = props;
-  const flags = useFlags();
 
   const filter: Filter = { ...EVENTS_LIST_FILTER };
 
@@ -46,6 +44,7 @@ export const EventsLanding = (props: Props) => {
     events,
     fetchNextPage,
     hasNextPage,
+    isFetching,
     isFetchingNextPage,
     isLoading,
   } = useEventsInfiniteQuery(filter);
@@ -71,21 +70,13 @@ export const EventsLanding = (props: Props) => {
     } else {
       return (
         <>
-          {events?.map((event) =>
-            flags.eventMessagesV2 ? (
-              <EventRowV2
-                entityId={entityId}
-                event={event}
-                key={`event-${event.id}`}
-              />
-            ) : (
-              <EventRow
-                entityId={entityId}
-                event={event}
-                key={`event-${event.id}`}
-              />
-            )
-          )}
+          {events?.map((event) => (
+            <EventRow
+              entityId={entityId}
+              event={event}
+              key={`event-${event.id}`}
+            />
+          ))}
           {isFetchingNextPage && (
             <TableRowLoading
               columns={4}
@@ -105,39 +96,34 @@ export const EventsLanding = (props: Props) => {
       <Table aria-label="List of Events">
         <TableHead>
           <TableRow>
-            {!flags.eventMessagesV2 && (
-              <Hidden smDown>
-                <TableCell style={{ padding: 0, width: '1%' }} />
-              </Hidden>
-            )}
             <StyledLabelTableCell>Event</StyledLabelTableCell>
-            {flags.eventMessagesV2 && (
-              <Hidden smDown>
-                <TableCell data-qa-events-username-header sx={{ width: 150 }}>
-                  User
-                </TableCell>
-              </Hidden>
-            )}
-            <StyledTableCell sx={{ width: 175 }}>Relative Date</StyledTableCell>
+            <Hidden smDown>
+              <TableCell data-qa-events-username-header sx={{ width: 150 }}>
+                User
+              </TableCell>
+            </Hidden>
+            <StyledTableCell sx={{ width: 175 }}>Start Date</StyledTableCell>
             <Hidden mdDown>
-              <StyledTableCell data-qa-events-time-header sx={{ width: 150 }}>
-                Absolute Date
+              <StyledTableCell data-qa-events-time-header sx={{ width: 175 }}>
+                Duration
               </StyledTableCell>
             </Hidden>
           </TableRow>
         </TableHead>
         <TableBody>{renderTableBody()}</TableBody>
       </Table>
-      {hasNextPage ? (
+      {!isFetching && hasNextPage && (
         <Waypoint onEnter={() => fetchNextPage()}>
           <div />
         </Waypoint>
-      ) : (
-        events &&
-        events.length > 0 && (
-          <StyledTypography>No more events to show</StyledTypography>
-        )
+      )}
+      {events && events.length > 0 && !isFetching && !hasNextPage && (
+        <StyledTypography>No more events to show</StyledTypography>
       )}
     </>
   );
 };
+
+export const eventsLandingLazyRoute = createLazyRoute('/events')({
+  component: EventsLanding,
+});

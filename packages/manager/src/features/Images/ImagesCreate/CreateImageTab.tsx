@@ -1,26 +1,24 @@
 import { yupResolver } from '@hookform/resolvers/yup';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Checkbox,
+  Notice,
+  Paper,
+  Stack,
+  TextField,
+  TooltipIcon,
+  Typography,
+} from '@linode/ui';
 import { createImageSchema } from '@linode/validation';
 import { useSnackbar } from 'notistack';
-import * as React from 'react';
+import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useHistory, useLocation } from 'react-router-dom';
 
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
-import { Box } from 'src/components/Box';
-import { Button } from 'src/components/Button/Button';
-import { Checkbox } from 'src/components/Checkbox';
-import { DISK_ENCRYPTION_IMAGES_CAVEAT_COPY } from 'src/components/Encryption/constants';
-import { useIsDiskEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { Paper } from 'src/components/Paper';
-import { getIsDistributedRegion } from 'src/components/RegionSelect/RegionSelect.utils';
-import { Stack } from 'src/components/Stack';
-import { SupportLink } from 'src/components/SupportLink';
 import { TagsInput } from 'src/components/TagsInput/TagsInput';
-import { TextField } from 'src/components/TextField';
-import { TooltipIcon } from 'src/components/TooltipIcon';
-import { Typography } from 'src/components/Typography';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { LinodeSelect } from 'src/features/Linodes/LinodeSelect/LinodeSelect';
 import { useFlags } from 'src/hooks/useFlags';
@@ -77,10 +75,6 @@ export const CreateImageTab = () => {
   const isImageCreateRestricted = useRestrictedGlobalGrantCheck({
     globalGrantType: 'add_images',
   });
-
-  const {
-    isDiskEncryptionFeatureEnabled,
-  } = useIsDiskEncryptionFeatureEnabled();
 
   const onSubmit = handleSubmit(async (values) => {
     try {
@@ -141,23 +135,21 @@ export const CreateImageTab = () => {
 
   const isRawDisk = selectedDisk?.filesystem === 'raw';
 
-  const { data: regionsData } = useRegionsQuery();
+  const { data: regions } = useRegionsQuery();
 
-  const linodeIsInDistributedRegion = getIsDistributedRegion(
-    regionsData ?? [],
-    selectedLinode?.region ?? ''
+  const selectedLinodeRegion = regions?.find(
+    (r) => r.id === selectedLinode?.region
   );
 
-  /*
-    We only want to display the notice about disk encryption if:
-    1. the Disk Encryption feature is enabled
-    2. a linode is selected
-    2. the selected linode is not in an Edge region
-  */
-  const showDiskEncryptionWarning =
-    isDiskEncryptionFeatureEnabled &&
-    selectedLinodeId !== null &&
-    !linodeIsInDistributedRegion;
+  const linodeIsInDistributedRegion =
+    selectedLinodeRegion?.site_type === 'distributed';
+
+  /**
+   * The 'Object Storage' capability indicates a region can store images
+   */
+  const linodeRegionSupportsImageStorage = selectedLinodeRegion?.capabilities.includes(
+    'Object Storage'
+  );
 
   const linodeSelectHelperText = grants?.linode.some(
     (grant) => grant.permissions === 'read_only'
@@ -190,27 +182,14 @@ export const CreateImageTab = () => {
           <Stack spacing={2}>
             <Typography variant="h2">Select Linode & Disk</Typography>
             <Typography sx={{ maxWidth: { md: '80%', sm: '100%' } }}>
-              By default, Linode images are limited to 6144 MB of data per disk.
-              Ensure your content doesn&rsquo;t exceed this limit, or{' '}
-              <SupportLink
-                entity={
-                  selectedLinodeId !== null
-                    ? { id: selectedLinodeId, type: 'linode_id' }
-                    : undefined
-                }
-                text="open a support ticket"
-                title="Request to increase Image size limit when capturing from Linode disk"
-              />{' '}
-              to request a higher limit. Additionally, images can&rsquo;t be
-              created from a raw disk or a disk that&rsquo;s formatted using a
-              custom file system.
+              Custom images are billed monthly at $0.10/GB. The disk you target
+              for an image needs to meet specific{' '}
+              <Link to="https://techdocs.akamai.com/cloud-computing/docs/capture-an-image">
+                requirements
+              </Link>
+              .
             </Typography>
-            {linodeIsInDistributedRegion && (
-              <Notice variant="info">
-                This Linode is in a distributed compute region. Images captured
-                from this Linode will be stored in the closest core site.
-              </Notice>
-            )}
+
             <LinodeSelect
               getOptionDisabled={
                 grants
@@ -234,11 +213,33 @@ export const CreateImageTab = () => {
               required
               value={selectedLinodeId}
             />
-            {showDiskEncryptionWarning && (
+            {selectedLinode &&
+              !linodeRegionSupportsImageStorage &&
+              flags.imageServiceGen2 &&
+              flags.imageServiceGen2Ga && (
+                <Notice variant="warning">
+                  This Linode’s region doesn’t support local image storage. This
+                  image will be stored in the core compute region that’s{' '}
+                  <Link to="https://techdocs.akamai.com/cloud-computing/docs/images#regions-and-captured-custom-images">
+                    geographically closest
+                  </Link>
+                  . After it’s stored, you can replicate it to other{' '}
+                  <Link to="https://www.linode.com/global-infrastructure/">
+                    core compute regions
+                  </Link>
+                  .
+                </Notice>
+              )}
+            {linodeIsInDistributedRegion && !flags.imageServiceGen2Ga && (
               <Notice variant="warning">
-                <Typography sx={(theme) => ({ fontFamily: theme.font.normal })}>
-                  {DISK_ENCRYPTION_IMAGES_CAVEAT_COPY}
-                </Typography>
+                This Linode is in a distributed compute region. These regions
+                can't store images. The image is stored in the core compute
+                region that is{' '}
+                <Link to="https://www.linode.com/global-infrastructure/">
+                  geographically closest
+                </Link>
+                . After it's stored, you can replicate it to other core compute
+                regions.
               </Notice>
             )}
             <Controller
@@ -318,7 +319,7 @@ export const CreateImageTab = () => {
                               Many Linode supported operating systems are
                               compatible with cloud-init by default, or you may
                               have installed cloud-init.{' '}
-                              <Link to="https://www.linode.com/docs/products/compute/compute-instances/guides/metadata/">
+                              <Link to="https://techdocs.akamai.com/cloud-computing/docs/overview-of-the-metadata-service">
                                 Learn more.
                               </Link>
                             </Typography>
@@ -377,20 +378,6 @@ export const CreateImageTab = () => {
               control={control}
               name="description"
             />
-            <Typography
-              sx={{ maxWidth: { md: '80%', sm: '100%' } }}
-              variant="body1"
-            >
-              Custom Images are billed at $0.10/GB per month.{' '}
-              <Link to="https://www.linode.com/docs/products/tools/images/guides/capture-an-image/">
-                Learn more about requirements and considerations.{' '}
-              </Link>
-              For information about how to check and clean a Linux
-              system&rsquo;s disk space,{' '}
-              <Link to="https://www.linode.com/docs/guides/check-and-clean-linux-disk-space/">
-                read this guide.
-              </Link>
-            </Typography>
           </Stack>
         </Paper>
         <Box

@@ -1,14 +1,8 @@
+import { Box, Paper, Typography } from '@linode/ui';
 import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
-import { Box } from 'src/components/Box';
 import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
-import { Typography } from 'src/components/Typography';
-import { Paper } from 'src/components/Paper';
-import {
-  LongviewProcesses,
-  WithStartAndEnd,
-} from 'src/features/Longview/request.types';
 import {
   convertData,
   formatMemory,
@@ -19,7 +13,11 @@ import {
   readableBytes,
 } from 'src/utilities/unitConversions';
 
-import { Process } from './types';
+import type { Process } from './types';
+import type {
+  LongviewProcesses,
+  WithStartAndEnd,
+} from 'src/features/Longview/request.types';
 
 interface Props {
   clientAPIKey: string;

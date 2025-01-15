@@ -1,14 +1,11 @@
+import { Notice, Paper, Stack, Typography } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { Paper } from 'src/components/Paper';
 import { RegionMultiSelect } from 'src/components/RegionSelect/RegionMultiSelect';
-import { Stack } from 'src/components/Stack';
-import { Typography } from 'src/components/Typography';
 import { useUpdateImageRegionsMutation } from 'src/queries/images';
 import { useRegionsQuery } from 'src/queries/regions/regions';
 
@@ -21,7 +18,7 @@ import type {
   UpdateImageRegionsPayload,
 } from '@linode/api-v4';
 import type { Resolver } from 'react-hook-form';
-import type { DisableRegionOption } from 'src/components/RegionSelect/RegionSelect.types';
+import type { DisableItemOption } from 'src/components/ListItemOption';
 
 interface Props {
   image: Image | undefined;
@@ -32,7 +29,7 @@ interface Context {
   regions: Region[] | undefined;
 }
 
-export const ManageImageRegionsForm = (props: Props) => {
+export const ManageImageReplicasForm = (props: Props) => {
   const { image, onClose } = props;
 
   const imageRegionIds = image?.regions.map(({ region }) => region) ?? [];
@@ -79,7 +76,7 @@ export const ManageImageRegionsForm = (props: Props) => {
 
   const values = watch();
 
-  const disabledRegions: Record<string, DisableRegionOption> = {};
+  const disabledRegions: Record<string, DisableItemOption> = {};
 
   const availableRegions = image?.regions.filter(
     (regionItem) => regionItem.status === 'available'
@@ -103,7 +100,7 @@ export const ManageImageRegionsForm = (props: Props) => {
         <Notice text={errors.root.message} variant="error" />
       )}
       <Typography>
-        Custom images are billed monthly, at $.10/GB. Check out{' '}
+        Custom images are billed monthly at $0.10/GB. Check out{' '}
         <Link to="https://www.linode.com/docs/guides/check-and-clean-linux-disk-space/">
           this guide
         </Link>{' '}
@@ -116,7 +113,7 @@ export const ManageImageRegionsForm = (props: Props) => {
             shouldValidate: true,
           })
         }
-        currentCapability={undefined}
+        currentCapability="Object Storage" // Images use Object Storage as the storage backend
         disabledRegions={disabledRegions}
         errorText={errors.regions?.message}
         label="Add Regions"
@@ -126,7 +123,7 @@ export const ManageImageRegionsForm = (props: Props) => {
         selectedIds={values.regions}
       />
       <Typography sx={{ mb: 1, mt: 2 }}>
-        Image will be available in these regions ({values.regions.length})
+        Image will be replicated in these regions ({values.regions.length})
       </Typography>
       <Paper
         sx={(theme) => ({

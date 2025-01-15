@@ -1,15 +1,11 @@
-import {
-  getBucketAccess,
-  updateBucketAccess,
-} from '@linode/api-v4/lib/object-storage';
+import { Divider, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import * as React from 'react';
 
 import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
-import { Divider } from 'src/components/Divider';
 import { Drawer } from 'src/components/Drawer';
 import { Link } from 'src/components/Link';
-import { Typography } from 'src/components/Typography';
+import { MaskableText } from 'src/components/MaskableText/MaskableText';
 import { useAccountManagement } from 'src/hooks/useAccountManagement';
 import { useFlags } from 'src/hooks/useFlags';
 import { useObjectStorageClusters } from 'src/queries/object-storage/queries';
@@ -22,11 +18,9 @@ import { truncateMiddle } from 'src/utilities/truncate';
 import { readableBytes } from 'src/utilities/unitConversions';
 
 import { AccessSelect } from '../BucketDetail/AccessSelect';
+import { BucketRateLimitTable } from './BucketRateLimitTable';
 
-import type {
-  ACLType,
-  ObjectStorageBucket,
-} from '@linode/api-v4/lib/object-storage';
+import type { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
 
 export interface BucketDetailsDrawerProps {
   onClose: () => void;
@@ -55,6 +49,12 @@ export const BucketDetailsDrawer = React.memo(
     const isObjMultiClusterEnabled = isFeatureEnabledV2(
       'Object Storage Access Key Regions',
       Boolean(flags.objMultiCluster),
+      account?.capabilities ?? []
+    );
+
+    const isObjectStorageGen2Enabled = isFeatureEnabledV2(
+      'Object Storage Endpoint Types',
+      Boolean(flags.objectStorageGen2?.enabled),
       account?.capabilities ?? []
     );
 
@@ -108,19 +108,22 @@ export const BucketDetailsDrawer = React.memo(
           </Typography>
         ) : null}
         {hostname && (
-          <StyledLinkContainer>
-            <Link external to={`https://${hostname}`}>
-              {truncateMiddle(hostname, 50)}
-            </Link>
-            <StyledCopyTooltip sx={{ marginLeft: 4 }} text={hostname} />
-          </StyledLinkContainer>
+          <MaskableText isToggleable text={hostname}>
+            <StyledLinkContainer>
+              <Link external to={`https://${hostname}`}>
+                {truncateMiddle(hostname, 50)}
+              </Link>
+              <StyledCopyTooltip sx={{ marginLeft: 4 }} text={hostname} />
+            </StyledLinkContainer>
+          </MaskableText>
         )}
         {(formattedCreated || cluster) && (
           <Divider spacingBottom={16} spacingTop={16} />
         )}
         {typeof size === 'number' && (
           <Typography variant="subtitle2">
-            {readableBytes(size).formatted}
+            {/* to convert from binary units (GiB) to decimal units (GB) we need to pass the base10 flag */}
+            {readableBytes(size, { base10: true }).formatted}
           </Typography>
         )}
         {/* @TODO OBJ Multicluster: use region instead of cluster if isObjMultiClusterEnabled. */}
@@ -138,30 +141,26 @@ export const BucketDetailsDrawer = React.memo(
         )}
         {/* @TODO OBJ Multicluster: use region instead of cluster if isObjMultiClusterEnabled
          to getBucketAccess and updateBucketAccess.  */}
+        {isObjectStorageGen2Enabled && (
+          <>
+            <BucketRateLimitTable
+              typographyProps={{
+                marginTop: 1,
+                variant: 'inherit',
+              }}
+              endpointType={endpoint_type}
+            />
+            <Divider spacingBottom={16} spacingTop={16} />
+          </>
+        )}
         {cluster && label && (
           <AccessSelect
-            getAccess={() =>
-              getBucketAccess(
-                isObjMultiClusterEnabled && currentRegion
-                  ? currentRegion.id
-                  : cluster,
-                label
-              )
+            clusterOrRegion={
+              isObjMultiClusterEnabled && currentRegion
+                ? currentRegion.id
+                : cluster
             }
-            updateAccess={(acl: ACLType, cors_enabled: boolean) => {
-              // Don't send the ACL with the payload if it's "custom", since it's
-              // not valid (though it's a valid return type).
-              const payload =
-                acl === 'custom' ? { cors_enabled } : { acl, cors_enabled };
-
-              return updateBucketAccess(
-                isObjMultiClusterEnabled && currentRegion
-                  ? currentRegion.id
-                  : cluster,
-                label,
-                payload
-              );
-            }}
+            endpointType={endpoint_type}
             name={label}
             variant="bucket"
           />

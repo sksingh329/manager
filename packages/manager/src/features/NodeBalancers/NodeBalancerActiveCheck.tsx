@@ -1,11 +1,17 @@
+import {
+  Autocomplete,
+  FormHelperText,
+  InputAdornment,
+  TextField,
+  Typography,
+} from '@linode/ui';
+import {
+  CHECK_ATTEMPTS,
+  CHECK_INTERVAL,
+  CHECK_TIMEOUT,
+} from '@linode/validation';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
-import { FormHelperText } from 'src/components/FormHelperText';
-import { InputAdornment } from 'src/components/InputAdornment';
-import { TextField } from 'src/components/TextField';
-import { Typography } from 'src/components/Typography';
 
 import { setErrorMap } from './utils';
 
@@ -96,6 +102,9 @@ export const ActiveCheck = (props: ActiveCheckProps) => {
         </Grid>
         <Grid xs={12}>
           <Autocomplete
+            onChange={(_, selected) =>
+              props.onHealthCheckTypeChange(selected.value)
+            }
             textFieldProps={{
               dataAttrs: {
                 'data-qa-active-check-select': true,
@@ -103,15 +112,12 @@ export const ActiveCheck = (props: ActiveCheckProps) => {
               errorGroup: forEdit ? `${configIdx}` : undefined,
             }}
             autoHighlight
+            disableClearable
             disabled={disabled}
             errorText={errorMap.check}
             id={`type-${configIdx}`}
-            disableClearable
             label="Type"
             noMarginTop
-            onChange={(_, selected) =>
-              props.onHealthCheckTypeChange(selected.value)
-            }
             options={typeOptions}
             size="small"
             value={defaultType || typeOptions[0]}
@@ -136,6 +142,8 @@ export const ActiveCheck = (props: ActiveCheckProps) => {
                 errorGroup={forEdit ? `${configIdx}` : undefined}
                 errorText={errorMap.check_interval}
                 label="Interval"
+                max={CHECK_INTERVAL.MAX}
+                min={CHECK_INTERVAL.MIN}
                 onChange={onHealthCheckIntervalChange}
                 type="number"
                 value={healthCheckInterval}
@@ -157,6 +165,8 @@ export const ActiveCheck = (props: ActiveCheckProps) => {
                 errorGroup={forEdit ? `${configIdx}` : undefined}
                 errorText={errorMap.check_timeout}
                 label="Timeout"
+                max={CHECK_TIMEOUT.MAX}
+                min={CHECK_TIMEOUT.MIN}
                 onChange={onHealthCheckTimeoutChange}
                 type="number"
                 value={healthCheckTimeout}
@@ -176,6 +186,8 @@ export const ActiveCheck = (props: ActiveCheckProps) => {
                 errorGroup={forEdit ? `${configIdx}` : undefined}
                 errorText={errorMap.check_attempts}
                 label="Attempts"
+                max={CHECK_ATTEMPTS.MAX}
+                min={CHECK_ATTEMPTS.MIN}
                 onChange={onHealthCheckAttemptsChange}
                 type="number"
                 value={healthCheckAttempts}
@@ -188,6 +200,7 @@ export const ActiveCheck = (props: ActiveCheckProps) => {
             {['http', 'http_body'].includes(healthCheckType) && (
               <Grid lg={6} xs={12}>
                 <TextField
+                  data-testid="http-path"
                   disabled={disabled}
                   errorGroup={forEdit ? `${configIdx}` : undefined}
                   errorText={errorMap.check_path}
@@ -201,6 +214,7 @@ export const ActiveCheck = (props: ActiveCheckProps) => {
             {healthCheckType === 'http_body' && (
               <Grid md={12} xs={12}>
                 <TextField
+                  data-testid="http-body"
                   disabled={disabled}
                   errorGroup={forEdit ? `${configIdx}` : undefined}
                   errorText={errorMap.check_body}

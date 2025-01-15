@@ -1,9 +1,9 @@
+import { Typography } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { Typography } from 'src/components/Typography';
 import { localStorageWarning } from 'src/features/Kubernetes/kubeUtils';
 import { useRecycleNodeMutation } from 'src/queries/kubernetes';
 
@@ -19,7 +19,7 @@ export const RecycleNodeDialog = (props: Props) => {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const { error, isLoading, mutateAsync } = useRecycleNodeMutation(
+  const { error, isPending, mutateAsync } = useRecycleNodeMutation(
     clusterId,
     nodeId
   );
@@ -36,7 +36,7 @@ export const RecycleNodeDialog = (props: Props) => {
       primaryButtonProps={{
         'data-testid': 'confirm',
         label: 'Recycle',
-        loading: isLoading,
+        loading: isPending,
         onClick: onSubmit,
       }}
       secondaryButtonProps={{

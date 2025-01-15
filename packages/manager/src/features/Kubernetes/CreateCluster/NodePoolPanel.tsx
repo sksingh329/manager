@@ -1,9 +1,10 @@
+import { CircleProgress } from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { useIsDiskEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { useIsAcceleratedPlansEnabled } from 'src/features/components/PlansPanel/utils';
 import { useRegionsQuery } from 'src/queries/regions/regions';
 import { doesRegionSupportFeature } from 'src/utilities/doesRegionSupportFeature';
 import { extendType } from 'src/utilities/extendType';
@@ -24,6 +25,7 @@ export interface NodePoolPanelProps {
   addNodePool: (pool: Partial<KubeNodePoolResponse>) => any; // Has to accept both extended and non-extended pools
   apiError?: string;
   hasSelectedRegion: boolean;
+  isAPLEnabled?: boolean;
   isPlanPanelDisabled: (planType?: LinodeTypeClass) => boolean;
   isSelectedRegionEligibleForPlan: (planType?: LinodeTypeClass) => boolean;
   regionsData: Region[];
@@ -56,6 +58,7 @@ const Panel = (props: NodePoolPanelProps) => {
     addNodePool,
     apiError,
     hasSelectedRegion,
+    isAPLEnabled,
     isPlanPanelDisabled,
     isSelectedRegionEligibleForPlan,
     regionsData,
@@ -66,6 +69,8 @@ const Panel = (props: NodePoolPanelProps) => {
   const {
     isDiskEncryptionFeatureEnabled,
   } = useIsDiskEncryptionFeatureEnabled();
+
+  const { isAcceleratedLKEPlansEnabled } = useIsAcceleratedPlansEnabled();
 
   const regions = useRegionsQuery().data ?? [];
 
@@ -107,12 +112,19 @@ const Panel = (props: NodePoolPanelProps) => {
           getTypeCount={(planId) =>
             typeCountMap.get(planId) ?? DEFAULT_PLAN_COUNT
           }
-          types={extendedTypes.filter(
-            (t) => t.class !== 'nanode' && t.class !== 'gpu'
-          )} // No Nanodes or GPUs in clusters
+          types={extendedTypes.filter((t) => {
+            if (!isAcceleratedLKEPlansEnabled && t.class === 'accelerated') {
+              // Accelerated plans will appear only if they are enabled (account capability exists and feature flag on)
+              return false;
+            }
+
+            // No Nanodes or GPUs in Kubernetes clusters
+            return t.class !== 'nanode' && t.class !== 'gpu';
+          })}
           error={apiError}
           hasSelectedRegion={hasSelectedRegion}
           header="Add Node Pools"
+          isAPLEnabled={isAPLEnabled}
           isPlanPanelDisabled={isPlanPanelDisabled}
           isSelectedRegionEligibleForPlan={isSelectedRegionEligibleForPlan}
           onAdd={addPool}

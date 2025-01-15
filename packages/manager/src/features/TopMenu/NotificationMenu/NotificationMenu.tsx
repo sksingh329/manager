@@ -1,58 +1,55 @@
-// TODO eventMessagesV2: delete when flag is removed
+import { Box, Chip, Divider, Typography, rotate360 } from '@linode/ui';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import { IconButton } from '@mui/material';
 import Popover from '@mui/material/Popover';
 import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { useDispatch } from 'react-redux';
+import { useHistory } from 'react-router-dom';
 
 import Bell from 'src/assets/icons/notification.svg';
-import { Chip } from 'src/components/Chip';
-import Events from 'src/features/NotificationCenter/Events';
+import { LinkButton } from 'src/components/LinkButton';
+import { NotificationCenterEvent } from 'src/features/NotificationCenter/Events/NotificationCenterEvent';
 import {
-  notificationContext as _notificationContext,
+  notificationCenterContext as _notificationContext,
   menuButtonId,
-} from 'src/features/NotificationCenter/NotificationContext';
-import { useEventNotifications } from 'src/features/NotificationCenter/NotificationData/useEventNotifications';
-import { useFormattedNotifications } from 'src/features/NotificationCenter/NotificationData/useFormattedNotifications';
-import Notifications from 'src/features/NotificationCenter/Notifications';
+} from 'src/features/NotificationCenter/NotificationCenterContext';
+import { NotificationCenterNotificationsContainer } from 'src/features/NotificationCenter/Notifications/NotificationCenterNotificationsContainer';
+import { useFormattedNotifications } from 'src/features/NotificationCenter/useFormattedNotifications';
 import { useDismissibleNotifications } from 'src/hooks/useDismissibleNotifications';
 import { usePrevious } from 'src/hooks/usePrevious';
 import { useNotificationsQuery } from 'src/queries/account/notifications';
-import { useMarkEventsAsSeen } from 'src/queries/events/events';
-import { ThunkDispatch } from 'src/store/types';
+import { isInProgressEvent } from 'src/queries/events/event.helpers';
+import {
+  useEventsInfiniteQuery,
+  useMarkEventsAsSeen,
+} from 'src/queries/events/events';
 
 import { TopMenuTooltip, topMenuIconButtonSx } from '../TopMenuTooltip';
 
-const StyledChip = styled(Chip)(() => ({
-  '& .MuiChip-label': {
-    paddingLeft: 2,
-    paddingRight: 2,
-  },
-  fontSize: '0.72rem',
-  height: '1rem',
-  justifyContent: 'center',
-  left: 20,
-  padding: 0,
-  position: 'absolute',
-  top: 4,
-}));
-
 export const NotificationMenu = () => {
+  const history = useHistory();
   const { dismissNotifications } = useDismissibleNotifications();
   const { data: notifications } = useNotificationsQuery();
   const formattedNotifications = useFormattedNotifications();
-  const eventNotifications = useEventNotifications();
   const notificationContext = React.useContext(_notificationContext);
+
+  const { data } = useEventsInfiniteQuery();
+
+  // Just use the first page of events because we `slice` to get the first 20 events anyway
+  const events = data?.pages[0].data ?? [];
+
   const { mutateAsync: markEventsAsSeen } = useMarkEventsAsSeen();
 
   const numNotifications =
-    eventNotifications.filter((thisEvent) => thisEvent.countInTotal).length +
-    formattedNotifications.filter((thisEvent) => thisEvent.countInTotal).length;
+    (events?.filter((event) => !event.seen).length ?? 0) +
+    formattedNotifications.filter(
+      (notificationItem) => notificationItem.countInTotal
+    ).length;
+
+  const showInProgressEventIcon = events?.some(isInProgressEvent);
 
   const anchorRef = React.useRef<HTMLButtonElement>(null);
   const prevOpen = usePrevious(notificationContext.menuOpen);
-
-  const dispatch = useDispatch<ThunkDispatch>();
 
   const handleNotificationMenuToggle = () => {
     if (!notificationContext.menuOpen) {
@@ -69,19 +66,18 @@ export const NotificationMenu = () => {
   React.useEffect(() => {
     if (prevOpen && !notificationContext.menuOpen) {
       // Dismiss seen notifications after the menu has closed.
-      if (eventNotifications.length > 0) {
-        markEventsAsSeen(eventNotifications[0].eventId);
+      if (events && events.length >= 1 && !events[0].seen) {
+        markEventsAsSeen(events[0].id);
       }
       dismissNotifications(notifications ?? [], { prefix: 'notificationMenu' });
     }
   }, [
     notificationContext.menuOpen,
-    dismissNotifications,
-    eventNotifications,
+    events,
     notifications,
-    dispatch,
-    prevOpen,
     markEventsAsSeen,
+    dismissNotifications,
+    prevOpen,
   ]);
 
   const id = notificationContext.menuOpen ? 'notifications-popover' : undefined;
@@ -92,7 +88,9 @@ export const NotificationMenu = () => {
         <IconButton
           sx={(theme) => ({
             ...topMenuIconButtonSx(theme),
-            color: notificationContext.menuOpen ? '#606469' : '#c9c7c7',
+            color: notificationContext.menuOpen
+              ? theme.tokens.color.Neutrals[70]
+              : theme.tokens.color.Neutrals[40],
           })}
           aria-describedby={id}
           aria-haspopup="true"
@@ -103,7 +101,16 @@ export const NotificationMenu = () => {
         >
           <Bell height="20px" width="20px" />
           {numNotifications > 0 && (
-            <StyledChip color="success" label={numNotifications} size="small" />
+            <StyledChip
+              color="primary"
+              data-testid="events-count-notification"
+              label={numNotifications > 9 ? '9+' : numNotifications}
+              showPlus={numNotifications > 9}
+              size="small"
+            />
+          )}
+          {showInProgressEventIcon && (
+            <StyledAutorenewIcon data-testid="in-progress-event-icon" />
           )}
         </IconButton>
       </TopMenuTooltip>
@@ -127,13 +134,72 @@ export const NotificationMenu = () => {
           },
         }}
         anchorEl={anchorRef.current}
+        data-qa-notification-menu
         id={id}
         onClose={handleClose}
         open={notificationContext.menuOpen}
       >
-        <Notifications />
-        <Events />
+        <NotificationCenterNotificationsContainer />
+        <Box>
+          <Box display="flex" justifyContent="space-between" px={2}>
+            <Typography variant="h3">Events</Typography>
+            <LinkButton
+              onClick={() => {
+                history.push('/events');
+                handleClose();
+              }}
+            >
+              View all events
+            </LinkButton>
+          </Box>
+          <Divider spacingBottom={0} />
+
+          {events.length > 0 ? (
+            events
+              .slice(0, 20)
+              .map((event) => (
+                <NotificationCenterEvent
+                  event={event}
+                  key={event.id}
+                  onClose={handleClose}
+                />
+              ))
+          ) : (
+            <Box pt={2} px={2}>
+              No recent events to display
+            </Box>
+          )}
+        </Box>
       </Popover>
     </>
   );
 };
+
+const StyledChip = styled(Chip, {
+  label: 'StyledEventNotificationChip',
+  shouldForwardProp: (prop) => prop !== 'showPlus',
+})<{ showPlus: boolean }>(({ theme, ...props }) => ({
+  '& .MuiChip-label': {
+    paddingLeft: 2,
+    paddingRight: 2,
+  },
+  borderRadius: props.showPlus ? 12 : '50%',
+  fontFamily: theme.font.bold,
+  fontSize: '0.72rem',
+  height: 18,
+  justifyContent: 'center',
+  left: 20,
+  padding: 0,
+  position: 'absolute',
+  top: 0,
+  width: props.showPlus ? 22 : 18,
+}));
+
+export const StyledAutorenewIcon = styled(AutorenewIcon)(({ theme }) => ({
+  animation: `${rotate360} 2s linear infinite`,
+  bottom: 4,
+  color: theme.palette.primary.main,
+  fontSize: 18,
+  position: 'absolute',
+  right: 2,
+}));

@@ -1,14 +1,9 @@
+import { Notice, Typography } from '@linode/ui';
 import * as React from 'react';
 
-import DistributedRegion from 'src/assets/icons/entityIcons/distributed-region.svg';
 import { Flag } from 'src/components/Flag';
-import { Notice } from 'src/components/Notice/Notice';
 import { PlacementGroupsSelect } from 'src/components/PlacementGroupsSelect/PlacementGroupsSelect';
 import { RegionSelect } from 'src/components/RegionSelect/RegionSelect';
-import { sxDistributedRegionIcon } from 'src/components/RegionSelect/RegionSelect.styles';
-import { useIsGeckoEnabled } from 'src/components/RegionSelect/RegionSelect.utils';
-import { TooltipIcon } from 'src/components/TooltipIcon';
-import { Typography } from 'src/components/Typography';
 import { NO_PLACEMENT_GROUPS_IN_SELECTED_REGION_MESSAGE } from 'src/features/PlacementGroups/constants';
 import { useIsPlacementGroupsEnabled } from 'src/features/PlacementGroups/utils';
 import { useFlags } from 'src/hooks/useFlags';
@@ -146,10 +141,7 @@ export const ConfigureForm = React.memo((props: Props) => {
   );
 
   const linodeIsInDistributedRegion =
-    currentActualRegion?.site_type === 'distributed' ||
-    currentActualRegion?.site_type === 'edge';
-
-  const { isGeckoBetaEnabled } = useIsGeckoEnabled();
+    currentActualRegion?.site_type === 'distributed';
 
   return (
     <StyledPaper>
@@ -162,14 +154,6 @@ export const ConfigureForm = React.memo((props: Props) => {
             <Typography>{`${getRegionCountryGroup(currentActualRegion)}: ${
               currentActualRegion?.label ?? currentRegion
             }`}</Typography>
-            {isGeckoBetaEnabled && linodeIsInDistributedRegion && (
-              <TooltipIcon
-                icon={<DistributedRegion />}
-                status="other"
-                sxTooltipIcon={sxDistributedRegionIcon}
-                text="This region is a distributed region."
-              />
-            )}
           </StyledDiv>
           {shouldDisplayPriceComparison && (
             <MigrationPricing
@@ -210,6 +194,8 @@ export const ConfigureForm = React.memo((props: Props) => {
                 handlePlacementGroupSelection(placementGroup);
               }}
               textFieldProps={{
+                helperText:
+                  'If your Linode already belongs to a placement group, it will be automatically unassigned during the migration. You can choose to move it to a new placement group in the same region here.',
                 tooltipText: hasRegionPlacementGroupCapability
                   ? ''
                   : 'Placement Groups are not available in this region.',

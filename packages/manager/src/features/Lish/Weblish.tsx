@@ -1,14 +1,22 @@
 /* eslint-disable scanjs-rules/call_addEventListener */
+import { CircleProgress } from '@linode/ui';
 import { Terminal } from '@xterm/xterm';
 import * as React from 'react';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import {
+  ParsePotentialLishErrorString,
+  RetryLimiter,
+} from 'src/features/Lish/Lish';
 
-import type { Linode } from '@linode/api-v4/lib/linodes';
 import type { LinodeLishData } from '@linode/api-v4/lib/linodes';
+import type { Linode } from '@linode/api-v4/lib/linodes';
+import type {
+  LishErrorInterface,
+  RetryLimiterInterface,
+} from 'src/features/Lish/Lish';
 
-interface Props {
+interface Props extends Pick<LinodeLishData, 'weblish_url' | 'ws_protocols'> {
   linode: Linode;
   refreshToken: () => Promise<void>;
 }
@@ -16,18 +24,19 @@ interface Props {
 interface State {
   error: string;
   renderingLish: boolean;
+  setFocus: boolean;
 }
 
-type CombinedProps = Props &
-  Pick<LinodeLishData, 'weblish_url' | 'ws_protocols'>;
-
-export class Weblish extends React.Component<CombinedProps, State> {
+export class Weblish extends React.Component<Props, State> {
+  lastMessage: string = '';
   mounted: boolean = false;
-  socket: WebSocket;
+  retryLimiter: RetryLimiterInterface = RetryLimiter(3, 60000);
+  socket: WebSocket | null;
 
   state: State = {
     error: '',
     renderingLish: true,
+    setFocus: false,
   };
   terminal: Terminal;
 
@@ -36,9 +45,9 @@ export class Weblish extends React.Component<CombinedProps, State> {
     this.connect();
   }
 
-  componentDidUpdate(prevProps: CombinedProps) {
+  componentDidUpdate(prevProps: Props) {
     /*
-     * If we have a new token, refresh the webosocket connection
+     * If we have a new token, refresh the websocket connection
      * and console with the new token
      */
     if (
@@ -46,8 +55,9 @@ export class Weblish extends React.Component<CombinedProps, State> {
       JSON.stringify(this.props.ws_protocols) !==
         JSON.stringify(prevProps.ws_protocols)
     ) {
-      this.socket.close();
-      this.terminal.dispose();
+      this.socket?.close();
+      this.terminal?.dispose();
+      this.setState({ renderingLish: false });
       this.connect();
     }
   }
@@ -59,13 +69,54 @@ export class Weblish extends React.Component<CombinedProps, State> {
   connect() {
     const { weblish_url, ws_protocols } = this.props;
 
-    this.socket = new WebSocket(weblish_url, ws_protocols);
+    /* When this.socket != origSocket, the socket from this connect()
+     * call has been closed and possibly replaced by a new socket. */
+    const origSocket = new WebSocket(weblish_url, ws_protocols);
+    this.socket = origSocket;
+
+    this.lastMessage = '';
+    this.setState({ error: '' });
 
     this.socket.addEventListener('open', () => {
       if (!this.mounted) {
         return;
       }
-      this.setState({ renderingLish: true }, () => this.renderTerminal());
+      this.setState({ renderingLish: true }, () =>
+        this.renderTerminal(origSocket)
+      );
+    });
+
+    this.socket.addEventListener('close', (evt) => {
+      /* If this event is not for the currently active socket, just
+       * ignore it. */
+      if (this.socket !== origSocket) {
+        return;
+      }
+      this.socket = null;
+      this.terminal?.dispose();
+      this.setState({ renderingLish: false });
+      /* If the control has been unmounted, the cleanup above is
+       * sufficient. */
+      if (!this.mounted) {
+        return;
+      }
+
+      const parsed: LishErrorInterface | null =
+        ParsePotentialLishErrorString(evt?.reason) ||
+        ParsePotentialLishErrorString(this.lastMessage);
+
+      if (!this.retryLimiter.retryAllowed()) {
+        this.setState({
+          error: parsed?.formatted || 'Unexpected WebSocket close',
+        });
+        return;
+      }
+      if (parsed?.isExpired) {
+        const { refreshToken } = this.props;
+        refreshToken();
+        return;
+      }
+      this.connect();
     });
   }
 
@@ -73,8 +124,16 @@ export class Weblish extends React.Component<CombinedProps, State> {
     const { error } = this.state;
 
     if (error) {
+      const actionButtonProps = {
+        onClick: () => {
+          this.retryLimiter.reset();
+          this.props.refreshToken();
+        },
+        text: 'Retry Connection',
+      };
       return (
         <ErrorState
+          actionButtonProps={actionButtonProps}
           errorText={error}
           typographySx={(theme) => ({ color: theme.palette.common.white })}
         />
@@ -105,45 +164,48 @@ export class Weblish extends React.Component<CombinedProps, State> {
     );
   }
 
-  renderTerminal() {
-    const { linode, refreshToken } = this.props;
+  renderTerminal(origSocket: WebSocket) {
+    const { linode } = this.props;
     const { group, label } = linode;
 
+    const socket: WebSocket | null = this.socket;
+    if (socket === null || socket !== origSocket) {
+      return;
+    }
+
+    /* The socket might have already started to fail by the time we
+     * get here. Leave handling for the close handler. */
+    if (socket.readyState !== socket.OPEN) {
+      return;
+    }
+
     this.terminal = new Terminal({
-      cols: 120,
+      cols: 80,
       cursorBlink: true,
       fontFamily: '"Ubuntu Mono", monospace, sans-serif',
       rows: 40,
       screenReaderMode: true,
     });
 
-    this.terminal.onData((data: string) => this.socket.send(data));
+    this.setState({ setFocus: true }, () => this.terminal.focus());
+
+    this.terminal.onData((data: string) => socket.send(data));
     const terminalDiv = document.getElementById('terminal');
     this.terminal.open(terminalDiv as HTMLElement);
 
     this.terminal.writeln('\x1b[32mLinode Lish Console\x1b[m');
 
-    this.socket.addEventListener('message', (evt) => {
-      let data;
-
+    socket.addEventListener('message', (evt) => {
       /*
        * data is either going to be command line strings
        * or it's going to look like {type: 'error', reason: 'thing failed'}
-       * the latter can be JSON parsed and the other cannot
+       *
+       * The actual handling of errors will be done in the 'close'
+       * handler. Allow the error to be rendered in the terminal in
+       * case it is actually valid session content that is not
+       * then followed by a 'close' message.
        */
-      try {
-        data = JSON.parse(evt.data);
-      } catch {
-        data = evt.data;
-      }
-
-      if (
-        data?.type === 'error' &&
-        data?.reason?.toLowerCase() === 'your session has expired.'
-      ) {
-        refreshToken();
-        return;
-      }
+      this.lastMessage = evt.data;
 
       try {
         this.terminal.write(evt.data);
@@ -158,15 +220,6 @@ export class Weblish extends React.Component<CombinedProps, State> {
 
         window.location.reload();
       }
-    });
-
-    this.socket.addEventListener('close', () => {
-      this.terminal.dispose();
-      if (!this.mounted) {
-        return;
-      }
-
-      this.setState({ renderingLish: false });
     });
 
     const linodeLabel = group ? `${group}/${label}` : label;

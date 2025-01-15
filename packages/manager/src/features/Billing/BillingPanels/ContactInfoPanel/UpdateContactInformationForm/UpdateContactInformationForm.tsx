@@ -1,3 +1,4 @@
+import { Notice, TextField } from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
 import { allCountries } from 'country-region-data';
 import { useFormik } from 'formik';
@@ -6,8 +7,6 @@ import { makeStyles } from 'tss-react/mui';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import EnhancedSelect from 'src/components/EnhancedSelect/Select';
-import { Notice } from 'src/components/Notice/Notice';
-import { TextField } from 'src/components/TextField';
 import {
   getRestrictedResourceText,
   useIsTaxIdEnabled,
@@ -30,7 +29,7 @@ const excludedUSRegions = ['Micronesia', 'Marshall Islands', 'Palau'];
 
 const UpdateContactInformationForm = ({ focusEmail, onClose }: Props) => {
   const { data: account } = useAccount();
-  const { error, isLoading, mutateAsync } = useMutateAccount();
+  const { error, isPending, mutateAsync } = useMutateAccount();
   const { data: notifications, refetch } = useNotificationsQuery();
   const { classes } = useStyles();
   const emailRef = React.useRef<HTMLInputElement>();
@@ -391,7 +390,7 @@ const UpdateContactInformationForm = ({ focusEmail, onClose }: Props) => {
           'data-testid': 'save-contact-info',
           disabled: isReadOnly,
           label: 'Save Changes',
-          loading: isLoading,
+          loading: isPending,
           type: 'submit',
         }}
         secondaryButtonProps={{

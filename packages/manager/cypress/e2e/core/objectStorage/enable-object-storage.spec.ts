@@ -31,11 +31,7 @@ import { ui } from 'support/ui';
 import { randomLabel } from 'support/util/random';
 import { mockGetRegions } from 'support/intercepts/regions';
 import { mockGetAccessKeys } from 'support/intercepts/object-storage';
-import {
-  mockAppendFeatureFlags,
-  mockGetFeatureFlagClientstream,
-} from 'support/intercepts/feature-flags';
-import { makeFeatureFlagData } from 'support/util/feature-flags';
+import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
 
 // Various messages, notes, and warnings that may be shown when enabling Object Storage
 // under different circumstances.
@@ -60,11 +56,11 @@ describe('Object Storage enrollment', () => {
    * - Confirms that consistent pricing information is shown for all regions in the enable modal.
    */
   it('can enroll in Object Storage', () => {
-    mockGetAccount(accountFactory.build({ capabilities: [] }));
+    mockGetAccount(accountFactory.build({ capabilities: ['Object Storage'] }));
     mockAppendFeatureFlags({
-      objMultiCluster: makeFeatureFlagData(false),
+      objMultiCluster: false,
+      objectStorageGen2: { enabled: false },
     });
-    mockGetFeatureFlagClientstream();
 
     const mockAccountSettings = accountSettingsFactory.build({
       managed: false,

@@ -1,31 +1,17 @@
+import { IconButton, Notice, Stack } from '@linode/ui';
 import Close from '@mui/icons-material/Close';
-import Grid from '@mui/material/Unstable_Grid2';
-import { SxProps } from '@mui/system';
 import * as React from 'react';
 
-import { Box } from 'src/components/Box';
-import {
-  DismissibleNotificationOptions,
-  useDismissibleNotifications,
-} from 'src/hooks/useDismissibleNotifications';
+import { useDismissibleNotifications } from 'src/hooks/useDismissibleNotifications';
 
-import { StyledButton, StyledNotice } from './DismissibleBanner.styles';
+import type { NoticeProps } from '@linode/ui';
+import type { DismissibleNotificationOptions } from 'src/hooks/useDismissibleNotifications';
 
-import type { NoticeProps } from 'src/components/Notice/Notice';
-
-interface Props {
+interface Props extends NoticeProps {
   /**
    * Optional element to pass to the banner to trigger actions
    */
   actionButton?: JSX.Element;
-  /**
-   * Child element to pass to the banner
-   */
-  children: JSX.Element;
-  /**
-   * Additional classes to the root element
-   */
-  className?: string;
   /**
    * Additional controls to pass to the Dismissible Banner
    */
@@ -34,15 +20,7 @@ interface Props {
    * Used to check if this banner has already been dismissed
    */
   preferenceKey: string;
-  /**
-   * Additional styles to apply to the root element
-   */
-  sx?: SxProps;
 }
-
-interface DismissibleBannerProps
-  extends Omit<Partial<NoticeProps>, 'children'>,
-    Props {}
 
 /**
  * ## Usage
@@ -60,15 +38,8 @@ interface DismissibleBannerProps
  * - Warning: Informs users of an impending change that will have an impact on their service(s).
  * - Call to action: Primary Button or text link allows a user to take action directly from the banner.
  */
-export const DismissibleBanner = (props: DismissibleBannerProps) => {
-  const {
-    actionButton,
-    children,
-    className,
-    options,
-    preferenceKey,
-    ...rest
-  } = props;
+export const DismissibleBanner = (props: Props) => {
+  const { actionButton, children, options, preferenceKey, ...rest } = props;
 
   const { handleDismiss, hasDismissedBanner } = useDismissibleBanner(
     preferenceKey,
@@ -80,32 +51,30 @@ export const DismissibleBanner = (props: DismissibleBannerProps) => {
   }
 
   const dismissibleButton = (
-    <Grid>
-      <StyledButton
-        aria-label={`Dismiss ${preferenceKey} banner`}
-        data-testid="notice-dismiss"
-        onClick={handleDismiss}
-      >
-        <Close />
-      </StyledButton>
-    </Grid>
+    <IconButton
+      aria-label={`Dismiss ${preferenceKey} banner`}
+      data-testid="notice-dismiss"
+      onClick={handleDismiss}
+      sx={{ padding: 1 }}
+    >
+      <Close />
+    </IconButton>
   );
 
   return (
-    <StyledNotice className={className} {...rest}>
-      <Box
-        alignItems="center"
-        display="flex"
-        flexDirection="row"
-        justifyContent="space-between"
-      >
-        {children}
-        <Box alignItems="center" display="flex">
-          {actionButton}
-          {dismissibleButton}
-        </Box>
-      </Box>
-    </StyledNotice>
+    <Notice
+      bgcolor={(theme) => theme.palette.background.paper}
+      display="flex"
+      gap={1}
+      justifyContent="space-between"
+      {...rest}
+    >
+      {children}
+      <Stack alignItems="center" direction="row" spacing={1}>
+        {actionButton}
+        {dismissibleButton}
+      </Stack>
+    </Notice>
   );
 };
 

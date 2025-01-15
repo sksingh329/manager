@@ -1,13 +1,13 @@
 import { PLACEMENT_GROUP_TYPES } from '@linode/api-v4';
+import { CircleProgress, Notice } from '@linode/ui';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { LandingHeader } from 'src/components/LandingHeader';
 import { NotFound } from 'src/components/NotFound';
-import { Notice } from 'src/components/Notice/Notice';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 import { useAllLinodesQuery } from 'src/queries/linodes/linodes';
@@ -75,7 +75,7 @@ export const PlacementGroupsDetail = () => {
     placementGroup?.members.some((pgLinode) => pgLinode.linode_id === linode.id)
   );
 
-  const { placement_group_type, label } = placementGroup;
+  const { label, placement_group_type } = placementGroup;
 
   const resetEditableLabel = () => {
     return `${label} (${PLACEMENT_GROUP_TYPES[placement_group_type]})`;
@@ -134,3 +134,15 @@ export const PlacementGroupsDetail = () => {
     </>
   );
 };
+
+export const placementGroupsDetailLazyRoute = createLazyRoute(
+  '/placement-groups/$id'
+)({
+  component: PlacementGroupsDetail,
+});
+
+export const placementGroupsUnassignLazyRoute = createLazyRoute(
+  '/placement-groups/$id/linodes/unassign/$linodeId'
+)({
+  component: PlacementGroupsDetail,
+});

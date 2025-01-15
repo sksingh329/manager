@@ -1,11 +1,12 @@
-import { Theme } from '@mui/material/styles';
+import { Typography } from '@linode/ui';
 import * as React from 'react';
 import { makeStyles } from 'tss-react/mui';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { Typography } from 'src/components/Typography';
 import { useSupportTicketCloseMutation } from 'src/queries/support';
+
+import type { Theme } from '@mui/material/styles';
 
 const useStyles = makeStyles()((theme: Theme) => ({
   closeLink: {
@@ -24,7 +25,7 @@ export const CloseTicketLink = ({ ticketId }: Props) => {
 
   const {
     error,
-    isLoading,
+    isPending,
     mutateAsync: closeSupportTicket,
   } = useSupportTicketCloseMutation(ticketId);
 
@@ -38,7 +39,7 @@ export const CloseTicketLink = ({ ticketId }: Props) => {
       primaryButtonProps={{
         'data-testid': 'dialog-submit',
         label: 'Confirm',
-        loading: isLoading,
+        loading: isPending,
         onClick: closeTicket,
       }}
       secondaryButtonProps={{

@@ -1,32 +1,22 @@
-import { Typography } from '@mui/material';
+import { Autocomplete } from '@linode/ui';
+import { createFilterOptions } from '@mui/material/Autocomplete';
 import * as React from 'react';
 
-import DistributedRegion from 'src/assets/icons/entityIcons/distributed-region.svg';
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
 import { Flag } from 'src/components/Flag';
-import { Link } from 'src/components/Link';
 import { useIsGeckoEnabled } from 'src/components/RegionSelect/RegionSelect.utils';
-import { TooltipIcon } from 'src/components/TooltipIcon';
 import { useAllAccountAvailabilitiesQuery } from 'src/queries/account/availability';
 import { getRegionCountryGroup } from 'src/utilities/formatRegion';
 
 import { RegionOption } from './RegionOption';
-import {
-  StyledAutocompleteContainer,
-  StyledDistributedRegionBox,
-  StyledFlagContainer,
-  sxDistributedRegionIcon,
-} from './RegionSelect.styles';
+import { StyledAutocompleteContainer } from './RegionSelect.styles';
 import {
   getRegionOptions,
   isRegionOptionUnavailable,
 } from './RegionSelect.utils';
 
-import type {
-  DisableRegionOption,
-  RegionSelectProps,
-} from './RegionSelect.types';
+import type { RegionSelectProps } from './RegionSelect.types';
 import type { Region } from '@linode/api-v4';
+import type { DisableItemOption } from 'src/components/ListItemOption';
 
 /**
  * A specific select for regions.
@@ -48,27 +38,31 @@ export const RegionSelect = <
     disabled,
     disabledRegions: disabledRegionsFromProps,
     errorText,
+    forcefullyShownRegionIds,
     helperText,
+    ignoreAccountAvailability,
     label,
+    noMarginTop,
     onChange,
+    placeholder,
     regionFilter,
     regions,
     required,
-    showDistributedRegionIconHelperText,
     tooltipText,
     value,
     width,
   } = props;
 
-  const { isGeckoBetaEnabled, isGeckoGAEnabled } = useIsGeckoEnabled();
+  const { isGeckoLAEnabled } = useIsGeckoEnabled();
 
   const {
     data: accountAvailability,
     isLoading: accountAvailabilityLoading,
-  } = useAllAccountAvailabilitiesQuery();
+  } = useAllAccountAvailabilitiesQuery(!ignoreAccountAvailability);
 
   const regionOptions = getRegionOptions({
     currentCapability,
+    forcefullyShownRegionIds,
     regionFilter,
     regions,
   });
@@ -78,12 +72,13 @@ export const RegionSelect = <
     : null;
 
   const disabledRegions = regionOptions.reduce<
-    Record<string, DisableRegionOption>
+    Record<string, DisableItemOption>
   >((acc, region) => {
     if (disabledRegionsFromProps?.[region.id]) {
       acc[region.id] = disabledRegionsFromProps[region.id];
     }
     if (
+      !ignoreAccountAvailability &&
       isRegionOptionUnavailable({
         accountAvailabilityData: accountAvailability,
         currentCapability,
@@ -98,52 +93,47 @@ export const RegionSelect = <
     return acc;
   }, {});
 
-  const EndAdornment = React.useMemo(() => {
-    // @TODO Gecko: Remove adornment after GA
-    if (isGeckoBetaEnabled && selectedRegion?.site_type === 'distributed') {
-      return (
-        <TooltipIcon
-          icon={<DistributedRegion />}
-          status="other"
-          sxTooltipIcon={sxDistributedRegionIcon}
-          text="This region is a distributed region."
-        />
-      );
-    }
-    if (isGeckoGAEnabled && selectedRegion) {
-      return `(${selectedRegion?.id})`;
-    }
-    return null;
-  }, [isGeckoBetaEnabled, isGeckoGAEnabled, selectedRegion]);
+  /*
+   * When Gecko is enabled, allow regions to be searched by ID by passing a
+   * custom stringify function.
+   */
+  const filterOptions = isGeckoLAEnabled
+    ? createFilterOptions({
+        stringify: (region: Region) => `${region.label} (${region.id})`,
+      })
+    : undefined;
 
   return (
     <StyledAutocompleteContainer sx={{ width }}>
       <Autocomplete<Region, false, DisableClearable>
         getOptionLabel={(region) =>
-          isGeckoGAEnabled ? region.label : `${region.label} (${region.id})`
+          isGeckoLAEnabled ? region.label : `${region.label} (${region.id})`
         }
-        renderOption={(props, region) => (
-          <RegionOption
-            disabledOptions={disabledRegions[region.id]}
-            key={region.id}
-            props={props}
-            region={region}
-          />
-        )}
+        renderOption={(props, region) => {
+          const { key, ...rest } = props;
+
+          return (
+            <RegionOption
+              disabledOptions={disabledRegions[region.id]}
+              item={region}
+              key={`${region.id}-${key}`}
+              props={rest}
+            />
+          );
+        }}
         sx={(theme) => ({
           [theme.breakpoints.up('md')]: {
-            width: '416px',
+            width: tooltipText ? '458px' : '416px',
           },
         })}
         textFieldProps={{
           ...props.textFieldProps,
           InputProps: {
-            endAdornment: EndAdornment,
+            endAdornment:
+              isGeckoLAEnabled && selectedRegion && `(${selectedRegion?.id})`,
             required,
             startAdornment: selectedRegion && (
-              <StyledFlagContainer>
-                <Flag country={selectedRegion?.country} />
-              </StyledFlagContainer>
+              <Flag country={selectedRegion?.country} mr={1} />
             ),
           },
           tooltipText,
@@ -154,37 +144,20 @@ export const RegionSelect = <
         disableClearable={disableClearable}
         disabled={disabled}
         errorText={errorText}
+        filterOptions={filterOptions}
         getOptionDisabled={(option) => Boolean(disabledRegions[option.id])}
         groupBy={(option) => getRegionCountryGroup(option)}
         helperText={helperText}
         label={label ?? 'Region'}
         loading={accountAvailabilityLoading}
         loadingText="Loading regions..."
+        noMarginTop={noMarginTop}
         noOptionsText="No results"
         onChange={onChange}
         options={regionOptions}
-        placeholder="Select a Region"
+        placeholder={placeholder ?? 'Select a Region'}
         value={selectedRegion as Region}
       />
-      {showDistributedRegionIconHelperText && ( // @TODO Gecko Beta: Add docs link
-        <StyledDistributedRegionBox>
-          <DistributedRegion />
-          <Typography
-            data-testid="region-select-distributed-region-text"
-            sx={{ alignSelf: 'center', textWrap: 'nowrap' }}
-          >
-            {' '}
-            Indicates a distributed region.{' '}
-            <Link
-              aria-label="Learn more about Akamai distributed regions"
-              to="#"
-            >
-              Learn more
-            </Link>
-            .
-          </Typography>
-        </StyledDistributedRegionBox>
-      )}
     </StyledAutocompleteContainer>
   );
 };

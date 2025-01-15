@@ -11,6 +11,7 @@ import {
 } from 'support/intercepts/linodes';
 import {
   mockCreateVolume,
+  mockGetVolume,
   mockGetVolumes,
   mockDetachVolume,
   mockGetVolumeTypesError,
@@ -85,6 +86,7 @@ describe('volumes', () => {
 
     mockGetVolumes([]).as('getVolumes');
     mockCreateVolume(mockVolume).as('createVolume');
+    mockGetVolume(mockVolume).as('getVolume');
     mockGetVolumeTypes(mockVolumeTypes).as('getVolumeTypes');
 
     cy.visitWithLogin('/volumes', {
@@ -114,7 +116,7 @@ describe('volumes', () => {
 
     mockGetVolumes([mockVolume]).as('getVolumes');
     ui.button.findByTitle('Create Volume').should('be.visible').click();
-    cy.wait(['@createVolume', '@getVolumes']);
+    cy.wait(['@createVolume', '@getVolume', '@getVolumes']);
     validateBasicVolume(mockVolume.label);
 
     ui.actionMenu
@@ -152,9 +154,11 @@ describe('volumes', () => {
     cy.wait('@getLinodeDetail');
 
     // Create a new volume.
-    cy.findByText('Storage').should('be.visible').click();
+    cy.get('main').within(() => {
+      cy.findByText('Storage').should('be.visible').click();
+    });
 
-    ui.button.findByTitle('Create Volume').should('be.visible').click();
+    ui.button.findByTitle('Add Volume').should('be.visible').click();
 
     mockGetLinodeVolumes(mockLinode.id, [newVolume]).as('getVolumes');
     ui.drawer
@@ -191,6 +195,7 @@ describe('volumes', () => {
 
     mockDetachVolume(mockAttachedVolume.id).as('detachVolume');
     mockGetVolumes([mockAttachedVolume]).as('getAttachedVolumes');
+    mockGetVolume(mockAttachedVolume).as('getVolume');
     cy.visitWithLogin('/volumes', {
       preferenceOverrides,
       localStorageOverrides,
@@ -206,6 +211,8 @@ describe('volumes', () => {
       .click();
 
     ui.actionMenuItem.findByTitle('Detach').click();
+
+    cy.wait('@getVolume');
 
     ui.dialog
       .findByTitle(`Detach Volume ${mockAttachedVolume.label}?`)
@@ -284,9 +291,11 @@ describe('volumes', () => {
     cy.findByText(mockLinode.label).should('be.visible').click();
     cy.wait(['@getVolumes', '@getLinodeDetail']);
 
-    // Open the Create Volume drawer.
-    cy.findByText('Storage').should('be.visible').click();
-    ui.button.findByTitle('Create Volume').should('be.visible').click();
+    // Open the Add Volume drawer.
+    cy.get('main').within(() => {
+      cy.findByText('Storage').should('be.visible').click();
+    });
+    ui.button.findByTitle('Add Volume').should('be.visible').click();
     cy.wait(['@getVolumeTypesError']);
 
     mockGetLinodeVolumes(mockLinode.id, [newVolume]).as('getVolumes');

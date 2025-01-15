@@ -30,7 +30,7 @@ export const CANNOT_CHANGE_PLACEMENT_GROUP_POLICY_MESSAGE =
 
 // Links
 export const PLACEMENT_GROUPS_DOCS_LINK =
-  'https://www.linode.com/docs/products/compute/compute-instances/guides/placement-groups/';
+  'https://techdocs.akamai.com/cloud-computing/docs/work-with-placement-groups';
 
 // Text Copy
 export const PLACEMENT_GROUP_POLICY_STRICT =
@@ -38,3 +38,10 @@ export const PLACEMENT_GROUP_POLICY_STRICT =
 
 export const PLACEMENT_GROUP_POLICY_FLEXIBLE =
   "Allows the addition of more compute instances to the group even if it breaks the placement group's compliance.";
+
+// Migrations
+export const PLACEMENT_GROUP_MIGRATION_INBOUND_MESSAGE =
+  'This Linode is migrating into this placement group. It will be available after the migration is complete.';
+
+export const PLACEMENT_GROUP_MIGRATION_OUTBOUND_MESSAGE =
+  'This Linode is being migrated. It will be removed from this placement group after the migration completes.';

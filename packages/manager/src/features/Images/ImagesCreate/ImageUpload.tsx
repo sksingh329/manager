@@ -1,4 +1,14 @@
 import { yupResolver } from '@hookform/resolvers/yup';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Notice,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -7,22 +17,13 @@ import { useDispatch } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Box } from 'src/components/Box';
-import { Button } from 'src/components/Button/Button';
-import { Checkbox } from 'src/components/Checkbox';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { Paper } from 'src/components/Paper';
 import { Prompt } from 'src/components/Prompt/Prompt';
 import { RegionSelect } from 'src/components/RegionSelect/RegionSelect';
-import { Stack } from 'src/components/Stack';
 import { TagsInput } from 'src/components/TagsInput/TagsInput';
-import { TextField } from 'src/components/TextField';
-import { Typography } from 'src/components/Typography';
 import { ImageUploader } from 'src/components/Uploaders/ImageUploader/ImageUploader';
 import { MAX_FILE_SIZE_IN_BYTES } from 'src/components/Uploaders/reducer';
-import { Dispatch } from 'src/hooks/types';
 import { useFlags } from 'src/hooks/useFlags';
 import { usePendingUpload } from 'src/hooks/usePendingUpload';
 import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
@@ -40,15 +41,16 @@ import { readableBytes } from 'src/utilities/unitConversions';
 
 import { EUAgreementCheckbox } from '../../Account/Agreements/EUAgreementCheckbox';
 import { getRestrictedResourceText } from '../../Account/utils';
+import { uploadImageFile } from '../requests';
 import { ImageUploadSchema, recordImageAnalytics } from './ImageUpload.utils';
-import {
+import { ImageUploadCLIDialog } from './ImageUploadCLIDialog';
+
+import type {
   ImageUploadFormData,
   ImageUploadNavigationState,
 } from './ImageUpload.utils';
-import { ImageUploadCLIDialog } from './ImageUploadCLIDialog';
-import { uploadImageFile } from '../requests';
-
 import type { AxiosError, AxiosProgressEvent } from 'axios';
+import type { Dispatch } from 'src/hooks/types';
 
 export const ImageUpload = () => {
   const { location } = useHistory<ImageUploadNavigationState | undefined>();
@@ -190,8 +192,16 @@ export const ImageUpload = () => {
             />
           )}
           <Paper>
-            <Typography mb={1.5} variant="h2">
+            <Typography mb={2} variant="h2">
               Image Details
+            </Typography>
+            <Typography>
+              Custom images are billed monthly at $0.10/GB. An uploaded image
+              file needs to meet specific{' '}
+              <Link to="https://techdocs.akamai.com/cloud-computing/docs/upload-an-image#requirements-and-considerations">
+                requirements
+              </Link>
+              .
             </Typography>
             {form.formState.errors.root?.message && (
               <Notice
@@ -208,7 +218,6 @@ export const ImageUpload = () => {
                   errorText={fieldState.error?.message}
                   inputRef={field.ref}
                   label="Label"
-                  noMarginTop
                   onBlur={field.onBlur}
                   onChange={field.onChange}
                   value={field.value ?? ''}
@@ -230,7 +239,7 @@ export const ImageUpload = () => {
                           Only check this box if your Custom Image is compatible
                           with cloud-init, or has cloud-init installed, and the
                           config has been changed to use our data service.{' '}
-                          <Link to="https://www.linode.com/docs/products/compute/compute-instances/guides/metadata-cloud-config/">
+                          <Link to="https://techdocs.akamai.com/cloud-computing/docs/using-cloud-config-files-to-configure-a-server">
                             Learn how.
                           </Link>
                         </Typography>
@@ -248,6 +257,11 @@ export const ImageUpload = () => {
             <Controller
               render={({ field, fieldState }) => (
                 <RegionSelect
+                  currentCapability={
+                    flags.disallowImageUploadToNonObjRegions
+                      ? 'Object Storage'
+                      : undefined
+                  }
                   disabled={
                     isImageCreateRestricted || form.formState.isSubmitting
                   }
@@ -255,9 +269,9 @@ export const ImageUpload = () => {
                     inputRef: field.ref,
                     onBlur: field.onBlur,
                   }}
-                  currentCapability={undefined}
                   disableClearable
                   errorText={fieldState.error?.message}
+                  ignoreAccountAvailability
                   label="Region"
                   onChange={(e, region) => field.onChange(region.id)}
                   regionFilter="core" // Images service will not be supported for Gecko Beta
@@ -324,17 +338,6 @@ export const ImageUpload = () => {
                 variant="error"
               />
             )}
-            <Notice spacingBottom={0} variant="warning">
-              <Typography>
-                Image files must be raw disk images (.img) compressed using gzip
-                (.gz). The maximum file size is 5 GB (compressed) and maximum
-                image size is 6 GB (uncompressed).
-              </Typography>
-            </Notice>
-            <Typography sx={{ paddingBlock: 2 }}>
-              Custom Images are billed at $0.10/GB per month based on the
-              uncompressed image size.
-            </Typography>
             <Controller
               render={({ field }) => (
                 <ImageUploader
@@ -372,8 +375,8 @@ export const ImageUpload = () => {
           <Box display="flex" gap={1} justifyContent="flex-end">
             <Button
               buttonType="outlined"
-              onClick={() => setLinodeCLIModalOpen(true)}
               disabled={isImageCreateRestricted}
+              onClick={() => setLinodeCLIModalOpen(true)}
             >
               Upload Using Command Line
             </Button>

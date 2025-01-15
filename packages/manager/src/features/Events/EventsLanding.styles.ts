@@ -1,13 +1,11 @@
+import { H1Header, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 
-import { H1Header } from 'src/components/H1Header/H1Header';
 import { TableCell } from 'src/components/TableCell';
-import { Typography } from 'src/components/Typography';
 
 export const StyledTableCell = styled(TableCell, {
   label: 'StyledTableCell',
 })(({ theme }) => ({
-  color: theme.textColors.tableHeader,
   fontFamily: theme.font.bold,
   fontSize: '0.875rem',
 }));
@@ -15,7 +13,6 @@ export const StyledTableCell = styled(TableCell, {
 export const StyledLabelTableCell = styled(TableCell, {
   label: 'StyledLabelTableCell',
 })(({ theme }) => ({
-  color: theme.textColors.tableHeader,
   fontFamily: theme.font.bold,
   fontSize: '0.875rem',
   minWidth: 200,

@@ -26,6 +26,7 @@ import {
   mockDatabaseNodeTypes,
 } from 'support/constants/databases';
 import { accountFactory } from '@src/factories';
+import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
 
 /**
  * Updates a database cluster's label.
@@ -93,17 +94,20 @@ const removeAllowedIp = (allowedIp: string) => {
  * @param existingIps - The number of existing IPs. Optional, default is `0`.
  */
 const manageAccessControl = (allowedIps: string[], existingIps: number = 0) => {
-  cy.findByText('Manage Access Controls').closest('button').click();
+  cy.findByTestId('button-access-control').click();
 
   ui.drawer
-    .findByTitle('Manage Access Controls')
+    .findByTitle('Manage Access')
     .should('be.visible')
     .within(() => {
       allowedIps.forEach((allowedIp, index) => {
-        ui.button.findByTitle('Add an IP').click();
-
+        if (existingIps > 0) {
+          ui.button.findByTitle('Add Another IP').click();
+        } else {
+          ui.button.findByTitle('Add an IP').click();
+        }
         cy.findByLabelText(
-          `Allowed IP Address(es) or Range(s) ip-address-${index + existingIps}`
+          `Allowed IP Addresses or Ranges ip-address-${index + existingIps}`
         )
           .click()
           .type(allowedIp);
@@ -142,6 +146,32 @@ const resetRootPassword = () => {
 };
 
 describe('Update database clusters', () => {
+  beforeEach(() => {
+    const mockAccount = accountFactory.build({
+      capabilities: [
+        'Akamai Cloud Pulse',
+        'Block Storage',
+        'Cloud Firewall',
+        'Disk Encryption',
+        'Kubernetes',
+        'Linodes',
+        'LKE HA Control Planes',
+        'Machine Images',
+        'Managed Databases',
+        'NodeBalancers',
+        'Object Storage Access Key Regions',
+        'Object Storage Endpoint Types',
+        'Object Storage',
+        'Placement Group',
+        'Vlans',
+      ],
+    });
+    mockAppendFeatureFlags({
+      dbaasV2: { enabled: false, beta: false },
+    });
+    mockGetAccount(mockAccount);
+  });
+
   databaseConfigurations.forEach(
     (configuration: databaseClusterConfiguration) => {
       describe(`updates a ${configuration.linodeType} ${configuration.engine} v${configuration.version}.x ${configuration.clusterSize}-node cluster`, () => {
@@ -166,10 +196,9 @@ describe('Update database clusters', () => {
             engine: configuration.dbType,
             status: 'active',
             allow_list: [allowedIp],
+            platform: 'rdbms-legacy',
           });
 
-          // Mock account to ensure 'Managed Databases' capability.
-          mockGetAccount(accountFactory.build()).as('getAccount');
           mockGetDatabase(database).as('getDatabase');
           mockGetDatabaseTypes(mockDatabaseNodeTypes).as('getDatabaseTypes');
           mockResetPassword(database.id, database.engine).as(
@@ -182,7 +211,7 @@ describe('Update database clusters', () => {
           ).as('getCredentials');
 
           cy.visitWithLogin(`/databases/${database.engine}/${database.id}`);
-          cy.wait(['@getAccount', '@getDatabase', '@getDatabaseTypes']);
+          cy.wait(['@getDatabase', '@getDatabaseTypes']);
 
           cy.get('[data-qa-cluster-config]').within(() => {
             cy.findByText(configuration.region.label).should('be.visible');
@@ -283,6 +312,7 @@ describe('Update database clusters', () => {
               primary: undefined,
               secondary: undefined,
             },
+            platform: 'rdbms-legacy',
           });
 
           const errorMessage =
@@ -344,7 +374,7 @@ describe('Update database clusters', () => {
 
           manageAccessControl([randomIp()], 1);
           cy.wait('@updateDatabase');
-          ui.drawer.findByTitle('Manage Access Controls').within(() => {
+          ui.drawer.findByTitle('Manage Access').within(() => {
             cy.findByText(errorMessage).should('be.visible');
             ui.drawerCloseButton.find().click();
           });

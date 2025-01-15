@@ -1,11 +1,10 @@
+import { Accordion, Notice } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
-import { Accordion } from 'src/components/Accordion';
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import EnhancedSelect from 'src/components/EnhancedSelect/Select';
-import { Notice } from 'src/components/Notice/Notice';
 import { SuspenseLoader } from 'src/components/SuspenseLoader';
 import {
   useAllLinodeDisksQuery,
@@ -51,12 +50,12 @@ export const LinodeSettingsPasswordPanel = (props: Props) => {
 
   const {
     error: linodePasswordError,
-    isLoading: isLinodePasswordLoading,
+    isPending: isLinodePasswordLoading,
     mutateAsync: changeLinodePassword,
   } = useLinodeChangePasswordMutation(linodeId);
   const {
     error: diskPasswordError,
-    isLoading: isDiskPasswordLoading,
+    isPending: isDiskPasswordLoading,
     mutateAsync: changeLinodeDiskPassword,
   } = useLinodeDiskChangePasswordMutation(linodeId, selectedDiskId ?? -1);
 

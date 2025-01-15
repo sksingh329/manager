@@ -1,30 +1,46 @@
-import Grid from '@mui/material/Unstable_Grid2';
+import {
+  Autocomplete,
+  Button,
+  Divider,
+  FormHelperText,
+  Notice,
+  TextField,
+  Typography,
+} from '@linode/ui';
 import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Button } from 'src/components/Button/Button';
-import { Divider } from 'src/components/Divider';
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
-import { FormHelperText } from 'src/components/FormHelperText';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { TextField } from 'src/components/TextField';
-import { Typography } from 'src/components/Typography';
+import { useFlags } from 'src/hooks/useFlags';
 
+import {
+  ALGORITHM_HELPER_TEXT,
+  SESSION_STICKINESS_DEFAULTS,
+} from './constants';
 import { ActiveCheck } from './NodeBalancerActiveCheck';
 import { NodeBalancerConfigNode } from './NodeBalancerConfigNode';
 import { PassiveCheck } from './NodeBalancerPassiveCheck';
-import { setErrorMap } from './utils';
+import {
+  getAlgorithmOptions,
+  getStickinessOptions,
+  setErrorMap,
+} from './utils';
 
 import type { NodeBalancerConfigPanelProps } from './types';
-import type { NodeBalancerConfigNodeMode } from '@linode/api-v4';
+import type {
+  NodeBalancerConfigNodeMode,
+  NodeBalancerProxyProtocol,
+  Protocol,
+} from '@linode/api-v4';
 
 const DATA_NODE = 'data-node-idx';
 
 export const NodeBalancerConfigPanel = (
   props: NodeBalancerConfigPanelProps
 ) => {
+  const flags = useFlags();
   const {
     algorithm,
     configIdx,
@@ -51,12 +67,33 @@ export const NodeBalancerConfigPanel = (
 
   const onProtocolChange = (
     event: React.SyntheticEvent,
-    selected: { label: string; value: string }
+    selected: { label: string; value: Protocol }
   ) => {
     const { healthCheckType } = props;
     const { value: protocol } = selected;
 
     props.onProtocolChange(selected.value);
+
+    const newAlgorithmOptions = getAlgorithmOptions(selected.value);
+    const newStickinessOptions = getStickinessOptions(selected.value);
+
+    if (!newAlgorithmOptions.some((option) => option.value === algorithm)) {
+      // If the newly selected protocol does not support the currently selected algorithm,
+      // we reset the algorithm for the user.
+      // For example if UDP is selected with "Ring Hash" then the user selects TCP, the algorithm
+      // will change to "Round Robin" because TCP does not support Ring Hash.
+      props.onAlgorithmChange(newAlgorithmOptions[0].value);
+    }
+
+    if (
+      !newStickinessOptions.some((option) => option.value === sessionStickiness)
+    ) {
+      // If the newly selected protocol does not support the currently selected stickiness option,
+      // we reset the stickiness selection for the user.
+      // For example if UDP is selected with the "Session" stickiness option then the user selects TCP,
+      // the stickiness will change to "None" because TCP does not support the "Session" stickiness option.
+      props.onSessionStickinessChange(SESSION_STICKINESS_DEFAULTS[protocol]);
+    }
 
     if (
       protocol === 'tcp' &&
@@ -128,9 +165,13 @@ export const NodeBalancerConfigPanel = (
     { label: 'TCP', value: 'tcp' },
     { label: 'HTTP', value: 'http' },
     { label: 'HTTPS', value: 'https' },
+    ...(flags.udp ? [{ label: 'UDP', value: 'udp' }] : []),
   ];
 
-  const proxyProtocolOptions = [
+  const proxyProtocolOptions: {
+    label: string;
+    value: NodeBalancerProxyProtocol;
+  }[] = [
     { label: 'None', value: 'none' },
     { label: 'v1', value: 'v1' },
     { label: 'v2', value: 'v2' },
@@ -146,21 +187,13 @@ export const NodeBalancerConfigPanel = (
     }
   );
 
-  const algOptions = [
-    { label: 'Round Robin', value: 'roundrobin' },
-    { label: 'Least Connections', value: 'leastconn' },
-    { label: 'Source', value: 'source' },
-  ];
+  const algOptions = getAlgorithmOptions(protocol);
 
   const defaultAlg = algOptions.find((eachAlg) => {
     return eachAlg.value === algorithm;
   });
 
-  const sessionOptions = [
-    { label: 'None', value: 'none' },
-    { label: 'Table', value: 'table' },
-    { label: 'HTTP Cookie', value: 'http_cookie' },
-  ];
+  const sessionOptions = getStickinessOptions(protocol);
 
   const defaultSession = sessionOptions.find((eachSession) => {
     return eachSession.value === sessionStickiness;
@@ -192,7 +225,7 @@ export const NodeBalancerConfigPanel = (
             type="number"
             value={port || ''}
           />
-          <FormHelperText>Listen on this port</FormHelperText>
+          <FormHelperText>Listen on this port.</FormHelperText>
         </Grid>
         <Grid md={3} xs={6}>
           <Autocomplete
@@ -203,10 +236,10 @@ export const NodeBalancerConfigPanel = (
               errorGroup: forEdit ? `${configIdx}` : undefined,
             }}
             autoHighlight
+            disableClearable
             disabled={disabled}
             errorText={errorMap.protocol}
             id={`protocol-${configIdx}`}
-            disableClearable
             label="Protocol"
             noMarginTop
             onChange={onProtocolChange}
@@ -221,6 +254,7 @@ export const NodeBalancerConfigPanel = (
             <Grid md={5} sm={6} xs={12}>
               <TextField
                 data-qa-cert-field
+                data-testid="ssl-certificate"
                 disabled={disabled}
                 errorGroup={forEdit ? `${configIdx}` : undefined}
                 errorText={errorMap.ssl_cert}
@@ -235,6 +269,7 @@ export const NodeBalancerConfigPanel = (
             <Grid md={5} sm={6} xs={12}>
               <TextField
                 data-qa-private-key-field
+                data-testid="private-key"
                 disabled={disabled}
                 errorGroup={forEdit ? `${configIdx}` : undefined}
                 errorText={errorMap.ssl_key}
@@ -252,22 +287,22 @@ export const NodeBalancerConfigPanel = (
         {tcpSelected && (
           <Grid md={6} xs={12}>
             <Autocomplete
-              textFieldProps={{
-                dataAttrs: {
-                  'data-qa-proxy-protocol-select': true,
-                  errorGroup: forEdit ? `${configIdx}` : undefined,
-                },
-              }}
-              autoHighlight
-              disabled={disabled}
-              errorText={errorMap.proxy_protocol}
-              id={`proxy-protocol-${configIdx}`}
-              disableClearable
-              label="Proxy Protocol"
-              noMarginTop
               onChange={(_, selected) => {
                 props.onProxyProtocolChange(selected.value);
               }}
+              textFieldProps={{
+                dataAttrs: {
+                  'data-qa-proxy-protocol-select': true,
+                },
+                errorGroup: forEdit ? `${configIdx}` : undefined,
+              }}
+              autoHighlight
+              disableClearable
+              disabled={disabled}
+              errorText={errorMap.proxy_protocol}
+              id={`proxy-protocol-${configIdx}`}
+              label="Proxy Protocol"
+              noMarginTop
               options={proxyProtocolOptions}
               size="small"
               value={selectedProxyProtocol || proxyProtocolOptions[0]}
@@ -275,7 +310,7 @@ export const NodeBalancerConfigPanel = (
             <FormHelperText>
               Proxy Protocol preserves initial TCP connection information.
               Please consult{' '}
-              <Link to="https://www.linode.com/docs/platform/nodebalancer/nodebalancer-proxypass-configuration/">
+              <Link to="https://techdocs.akamai.com/cloud-computing/docs/using-proxy-protocol-with-nodebalancers">
                 our Proxy Protocol guide
               </Link>
               {` `}
@@ -286,6 +321,9 @@ export const NodeBalancerConfigPanel = (
 
         <Grid md={tcpSelected ? 6 : 3} xs={6}>
           <Autocomplete
+            onChange={(_, selected) => {
+              props.onAlgorithmChange(selected.value);
+            }}
             textFieldProps={{
               dataAttrs: {
                 'data-qa-algorithm-select': true,
@@ -293,28 +331,24 @@ export const NodeBalancerConfigPanel = (
               errorGroup: forEdit ? `${configIdx}` : undefined,
             }}
             autoHighlight
+            disableClearable
             disabled={disabled}
             errorText={errorMap.algorithm}
             id={`algorithm-${configIdx}`}
-            disableClearable
             label="Algorithm"
             noMarginTop
-            onChange={(_, selected) => {
-              props.onAlgorithmChange(selected.value);
-            }}
             options={algOptions}
             size="small"
             value={defaultAlg || algOptions[0]}
           />
-          <FormHelperText>
-            Roundrobin. Least connections assigns connections to the backend
-            with the least connections. Source uses the client&rsquo;s IPv4
-            address
-          </FormHelperText>
+          <FormHelperText>{ALGORITHM_HELPER_TEXT[algorithm]}</FormHelperText>
         </Grid>
 
         <Grid md={3} xs={6}>
           <Autocomplete
+            onChange={(_, selected) => {
+              props.onSessionStickinessChange(selected.value);
+            }}
             textFieldProps={{
               dataAttrs: {
                 'data-qa-session-stickiness-select': true,
@@ -322,21 +356,18 @@ export const NodeBalancerConfigPanel = (
               errorGroup: forEdit ? `${configIdx}` : undefined,
             }}
             autoHighlight
+            disableClearable
             disabled={disabled}
             errorText={errorMap.stickiness}
             id={`session-stickiness-${configIdx}`}
-            disableClearable
             label="Session Stickiness"
             noMarginTop
-            onChange={(_, selected) => {
-              props.onSessionStickinessChange(selected.value);
-            }}
             options={sessionOptions}
             size="small"
             value={defaultSession || sessionOptions[1]}
           />
           <FormHelperText>
-            Route subsequent requests from the client to the same backend
+            Route subsequent requests from the client to the same backend.
           </FormHelperText>
         </Grid>
         <Grid xs={12}>
@@ -345,21 +376,26 @@ export const NodeBalancerConfigPanel = (
       </Grid>
       <Grid container spacing={2}>
         <ActiveCheck errorMap={errorMap} {...props} />
-        <PassiveCheck {...props} />
+        {protocol !== 'udp' && <PassiveCheck {...props} />}
         <Grid xs={12}>
           <Divider />
         </Grid>
       </Grid>
       <Grid container spacing={2}>
         <Grid xs={12}>
-          {nodeMessage && (
-            <Grid xs={12}>
-              <Notice text={nodeMessage} variant="info" />
-            </Grid>
-          )}
           <Typography data-qa-backend-ip-header variant="h2">
             Backend Nodes
           </Typography>
+          {nodeMessage && (
+            <Grid xs={12}>
+              <Notice
+                spacingBottom={0}
+                spacingTop={8}
+                text={nodeMessage}
+                variant="info"
+              />
+            </Grid>
+          )}
           {errorMap.nodes && (
             <FormHelperText error>{errorMap.nodes}</FormHelperText>
           )}
@@ -375,7 +411,8 @@ export const NodeBalancerConfigPanel = (
               <NodeBalancerConfigNode
                 configIdx={configIdx}
                 disabled={Boolean(disabled)}
-                forEdit={Boolean(forEdit)}
+                disallowRemoval={!forEdit && nodeIdx === 0} // Prevent the user from removing the first node on the create flow.
+                hideModeSelect={protocol === 'udp'} // UDP does not support the "mode" option on nodes
                 idx={nodeIdx}
                 key={`nb-node-${nodeIdx}`}
                 node={node}
@@ -388,15 +425,7 @@ export const NodeBalancerConfigPanel = (
                 removeNode={removeNode}
               />
             ))}
-            <Grid
-              // is the Save/Delete ActionsPanel showing?
-              style={
-                forEdit || configIdx !== 0
-                  ? { marginBottom: -16, marginTop: 0 }
-                  : { marginTop: 16 }
-              }
-              xs={12}
-            >
+            <Grid xs={12}>
               <Button
                 buttonType="outlined"
                 disabled={disabled}

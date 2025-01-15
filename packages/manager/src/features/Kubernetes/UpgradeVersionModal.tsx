@@ -1,36 +1,45 @@
 import { recycleClusterNodes } from '@linode/api-v4/lib/kubernetes';
+import { Typography } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { Typography } from 'src/components/Typography';
 import {
   getNextVersion,
   localStorageWarning,
+  useLkeStandardOrEnterpriseVersions,
 } from 'src/features/Kubernetes/kubeUtils';
-import {
-  useKubernetesClusterMutation,
-  useKubernetesVersionQuery,
-} from 'src/queries/kubernetes';
+import { useKubernetesClusterMutation } from 'src/queries/kubernetes';
+
+import type { KubernetesTier } from '@linode/api-v4/lib/kubernetes';
 
 interface Props {
   clusterID: number;
   clusterLabel: string;
+  clusterTier: KubernetesTier;
   currentVersion: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export const UpgradeDialog = (props: Props) => {
-  const { clusterID, clusterLabel, currentVersion, isOpen, onClose } = props;
+  const {
+    clusterID,
+    clusterLabel,
+    clusterTier,
+    currentVersion,
+    isOpen,
+    onClose,
+  } = props;
 
-  const { data: versions } = useKubernetesVersionQuery();
   const { enqueueSnackbar } = useSnackbar();
 
   const { mutateAsync: updateKubernetesCluster } = useKubernetesClusterMutation(
     clusterID
   );
+
+  const { versions } = useLkeStandardOrEnterpriseVersions(clusterTier);
 
   const nextVersion = getNextVersion(currentVersion, versions ?? []);
 

@@ -1,10 +1,10 @@
+import { Typography } from '@linode/ui';
 import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { CopyableTextField } from 'src/components/CopyableTextField/CopyableTextField';
 import { Dialog } from 'src/components/Dialog/Dialog';
 import { Link } from 'src/components/Link';
-import { Typography } from 'src/components/Typography';
 import { sendCLIClickEvent } from 'src/utilities/analytics/customEventAnalytics';
 import { wrapInQuotes } from 'src/utilities/stringUtils';
 
@@ -48,7 +48,7 @@ export const ImageUploadCLIDialog = (props: ImageUploadSuccessDialogProps) => {
       />
       <Typography sx={{ paddingTop: 2 }}>
         For more information, please see{' '}
-        <Link to="https://www.linode.com/docs/guides/linode-cli">
+        <Link to="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-the-linode-cli">
           our guide on using the Linode CLI
         </Link>
         .

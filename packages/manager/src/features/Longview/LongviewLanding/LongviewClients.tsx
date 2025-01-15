@@ -1,25 +1,16 @@
-import {
-  ActiveLongviewPlan,
-  LongviewClient,
-  LongviewSubscription,
-} from '@linode/api-v4/lib/longview/types';
+import { Autocomplete, Typography } from '@linode/ui';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { isEmpty, pathOr } from 'ramda';
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { Link, RouteComponentProps } from 'react-router-dom';
 import { compose } from 'recompose';
 
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
 import { DebouncedSearchTextField } from 'src/components/DebouncedSearchTextField';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import { Typography } from 'src/components/Typography';
-import withLongviewClients, {
-  Props as LongviewProps,
-} from 'src/containers/longview.container';
+import { Link } from 'src/components/Link';
+import withLongviewClients from 'src/containers/longview.container';
 import { useAccountSettings } from 'src/queries/account/settings';
 import { useGrants, useProfile } from 'src/queries/profile/profile';
-import { State as StatsState } from 'src/store/longviewStats/longviewStats.reducer';
-import { MapState } from 'src/store/types';
 
 import { LongviewPackageDrawer } from '../LongviewPackageDrawer';
 import { sumUsedMemory } from '../shared/utilities';
@@ -36,6 +27,16 @@ import { LongviewDeleteDialog } from './LongviewDeleteDialog';
 import { LongviewList } from './LongviewList';
 import { SubscriptionDialog } from './SubscriptionDialog';
 
+import type {
+  ActiveLongviewPlan,
+  LongviewClient,
+  LongviewSubscription,
+} from '@linode/api-v4/lib/longview/types';
+import type { Props as LongviewProps } from 'src/containers/longview.container';
+import type { LongviewState } from 'src/routes/longview';
+import type { State as StatsState } from 'src/store/longviewStats/longviewStats.reducer';
+import type { MapState } from 'src/store/types';
+
 interface Props {
   activeSubscription: ActiveLongviewPlan;
   handleAddClient: () => void;
@@ -47,16 +48,15 @@ interface SortOption {
   value: SortKey;
 }
 
-export type LongviewClientsCombinedProps = Props &
-  RouteComponentProps &
-  LongviewProps &
-  StateProps;
+export type LongviewClientsCombinedProps = Props & LongviewProps & StateProps;
 
 type SortKey = 'cpu' | 'load' | 'name' | 'network' | 'ram' | 'storage' | 'swap';
 
 export const LongviewClients = (props: LongviewClientsCombinedProps) => {
   const { getLongviewClients } = props;
-
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as LongviewState;
   const { data: profile } = useProfile();
   const { data: grants } = useGrants();
   const { data: accountSettings } = useAccountSettings();
@@ -130,21 +130,16 @@ export const LongviewClients = (props: LongviewClientsCombinedProps) => {
   }, []);
 
   const handleSubmit = () => {
-    const {
-      history: { push },
-    } = props;
-
     if (isManaged) {
-      push({
-        pathname: '/support/tickets',
-        state: {
-          open: true,
-          title: 'Request for additional Longview clients',
-        },
+      navigate({
+        state: (prev) => ({ ...prev, ...locationState }),
+        to: '/support/tickets',
       });
       return;
     }
-    props.history.push('/longview/plan-details');
+    navigate({
+      to: '/longview/plan-details',
+    });
   };
 
   /**
@@ -203,30 +198,32 @@ export const LongviewClients = (props: LongviewClientsCombinedProps) => {
       <StyledHeadingGrid container spacing={2}>
         <StyledSearchbarGrid>
           <DebouncedSearchTextField
+            clearable
             debounceTime={250}
             hideLabel
             label="Filter by client label or hostname"
             onSearch={handleSearch}
             placeholder="Filter by client label or hostname"
+            value={query}
           />
         </StyledSearchbarGrid>
         <StyledSortSelectGrid>
           <Typography sx={{ minWidth: '65px' }}>Sort by: </Typography>
           <Autocomplete
-            disableClearable
-            fullWidth
-            label="Sort by"
-            options={sortOptions}
             onChange={(_, value) => {
               handleSortKeyChange(value);
             }}
-            size="small"
             textFieldProps={{
               hideLabel: true,
             }}
             value={sortOptions.find(
               (thisOption) => thisOption.value === sortKey
             )}
+            disableClearable
+            fullWidth
+            label="Sort by"
+            options={sortOptions}
+            size="small"
           />
         </StyledSortSelectGrid>
       </StyledHeadingGrid>
@@ -297,9 +294,7 @@ const mapStateToProps: MapState<StateProps, Props> = (state, _ownProps) => {
 
 const connected = connect(mapStateToProps);
 
-interface ComposeProps extends Props, RouteComponentProps {}
-
-export default compose<LongviewClientsCombinedProps, ComposeProps>(
+export default compose<LongviewClientsCombinedProps, Props>(
   React.memo,
   connected,
   withLongviewClients()

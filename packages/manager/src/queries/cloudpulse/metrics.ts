@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Axios from 'axios';
+import { useEffect } from 'react';
 
 import { queryFactory } from './queries';
 
@@ -17,7 +18,7 @@ export const useCloudPulseMetricsQuery = (
   serviceType: string,
   request: CloudPulseMetricsRequest,
   obj: {
-    authToken: string;
+    authToken?: string;
     isFlags: boolean;
     label: string;
     timeStamp: number | undefined;
@@ -25,9 +26,10 @@ export const useCloudPulseMetricsQuery = (
   }
 ) => {
   const queryClient = useQueryClient();
-  return useQuery<CloudPulseMetricsResponse, APIError[]>({
+
+  const query = useQuery<CloudPulseMetricsResponse, APIError[]>({
     ...queryFactory.metrics(
-      obj.authToken,
+      obj.authToken ?? '',
       obj.url,
       serviceType,
       request,
@@ -36,30 +38,37 @@ export const useCloudPulseMetricsQuery = (
     ),
 
     enabled: !!obj.isFlags,
-    onError(err: APIError[]) {
-      if (err && err.length > 0 && err[0].reason == 'Token expired') {
-        const currentJWEtokenCache:
-          | JWEToken
-          | undefined = queryClient.getQueryData(
-          queryFactory.token(serviceType, { resource_ids: [] }).queryKey
-        );
-        if (currentJWEtokenCache?.token === obj.authToken) {
-          queryClient.invalidateQueries(
-            {
-              queryKey: queryFactory.token(serviceType, { resource_ids: [] })
-                .queryKey,
-            },
-            {
-              cancelRefetch: true,
-            }
-          );
-        }
-      }
-    },
     refetchInterval: 120000,
     refetchOnWindowFocus: false,
     retry: 0,
   });
+
+  useEffect(() => {
+    if (
+      query.error &&
+      query.error.length > 0 &&
+      query.error[0].reason == 'Token expired'
+    ) {
+      const currentJWEtokenCache:
+        | JWEToken
+        | undefined = queryClient.getQueryData(
+        queryFactory.token(serviceType, { entity_ids: [] }).queryKey
+      );
+      if (currentJWEtokenCache?.token === obj.authToken) {
+        queryClient.invalidateQueries(
+          {
+            queryKey: queryFactory.token(serviceType, { entity_ids: [] })
+              .queryKey,
+          },
+          {
+            cancelRefetch: true,
+          }
+        );
+      }
+    }
+  }, [query.error]);
+
+  return query;
 };
 
 export const fetchCloudPulseMetrics = (
@@ -75,11 +84,11 @@ export const fetchCloudPulseMetrics = (
       Authorization: `Bearer ${token}`,
     },
     method: 'POST',
-    url: `${readApiEndpoint}${encodeURIComponent(serviceType!)}/metrics`,
+    url: `${readApiEndpoint}${encodeURIComponent(serviceType)}/metrics`,
   };
 
   return axiosInstance
     .request(config)
     .then((response) => response.data)
-    .catch((error) => Promise.reject(error.response.data.errors));
+    .catch((error) => Promise.reject(error.response?.data?.errors));
 };

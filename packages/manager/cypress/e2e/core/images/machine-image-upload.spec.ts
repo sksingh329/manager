@@ -5,7 +5,6 @@ import 'cypress-file-upload';
 import { RecPartial } from 'factory.ts';
 import { DateTime } from 'luxon';
 import { authenticate } from 'support/api/authentication';
-import { fbtVisible, getClick } from 'support/helpers';
 import {
   mockDeleteImage,
   mockGetCustomImages,
@@ -81,14 +80,12 @@ const eventIntercept = (
  * @param message - Expected failure message.
  */
 const assertFailed = (label: string, id: string, message: string) => {
-  ui.toast.assertMessage(
-    `There was a problem uploading image ${label}: ${message}`
-  );
+  ui.toast.assertMessage(`Image ${label} could not be uploaded: ${message}`);
 
   cy.get(`[data-qa-image-cell="${id}"]`).within(() => {
-    fbtVisible(label);
-    fbtVisible('Failed');
-    fbtVisible('N/A');
+    cy.findByText(label).should('be.visible');
+    cy.findByText('Upload Failed').should('be.visible'); // The status should be "Upload Failed"
+    cy.findAllByText('N/A').should('be.visible'); // The size should be "N/A"
   });
 };
 
@@ -100,9 +97,9 @@ const assertFailed = (label: string, id: string, message: string) => {
  */
 const assertProcessing = (label: string, id: string) => {
   cy.get(`[data-qa-image-cell="${id}"]`).within(() => {
-    fbtVisible(label);
-    fbtVisible('Processing');
-    fbtVisible('Pending');
+    cy.findByText(label).should('be.visible');
+    cy.findByText('Pending Upload').should('be.visible'); // The status should be "Pending Upload"
+    cy.findAllByText('Pending').should('be.visible'); // The size should be "Pending"
   });
 };
 
@@ -114,11 +111,15 @@ const assertProcessing = (label: string, id: string) => {
  * @param label - Label to apply to uploaded image.
  */
 const uploadImage = (label: string) => {
-  const region = chooseRegion();
+  const region = chooseRegion({ capabilities: ['Object Storage'] });
   const upload = 'machine-images/test-image.gz';
   cy.visitWithLogin('/images/create/upload');
-  getClick('[id="label"][data-testid="textfield-input"]').type(label);
-  getClick('[id="description"]').type('This is a machine image upload test');
+
+  cy.findByLabelText('Label').click().type(label);
+
+  cy.findByLabelText('Description')
+    .click()
+    .type('This is a machine image upload test');
 
   ui.regionSelect.find().click();
   ui.regionSelect.findItemByRegionId(region.id).click();
@@ -174,7 +175,7 @@ describe('machine image', () => {
 
     cy.get(`[data-qa-image-cell="${mockImage.id}"]`).within(() => {
       cy.findByText(initialLabel).should('be.visible');
-      cy.findByText('Ready').should('be.visible');
+      cy.findByText('Available').should('be.visible');
 
       ui.actionMenu
         .findByTitle(`Action menu for Image ${initialLabel}`)
@@ -263,8 +264,8 @@ describe('machine image', () => {
       cy.wait('@getImages');
       ui.toast.assertMessage(availableMessage);
       cy.get(`[data-qa-image-cell="${imageId}"]`).within(() => {
-        fbtVisible(label);
-        fbtVisible('Ready');
+        cy.findByText(label).should('be.visible');
+        cy.findByText('Available').should('be.visible');
       });
     });
   });
@@ -319,12 +320,11 @@ describe('machine image', () => {
     const label = randomLabel();
     const status = 'failed';
     const message = 'Upload window expired';
-    const expiredDate = DateTime.local().minus({ days: 1 }).toISO();
     uploadImage(label);
     cy.wait('@imageUpload').then((xhr) => {
       const imageId = xhr.response?.body.image.id;
       assertProcessing(label, imageId);
-      eventIntercept(label, imageId, status, message, expiredDate);
+      eventIntercept(label, imageId, status, message);
       cy.wait('@getEvent');
       assertFailed(label, imageId, message);
     });

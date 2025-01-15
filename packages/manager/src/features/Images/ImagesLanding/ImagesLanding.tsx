@@ -1,5 +1,16 @@
+import { getAPIFilterFromQuery } from '@linode/search';
+import { Typography } from '@linode/ui';
+import {
+  CircleProgress,
+  IconButton,
+  InputAdornment,
+  Notice,
+  Paper,
+  TextField,
+} from '@linode/ui';
 import CloseIcon from '@mui/icons-material/Close';
 import { useQueryClient } from '@tanstack/react-query';
+import { createLazyRoute } from '@tanstack/react-router';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -7,27 +18,21 @@ import { debounce } from 'throttle-debounce';
 import { makeStyles } from 'tss-react/mui';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { CircleProgress } from 'src/components/CircleProgress';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { Drawer } from 'src/components/Drawer';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { Hidden } from 'src/components/Hidden';
-import { IconButton } from 'src/components/IconButton';
-import { InputAdornment } from 'src/components/InputAdornment';
 import { LandingHeader } from 'src/components/LandingHeader';
-import { Notice } from 'src/components/Notice/Notice';
 import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
-import { Paper } from 'src/components/Paper';
 import { Table } from 'src/components/Table';
 import { TableBody } from 'src/components/TableBody';
 import { TableCell } from 'src/components/TableCell';
 import { TableHead } from 'src/components/TableHead';
 import { TableRow } from 'src/components/TableRow';
 import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableSortCell } from 'src/components/TableSortCell';
-import { TextField } from 'src/components/TextField';
-import { Typography } from 'src/components/Typography';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { useFlags } from 'src/hooks/useFlags';
 import { useOrder } from 'src/hooks/useOrder';
@@ -47,7 +52,7 @@ import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
 
 import { getEventsForImages } from '../utils';
 import { EditImageDrawer } from './EditImageDrawer';
-import { ManageImageRegionsForm } from './ImageRegions/ManageImageRegionsForm';
+import { ManageImageReplicasForm } from './ImageRegions/ManageImageRegionsForm';
 import { ImageRow } from './ImageRow';
 import { ImagesLandingEmptyState } from './ImagesLandingEmptyState';
 import { RebuildImageDrawer } from './RebuildImageDrawer';
@@ -56,7 +61,7 @@ import type { Handlers as ImageHandlers } from './ImagesActionMenu';
 import type { Filter, ImageStatus } from '@linode/api-v4';
 import type { Theme } from '@mui/material/styles';
 
-const searchQueryKey = 'query';
+const searchParamKey = 'query';
 
 const useStyles = makeStyles()((theme: Theme) => ({
   imageTable: {
@@ -99,9 +104,33 @@ export const ImagesLanding = () => {
     globalGrantType: 'add_images',
   });
   const queryParams = new URLSearchParams(location.search);
-  const imageLabelFromParam = queryParams.get(searchQueryKey) ?? '';
+  const query = queryParams.get(searchParamKey) ?? '';
 
   const queryClient = useQueryClient();
+
+  /**
+   * At the time of writing: `label`, `tags`, `size`, `status`, `region` are filterable.
+   *
+   * Some fields like `status` and `region` can't be used in complex filters using '+or' / '+and'
+   *
+   * Using `tags` in a '+or' is currently broken. See ARB-5792
+   */
+  const { error: searchParseError, filter } = getAPIFilterFromQuery(query, {
+    // Because Images have an array of region objects, we need to transform
+    // search queries like "region: us-east" to { regions: { region: "us-east" } }
+    // rather than the default behavior which is { region: { '+contains': "us-east" } }
+    filterShapeOverrides: {
+      '+contains': {
+        field: 'region',
+        filter: (value) => ({ regions: { region: value } }),
+      },
+      '+eq': {
+        field: 'region',
+        filter: (value) => ({ regions: { region: value } }),
+      },
+    },
+    searchableFieldsWithoutOperator: ['label', 'tags'],
+  });
 
   const paginationForManualImages = usePagination(1, 'images-manual', 'manual');
 
@@ -121,7 +150,7 @@ export const ImagesLanding = () => {
   const manualImagesFilter: Filter = {
     ['+order']: manualImagesOrder,
     ['+order_by']: manualImagesOrderBy,
-    ...(imageLabelFromParam && { label: { '+contains': imageLabelFromParam } }),
+    ...filter,
   };
 
   const {
@@ -145,6 +174,10 @@ export const ImagesLanding = () => {
       // to update Image region statuses. We should make the API
       // team and Images team implement events for this.
       refetchInterval: 30_000,
+      // If we have a search query, disable retries to keep the UI
+      // snappy if the user inputs an invalid X-Filter. Otherwise,
+      // pass undefined to use the default retry behavior.
+      retry: query ? false : undefined,
     }
   );
 
@@ -170,7 +203,7 @@ export const ImagesLanding = () => {
   const automaticImagesFilter: Filter = {
     ['+order']: automaticImagesOrder,
     ['+order_by']: automaticImagesOrderBy,
-    ...(imageLabelFromParam && { label: { '+contains': imageLabelFromParam } }),
+    ...filter,
   };
 
   const {
@@ -187,6 +220,12 @@ export const ImagesLanding = () => {
       ...automaticImagesFilter,
       is_public: false,
       type: 'automatic',
+    },
+    {
+      // If we have a search query, disable retries to keep the UI
+      // snappy if the user inputs an invalid X-Filter. Otherwise,
+      // pass undefined to use the default retry behavior.
+      retry: query ? false : undefined,
     }
   );
 
@@ -221,8 +260,8 @@ export const ImagesLanding = () => {
   const [selectedImageId, setSelectedImageId] = React.useState<string>();
 
   const [
-    isManageRegionsDrawerOpen,
-    setIsManageRegionsDrawerOpen,
+    isManageReplicasDrawerOpen,
+    setIsManageReplicasDrawerOpen,
   ] = React.useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = React.useState(false);
   const [isRebuildDrawerOpen, setIsRebuildDrawerOpen] = React.useState(false);
@@ -328,13 +367,13 @@ export const ImagesLanding = () => {
   };
 
   const resetSearch = () => {
-    queryParams.delete(searchQueryKey);
+    queryParams.delete(searchParamKey);
     history.push({ search: queryParams.toString() });
   };
 
   const onSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     queryParams.delete('page');
-    queryParams.set(searchQueryKey, e.target.value);
+    queryParams.set(searchParamKey, e.target.value);
     history.push({ search: queryParams.toString() });
   };
 
@@ -349,7 +388,7 @@ export const ImagesLanding = () => {
     onManageRegions: multiRegionsEnabled
       ? (image) => {
           setSelectedImageId(image.id);
-          setIsManageRegionsDrawerOpen(true);
+          setIsManageReplicasDrawerOpen(true);
         }
       : undefined,
     onRestore: (image) => {
@@ -363,7 +402,7 @@ export const ImagesLanding = () => {
     return <CircleProgress />;
   }
 
-  if (manualImagesError || automaticImagesError) {
+  if (!query && (manualImagesError || automaticImagesError)) {
     return (
       <React.Fragment>
         <DocumentTitleSegment segment="Images" />
@@ -372,11 +411,7 @@ export const ImagesLanding = () => {
     );
   }
 
-  if (
-    manualImages.results === 0 &&
-    automaticImages.results === 0 &&
-    !imageLabelFromParam
-  ) {
+  if (manualImages?.results === 0 && automaticImages?.results === 0 && !query) {
     return <ImagesLandingEmptyState />;
   }
 
@@ -394,17 +429,16 @@ export const ImagesLanding = () => {
           }),
         }}
         disabledCreateButton={isImagesReadOnly}
-        docsLink="https://www.linode.com/docs/platform/disk-images/linode-images/"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/images"
         entity="Image"
         onButtonClick={() => history.push('/images/create')}
         title="Images"
       />
       <TextField
         InputProps={{
-          endAdornment: imageLabelFromParam && (
+          endAdornment: query && (
             <InputAdornment position="end">
               {isFetching && <CircleProgress size="sm" />}
-
               <IconButton
                 aria-label="Clear"
                 data-testid="clear-images-search"
@@ -419,18 +453,20 @@ export const ImagesLanding = () => {
         onChange={debounce(400, (e) => {
           onSearch(e);
         })}
+        containerProps={{ mb: 2 }}
+        errorText={searchParseError?.message}
         hideLabel
         label="Search"
         placeholder="Search Images"
-        sx={{ mb: 2 }}
-        value={imageLabelFromParam}
+        value={query}
       />
       <Paper className={classes.imageTable}>
         <div className={classes.imageTableHeader}>
           <Typography variant="h3">Custom Images</Typography>
           <Typography className={classes.imageTableSubheader}>
             These are images you manually uploaded or captured from an existing
-            Linode disk.
+            compute instance disk. You can deploy an image to a compute instance
+            in any region.
           </Typography>
         </div>
         <Table>
@@ -448,14 +484,14 @@ export const ImagesLanding = () => {
                 <TableCell>Status</TableCell>
               </Hidden>
               {multiRegionsEnabled && (
-                <>
-                  <Hidden smDown>
-                    <TableCell>Region(s)</TableCell>
-                  </Hidden>
-                  <Hidden smDown>
-                    <TableCell>Compatibility</TableCell>
-                  </Hidden>
-                </>
+                <Hidden smDown>
+                  <TableCell>Replicated in</TableCell>
+                </Hidden>
+              )}
+              {multiRegionsEnabled && !flags.imageServiceGen2Ga && (
+                <Hidden smDown>
+                  <TableCell>Compatibility</TableCell>
+                </Hidden>
               )}
               <TableSortCell
                 active={manualImagesOrderBy === 'size'}
@@ -463,11 +499,11 @@ export const ImagesLanding = () => {
                 handleClick={handleManualImagesOrderChange}
                 label="size"
               >
-                Size
+                {multiRegionsEnabled ? 'Original Image' : 'Size'}
               </TableSortCell>
               {multiRegionsEnabled && (
                 <Hidden mdDown>
-                  <TableCell>Total Size</TableCell>
+                  <TableCell>All Replicas</TableCell>
                 </Hidden>
               )}
               <Hidden mdDown>
@@ -485,17 +521,23 @@ export const ImagesLanding = () => {
                   <TableCell>Image ID</TableCell>
                 </Hidden>
               )}
-              <TableCell></TableCell>
+              <TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
-            {manualImages.results === 0 && (
+            {manualImages?.results === 0 && (
               <TableRowEmpty
                 colSpan={9}
                 message={`No Custom Images to display.`}
               />
             )}
-            {manualImages.data.map((manualImage) => (
+            {manualImagesError && query && (
+              <TableRowError
+                colSpan={9}
+                message={manualImagesError[0].reason}
+              />
+            )}
+            {manualImages?.data.map((manualImage) => (
               <ImageRow
                 event={manualImagesEvents[manualImage.id]}
                 handlers={handlers}
@@ -558,17 +600,23 @@ export const ImagesLanding = () => {
               <Hidden smDown>
                 <TableCell>Expires</TableCell>
               </Hidden>
-              <TableCell></TableCell>
+              <TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
-            {automaticImages.results === 0 && (
+            {automaticImages?.results === 0 && (
               <TableRowEmpty
                 colSpan={6}
                 message={`No Recovery Images to display.`}
               />
             )}
-            {automaticImages.data.map((automaticImage) => (
+            {automaticImagesError && query && (
+              <TableRowError
+                colSpan={9}
+                message={automaticImagesError[0].reason}
+              />
+            )}
+            {automaticImages?.data.map((automaticImage) => (
               <ImageRow
                 event={automaticImagesEvents[automaticImage.id]}
                 handlers={handlers}
@@ -598,13 +646,13 @@ export const ImagesLanding = () => {
         open={isRebuildDrawerOpen}
       />
       <Drawer
-        onClose={() => setIsManageRegionsDrawerOpen(false)}
-        open={isManageRegionsDrawerOpen}
-        title={`Manage Regions for ${selectedImage?.label}`}
+        onClose={() => setIsManageReplicasDrawerOpen(false)}
+        open={isManageReplicasDrawerOpen}
+        title={`Manage Replicas for ${selectedImage?.label}`}
       >
-        <ManageImageRegionsForm
+        <ManageImageReplicasForm
           image={selectedImage}
-          onClose={() => setIsManageRegionsDrawerOpen(false)}
+          onClose={() => setIsManageReplicasDrawerOpen(false)}
         />
       </Drawer>
       <ConfirmationDialog
@@ -638,5 +686,9 @@ export const ImagesLanding = () => {
     </React.Fragment>
   );
 };
+
+export const imagesLandingLazyRoute = createLazyRoute('/images')({
+  component: ImagesLanding,
+});
 
 export default ImagesLanding;

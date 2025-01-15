@@ -1,13 +1,12 @@
 import {
-  StackScript,
   getStackScript,
   updateStackScript,
 } from '@linode/api-v4/lib/stackscripts';
-import { APIError } from '@linode/api-v4/lib/types';
+import { CircleProgress } from '@linode/ui';
 import * as React from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
+import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { LandingHeader } from 'src/components/LandingHeader';
 import { NotFound } from 'src/components/NotFound';
 import { StackScript as _StackScript } from 'src/components/StackScript/StackScript';
@@ -19,6 +18,9 @@ import {
   canUserModifyAccountStackScript,
   getStackScriptUrl,
 } from './stackScriptUtils';
+
+import type { StackScript } from '@linode/api-v4/lib/stackscripts';
+import type { APIError } from '@linode/api-v4/lib/types';
 
 export const StackScriptsDetail = () => {
   const { _hasGrant, _isRestrictedUser, profile } = useAccountManagement();
@@ -113,6 +115,7 @@ export const StackScriptsDetail = () => {
 
   return (
     <>
+      <DocumentTitleSegment segment={`${stackScript.label} | StackScripts`} />
       <LandingHeader
         breadcrumbProps={{
           crumbOverrides: [
@@ -138,7 +141,7 @@ export const StackScriptsDetail = () => {
         createButtonText="Deploy New Linode"
         disabledCreateButton={userCannotAddLinodes}
         docsLabel="Docs"
-        docsLink="https://www.linode.com/docs/platform/stackscripts"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/stackscripts"
         onButtonClick={handleCreateClick}
         title={stackScript.label}
       />

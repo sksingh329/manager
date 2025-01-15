@@ -1,6 +1,6 @@
-import type { Doc, OCA } from './features/OneClickApps/types';
+import type { OCA } from './features/OneClickApps/types';
 import type { TPAProvider } from '@linode/api-v4/lib/profile';
-import type { NoticeVariant } from 'src/components/Notice/Notice';
+import type { NoticeVariant } from '@linode/ui';
 
 // These flags should correspond with active features flags in LD
 
@@ -54,8 +54,9 @@ interface BetaFeatureFlag extends BaseFeatureFlag {
   beta: boolean;
 }
 
-interface GaFeatureFlag extends BaseFeatureFlag {
+interface GeckoFeatureFlag extends BaseFeatureFlag {
   ga: boolean;
+  la: boolean;
 }
 
 interface AclpFlag {
@@ -63,52 +64,70 @@ interface AclpFlag {
   enabled: boolean;
 }
 
+interface LkeEnterpriseFlag extends BaseFeatureFlag {
+  ga: boolean;
+  la: boolean;
+}
+
 export interface CloudPulseResourceTypeMapFlag {
   dimensionKey: string;
+  maxResourceSelections?: number;
   serviceType: string;
+  supportedRegionIds?: string;
 }
 
 interface gpuV2 {
+  egressBanner: boolean;
   planDivider: boolean;
+  transferBanner: boolean;
 }
 
-type OneClickApp = Record<string, string>;
+interface AcceleratedPlansFlag {
+  linodePlans: boolean;
+  lkePlans: boolean;
+}
 
 interface DesignUpdatesBannerFlag extends BaseFeatureFlag {
   key: string;
   link: string;
 }
 
+interface AclpAlerting {
+  alertDefinitions: boolean;
+  notificationChannels: boolean;
+  recentActivity: boolean;
+}
 export interface Flags {
+  acceleratedPlans: AcceleratedPlansFlag;
   aclp: AclpFlag;
+  aclpAlerting: AclpAlerting;
   aclpReadEndpoint: string;
   aclpResourceTypeMap: CloudPulseResourceTypeMapFlag[];
   apiMaintenance: APIMaintenance;
-  apicliDxToolsAdditions: boolean;
+  apicliButtonCopy: string;
+  apl: boolean;
   blockStorageEncryption: boolean;
   cloudManagerDesignUpdatesBanner: DesignUpdatesBannerFlag;
   databaseBeta: boolean;
   databaseResize: boolean;
   databases: boolean;
   dbaasV2: BetaFeatureFlag;
+  dbaasV2MonitorMetrics: BetaFeatureFlag;
   disableLargestGbPlans: boolean;
-  eventMessagesV2: boolean;
-  gecko: boolean; // @TODO gecko: delete this after next release
-  gecko2: GaFeatureFlag;
+  disallowImageUploadToNonObjRegions: boolean;
+  gecko2: GeckoFeatureFlag;
   gpuv2: gpuV2;
+  iam: BetaFeatureFlag;
   imageServiceGen2: boolean;
+  imageServiceGen2Ga: boolean;
   ipv6Sharing: boolean;
-  linodeCreateRefactor: boolean;
-  linodeCreateWithFirewall: boolean;
   linodeDiskEncryption: boolean;
+  lkeEnterprise: LkeEnterpriseFlag;
   mainContentBanner: MainContentBanner;
   marketplaceAppOverrides: MarketplaceAppOverride[];
   metadata: boolean;
   objMultiCluster: boolean;
   objectStorageGen2: BaseFeatureFlag;
-  oneClickApps: OneClickApp;
-  oneClickAppsDocsOverride: Record<string, Doc[]>;
-  placementGroups: BetaFeatureFlag;
   productInformationBanners: ProductInformationBannerFlag[];
   promos: boolean;
   promotionalOffers: PromotionalOffer[];
@@ -122,13 +141,14 @@ export interface Flags {
   taxId: BaseFeatureFlag;
   taxes: Taxes;
   tpaProviders: Provider[];
+  udp: boolean;
 }
 
 interface MarketplaceAppOverride {
   /**
    * Define app details that should be overwritten
    *
-   * If you are adding an app that is not already defined in "oneClickAppsv2.ts",
+   * If you are adding an app that is not already defined in "oneClickApps.ts",
    * you *must* include all required OCA properties or Cloud Manager could crash.
    *
    * Pass `null` to hide the marketplace app
@@ -212,6 +232,7 @@ export type ProductInformationBannerLocation =
   | 'Databases'
   | 'Domains'
   | 'Firewalls'
+  | 'Identity and Access'
   | 'Images'
   | 'Kubernetes'
   | 'LinodeCreate' // Use for Marketplace banners

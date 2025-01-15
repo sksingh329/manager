@@ -1,7 +1,8 @@
+import { CircleProgress } from '@linode/ui';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { Hidden } from 'src/components/Hidden';
@@ -21,8 +22,8 @@ import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGran
 import { useNodeBalancersQuery } from 'src/queries/nodebalancers';
 
 import { NodeBalancerDeleteDialog } from '../NodeBalancerDeleteDialog';
-import { NodeBalancerTableRow } from './NodeBalancerTableRow';
 import { NodeBalancerLandingEmptyState } from './NodeBalancersLandingEmptyState';
+import { NodeBalancerTableRow } from './NodeBalancerTableRow';
 const preferenceKey = 'nodebalancers';
 
 export const NodeBalancersLanding = () => {
@@ -98,7 +99,7 @@ export const NodeBalancersLanding = () => {
           }),
         }}
         disabledCreateButton={isRestricted}
-        docsLink="https://www.linode.com/docs/platform/nodebalancer/getting-started-with-nodebalancers/"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-nodebalancers"
         entity="NodeBalancer"
         onButtonClick={() => history.push('/nodebalancers/create')}
         title="NodeBalancers"
@@ -163,5 +164,9 @@ export const NodeBalancersLanding = () => {
     </>
   );
 };
+
+export const nodeBalancersLandingLazyRoute = createLazyRoute('/nodebalancers')({
+  component: NodeBalancersLanding,
+});
 
 export default NodeBalancersLanding;

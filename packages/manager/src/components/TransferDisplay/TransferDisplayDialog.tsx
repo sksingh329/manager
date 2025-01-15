@@ -1,12 +1,10 @@
+import { Box, Divider, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
-import { Box } from 'src/components/Box';
 import { Dialog } from 'src/components/Dialog/Dialog';
-import { Divider } from 'src/components/Divider';
 import { Link } from 'src/components/Link';
-import { Typography } from 'src/components/Typography';
 
 import { useIsGeckoEnabled } from '../RegionSelect/RegionSelect.utils';
 import { NETWORK_TRANSFER_USAGE_AND_COST_LINK } from './constants';
@@ -39,7 +37,7 @@ export const TransferDisplayDialog = React.memo(
       regionTransferPools,
     } = props;
     const theme = useTheme();
-    const { isGeckoGAEnabled } = useIsGeckoEnabled();
+    const { isGeckoLAEnabled } = useIsGeckoEnabled();
 
     const daysRemainingInMonth = getDaysRemaining();
     const listOfOtherRegionTransferPools: string[] =
@@ -66,7 +64,7 @@ export const TransferDisplayDialog = React.memo(
          */}
         <TransferDisplayDialogHeader
           tooltipText={`The Global Pool includes transfer associated with active services in your devices' ${
-            isGeckoGAEnabled ? 'core' : ''
+            isGeckoLAEnabled ? 'core' : ''
           } regions${
             listOfOtherRegionTransferPools.length > 0
               ? ` except for ${otherRegionPools}.`

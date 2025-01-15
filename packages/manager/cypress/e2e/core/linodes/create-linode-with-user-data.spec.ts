@@ -1,8 +1,4 @@
 import { imageFactory, linodeFactory, regionFactory } from 'src/factories';
-import {
-  mockAppendFeatureFlags,
-  mockGetFeatureFlagClientstream,
-} from 'support/intercepts/feature-flags';
 import { mockGetAllImages, mockGetImage } from 'support/intercepts/images';
 import {
   mockCreateLinode,
@@ -11,18 +7,10 @@ import {
 import { mockGetRegions } from 'support/intercepts/regions';
 import { ui } from 'support/ui';
 import { linodeCreatePage } from 'support/ui/pages';
-import { makeFeatureFlagData } from 'support/util/feature-flags';
 import { randomLabel, randomNumber, randomString } from 'support/util/random';
 import { chooseRegion } from 'support/util/regions';
 
 describe('Create Linode with user data', () => {
-  beforeEach(() => {
-    mockAppendFeatureFlags({
-      linodeCreateRefactor: makeFeatureFlagData(true),
-    });
-    mockGetFeatureFlagClientstream();
-  });
-
   /*
    * - Confirms UI flow to create a Linode with cloud-init user data specified.
    * - Confirms that outgoing API request contains expected user data payload.
@@ -46,7 +34,7 @@ describe('Create Linode with user data', () => {
     // Fill out create form, selecting a region and image that both have
     // cloud-init capabilities.
     linodeCreatePage.setLabel(mockLinode.label);
-    linodeCreatePage.selectImage('Debian 11');
+    linodeCreatePage.selectImage('Debian 12');
     linodeCreatePage.selectRegionById(linodeRegion.id);
     linodeCreatePage.selectPlan('Shared CPU', 'Nanode 1 GB');
     linodeCreatePage.setRootPassword(randomString(32));
@@ -100,7 +88,7 @@ describe('Create Linode with user data', () => {
     cy.visitWithLogin('/linodes/create');
 
     linodeCreatePage.setLabel(mockLinode.label);
-    linodeCreatePage.selectImage('Debian 11');
+    linodeCreatePage.selectImage('Debian 12');
     linodeCreatePage.selectRegionById(mockLinodeRegion.id);
     linodeCreatePage.selectPlan('Shared CPU', 'Nanode 1 GB');
 
@@ -130,6 +118,8 @@ describe('Create Linode with user data', () => {
       vendor: 'Debian',
       // `cloud-init` is omitted from Image capabilities.
       capabilities: [],
+      // null eol so that the image is not deprecated
+      eol: null,
     });
 
     mockGetImage(mockImage.id, mockImage);

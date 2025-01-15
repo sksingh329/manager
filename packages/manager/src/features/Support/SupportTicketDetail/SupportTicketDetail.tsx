@@ -1,16 +1,15 @@
-import { SupportReply } from '@linode/api-v4/lib/support';
+import { CircleProgress, Stack } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
+import { createLazyRoute } from '@tanstack/react-router';
 import { isEmpty } from 'ramda';
 import * as React from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { Waypoint } from 'react-waypoint';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { LandingHeader } from 'src/components/LandingHeader';
-import { Stack } from 'src/components/Stack';
 import { useProfile } from 'src/queries/profile/profile';
 import {
   useInfiniteSupportTicketRepliesQuery,
@@ -23,6 +22,8 @@ import { TicketAttachmentList } from '../TicketAttachmentList';
 import { AttachmentError } from './AttachmentError';
 import { ReplyContainer } from './TabbedReply/ReplyContainer';
 import { TicketStatus } from './TicketStatus';
+
+import type { SupportReply } from '@linode/api-v4/lib/support';
 
 export interface AttachmentError {
   error: string;
@@ -152,3 +153,9 @@ const StyledStack = styled(Stack, {
   marginLeft: theme.spacing(),
   marginRight: theme.spacing(),
 }));
+
+export const supportTicketDetailLazyRoute = createLazyRoute(
+  '/support/tickets/$ticketId'
+)({
+  component: SupportTicketDetail,
+});

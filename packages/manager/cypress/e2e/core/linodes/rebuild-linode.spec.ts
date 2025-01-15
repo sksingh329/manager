@@ -13,6 +13,7 @@ import {
   mockRebuildLinodeError,
 } from 'support/intercepts/linodes';
 import { createTestLinode } from 'support/util/linodes';
+import { LINODE_CREATE_TIMEOUT } from 'support/constants/linodes';
 
 /**
  * Creates a Linode and StackScript.
@@ -110,6 +111,7 @@ describe('rebuild linode', () => {
    * - Confirms that password complexity
    */
   it('rebuilds a linode from Image', () => {
+    cy.tag('method:e2e');
     const weakPassword = 'abc123';
     const fairPassword = 'Akamai123';
 
@@ -125,18 +127,20 @@ describe('rebuild linode', () => {
       interceptRebuildLinode(linode.id).as('linodeRebuild');
 
       cy.visitWithLogin(`/linodes/${linode.id}`);
-      cy.findByText('RUNNING').should('be.visible');
+      cy.findByText('RUNNING', { timeout: LINODE_CREATE_TIMEOUT }).should(
+        'be.visible'
+      );
 
       openRebuildDialog(linode.label);
       findRebuildDialog(linode.label).within(() => {
         // "From Image" should be selected by default; no need to change the value.
-        ui.select.findByText('From Image').should('be.visible');
-
-        ui.select
-          .findByText('Choose an image')
+        ui.autocomplete
+          .findByLabel('From Image')
           .should('be.visible')
-          .click()
-          .type(`${image}{enter}`);
+          .should('have.value', 'From Image');
+
+        ui.autocomplete.findByLabel('Images').should('be.visible').click();
+        ui.autocompletePopper.findByTitle(image).should('be.visible').click();
 
         // Type to confirm.
         cy.findByLabelText('Linode Label').type(linode.label);
@@ -164,6 +168,7 @@ describe('rebuild linode', () => {
    * - Confirms that a Linode can be rebuilt using a Community StackScript.
    */
   it('rebuilds a linode from Community StackScript', () => {
+    cy.tag('method:e2e');
     const stackScriptId = '443929';
     const stackScriptName = 'OpenLiteSpeed-WordPress';
     const image = 'AlmaLinux 9';
@@ -180,19 +185,21 @@ describe('rebuild linode', () => {
       interceptRebuildLinode(linode.id).as('linodeRebuild');
       interceptGetStackScripts().as('getStackScripts');
       cy.visitWithLogin(`/linodes/${linode.id}`);
-      cy.findByText('RUNNING').should('be.visible');
+      cy.findByText('RUNNING', { timeout: LINODE_CREATE_TIMEOUT }).should(
+        'be.visible'
+      );
 
       openRebuildDialog(linode.label);
       findRebuildDialog(linode.label).within(() => {
-        ui.select.findByText('From Image').click();
-
-        ui.select
-          .findItemByText('From Community StackScript')
+        ui.autocomplete.findByLabel('From Image').should('be.visible').click();
+        ui.autocompletePopper
+          .findByTitle('From Community StackScript')
           .should('be.visible')
           .click();
 
         cy.wait('@getStackScripts');
         cy.findByLabelText('Search by Label, Username, or Description')
+          .scrollIntoView()
           .should('be.visible')
           .type(`${stackScriptName}`);
 
@@ -201,13 +208,8 @@ describe('rebuild linode', () => {
           cy.get(`[id="${stackScriptId}"][type="radio"]`).click();
         });
 
-        ui.select
-          .findByText('Choose an image')
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
-
-        ui.select.findItemByText(image).should('be.visible').click();
+        ui.autocomplete.findByLabel('Images').should('be.visible').click();
+        ui.autocompletePopper.findByTitle(image).should('be.visible').click();
 
         cy.findByLabelText('Linode Label')
           .should('be.visible')
@@ -226,7 +228,8 @@ describe('rebuild linode', () => {
    * - Confirms that a Linode can be rebuilt using an Account StackScript.
    */
   it('rebuilds a linode from Account StackScript', () => {
-    const image = 'Alpine';
+    cy.tag('method:e2e');
+    const image = 'Alpine 3.18';
     const region = 'us-east';
 
     // Create a StackScript to rebuild a Linode.
@@ -258,18 +261,20 @@ describe('rebuild linode', () => {
     ).then(([stackScript, linode]) => {
       interceptRebuildLinode(linode.id).as('linodeRebuild');
       cy.visitWithLogin(`/linodes/${linode.id}`);
-      cy.findByText('RUNNING').should('be.visible');
+      cy.findByText('RUNNING', { timeout: LINODE_CREATE_TIMEOUT }).should(
+        'be.visible'
+      );
 
       openRebuildDialog(linode.label);
       findRebuildDialog(linode.label).within(() => {
-        ui.select.findByText('From Image').should('be.visible').click();
-
-        ui.select
-          .findItemByText('From Account StackScript')
+        ui.autocomplete.findByLabel('From Image').should('be.visible').click();
+        ui.autocompletePopper
+          .findByTitle('From Account StackScript')
           .should('be.visible')
           .click();
 
         cy.findByLabelText('Search by Label, Username, or Description')
+          .scrollIntoView()
           .should('be.visible')
           .type(`${stackScript.label}`);
 
@@ -277,13 +282,8 @@ describe('rebuild linode', () => {
           cy.get(`[id="${stackScript.id}"][type="radio"]`).click();
         });
 
-        ui.select
-          .findByText('Choose an image')
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
-
-        ui.select.findItemByText(image).should('be.visible').click();
+        ui.autocomplete.findByLabel('Images').should('be.visible').click();
+        ui.autocompletePopper.findByTitle(image).should('be.visible').click();
 
         cy.findByLabelText('Linode Label')
           .should('be.visible')
@@ -316,12 +316,13 @@ describe('rebuild linode', () => {
 
     cy.visitWithLogin(`/linodes/${mockLinode.id}?rebuild=true`);
     findRebuildDialog(mockLinode.label).within(() => {
-      ui.select.findByText('From Image').should('be.visible');
-      ui.select
-        .findByText('Choose an image')
+      ui.autocomplete.findByLabel('From Image').should('be.visible');
+      ui.autocomplete
+        .findByLabel('Images')
         .should('be.visible')
         .click()
-        .type(`${image}{enter}`);
+        .type(image);
+      ui.autocompletePopper.findByTitle(image).should('be.visible').click();
 
       assertPasswordComplexity(rootPassword, 'Good');
 

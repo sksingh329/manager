@@ -1,22 +1,16 @@
-import { GlobalGrantTypes } from '@linode/api-v4/lib/account';
+import { Box, Button, Divider, Stack, Tooltip, Typography } from '@linode/ui';
 import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUp from '@mui/icons-material/KeyboardArrowUp';
-import { Theme, styled, useMediaQuery } from '@mui/material';
+import { styled, useMediaQuery } from '@mui/material';
 import Popover from '@mui/material/Popover';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
-import { Box } from 'src/components/Box';
-import { Button } from 'src/components/Button/Button';
-import { Divider } from 'src/components/Divider';
-import { GravatarByEmail } from 'src/components/GravatarByEmail';
-import { GravatarForProxy } from 'src/components/GravatarForProxy';
+import { Avatar } from 'src/components/Avatar/Avatar';
+import { AvatarForProxy } from 'src/components/AvatarForProxy';
 import { Hidden } from 'src/components/Hidden';
 import { Link } from 'src/components/Link';
-import { Stack } from 'src/components/Stack';
-import { Tooltip } from 'src/components/Tooltip';
-import { Typography } from 'src/components/Typography';
 import { switchAccountSessionContext } from 'src/context/switchAccountSessionContext';
 import { SwitchAccountButton } from 'src/features/Account/SwitchAccountButton';
 import { SwitchAccountDrawer } from 'src/features/Account/SwitchAccountDrawer';
@@ -28,6 +22,9 @@ import { sendSwitchAccountEvent } from 'src/utilities/analytics/customEventAnaly
 import { getStorage, setStorage } from 'src/utilities/storage';
 
 import { getCompanyNameOrEmail } from './utils';
+
+import type { GlobalGrantTypes } from '@linode/api-v4/lib/account';
+import type { Theme } from '@mui/material';
 
 interface MenuLink {
   display: string;
@@ -182,7 +179,9 @@ export const UserMenu = React.memo(() => {
     return matchesSmDown ? undefined : open ? (
       <KeyboardArrowUp sx={sx} />
     ) : (
-      <KeyboardArrowDown sx={{ color: '#9ea4ae', ...sx }} />
+      <KeyboardArrowDown
+        sx={(theme) => ({ color: theme.tokens.color.Neutrals[50], ...sx })}
+      />
     );
   };
 
@@ -205,13 +204,6 @@ export const UserMenu = React.memo(() => {
         title="Profile & Account"
       >
         <Button
-          startIcon={
-            isProxyUser ? (
-              <GravatarForProxy />
-            ) : (
-              <GravatarByEmail email={profile?.email ?? ''} />
-            )
-          }
           sx={(theme) => ({
             backgroundColor: open ? theme.bg.app : undefined,
             height: '50px',
@@ -223,6 +215,7 @@ export const UserMenu = React.memo(() => {
           disableRipple
           endIcon={getEndIcon()}
           onClick={handleClick}
+          startIcon={isProxyUser ? <AvatarForProxy /> : <Avatar />}
         >
           <Hidden mdDown>
             <Stack alignItems={'flex-start'}>
@@ -295,7 +288,7 @@ export const UserMenu = React.memo(() => {
           )}
           <Box>
             <Heading>My Profile</Heading>
-            <Divider color="#9ea4ae" />
+            <Divider />
             <Grid columnSpacing={2} container rowSpacing={1}>
               <Grid container direction="column" wrap="nowrap" xs={6}>
                 {profileLinks.slice(0, 4).map(renderLink)}
@@ -308,7 +301,7 @@ export const UserMenu = React.memo(() => {
           {hasAccountAccess && (
             <Box>
               <Heading>Account</Heading>
-              <Divider color="#9ea4ae" />
+              <Divider />
               <Stack mt={1} spacing={1.5}>
                 {accountLinks.map((menuLink) =>
                   menuLink.hide ? null : (

@@ -1,11 +1,8 @@
-import { ManagedServicePayload } from '@linode/api-v4/lib/managed';
-import { APIError } from '@linode/api-v4/lib/types';
+import { Button } from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
-import { FormikBag } from 'formik';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
-import AddNewLink from 'src/components/AddNewLink';
 import { DeletionDialog } from 'src/components/DeletionDialog/DeletionDialog';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import OrderBy from 'src/components/OrderBy';
@@ -34,12 +31,12 @@ import {
 
 import MonitorDrawer from '../MonitorDrawer';
 import { HistoryDrawer } from './HistoryDrawer';
-import {
-  StyledGrid,
-  StyledTableRow,
-  StyledTableSortCell,
-} from './MonitorTable.styles';
+import { StyledGrid, StyledTableRow } from './MonitorTable.styles';
 import MonitorTableContent from './MonitorTableContent';
+
+import type { ManagedServicePayload } from '@linode/api-v4/lib/managed';
+import type { APIError } from '@linode/api-v4/lib/types';
+import type { FormikBag } from 'formik';
 
 export type Modes = 'create' | 'edit';
 export type FormikProps = FormikBag<{}, ManagedServicePayload>;
@@ -50,8 +47,8 @@ export const MonitorTable = () => {
   const { data, error, isLoading } = useAllManagedMonitorsQuery();
   const {
     data: issues,
-    error: issuesError,
-    isLoading: areIssuesLoading,
+    failureReason,
+    isFetching: areIssuesFetching,
   } = useAllManagedIssuesQuery();
   const { data: credentials } = useAllManagedCredentialsQuery();
   const { data: contacts } = useAllManagedContactsQuery();
@@ -180,10 +177,12 @@ export const MonitorTable = () => {
         <Grid>
           <Grid alignItems="flex-end" container>
             <StyledGrid>
-              <AddNewLink
-                label="Add Monitor"
+              <Button
+                buttonType="primary"
                 onClick={() => setMonitorDrawerOpen(true)}
-              />
+              >
+                Add Monitor
+              </Button>
             </StyledGrid>
           </Grid>
         </Grid>
@@ -203,7 +202,7 @@ export const MonitorTable = () => {
                 <Table aria-label="List of Your Managed Service Monitors">
                   <TableHead>
                     <StyledTableRow>
-                      <StyledTableSortCell
+                      <TableSortCell
                         active={orderBy === 'label'}
                         data-qa-monitor-label-header
                         direction={order}
@@ -211,7 +210,7 @@ export const MonitorTable = () => {
                         label={'label'}
                       >
                         Monitor
-                      </StyledTableSortCell>
+                      </TableSortCell>
                       <TableSortCell
                         active={orderBy === 'status'}
                         data-qa-monitor-status-header
@@ -280,8 +279,8 @@ export const MonitorTable = () => {
         issues={issues?.filter((thisIssue) =>
           thisIssue.services.includes(editID)
         )}
-        error={issuesError}
-        loading={areIssuesLoading}
+        error={failureReason}
+        isFetching={areIssuesFetching}
         monitorLabel={editLabel}
         onClose={() => setHistoryDrawerOpen(false)}
         open={historyDrawerOpen}

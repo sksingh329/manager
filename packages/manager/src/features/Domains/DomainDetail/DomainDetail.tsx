@@ -1,15 +1,12 @@
+import { CircleProgress, Notice, Paper, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
+import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import * as React from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { LandingHeader } from 'src/components/LandingHeader';
-import { Notice } from 'src/components/Notice/Notice';
-import { Paper } from 'src/components/Paper';
 import { TagCell } from 'src/components/TagCell/TagCell';
-import { Typography } from 'src/components/Typography';
 import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
 import {
   useDomainQuery,
@@ -18,17 +15,21 @@ import {
 } from 'src/queries/domains';
 
 import { DeleteDomain } from '../DeleteDomain';
-import DomainRecords from '../DomainRecords';
 import { DownloadDNSZoneFileButton } from '../DownloadDNSZoneFileButton';
+import { DomainRecords } from './DomainRecords/DomainRecords';
+
+import type { DomainState } from 'src/routes/domains';
 
 export const DomainDetail = () => {
-  const params = useParams<{ domainId: string }>();
-  const domainId = Number(params.domainId);
-
-  const history = useHistory();
-  const location = useLocation<{ recordError?: string }>();
-
-  const { data: domain, error, isLoading } = useDomainQuery(domainId);
+  const navigate = useNavigate();
+  const params = useParams({ from: '/domains/$domainId' });
+  const domainId = params.domainId;
+  const location = useLocation();
+  const locationState = location.state as DomainState;
+  const { data: domain, error, isLoading } = useDomainQuery(
+    domainId,
+    !!domainId
+  );
   const { mutateAsync: updateDomain } = useUpdateDomainMutation();
   const {
     data: records,
@@ -110,11 +111,11 @@ export const DomainDetail = () => {
           />
         }
         docsLabel="Docs"
-        docsLink="https://www.linode.com/docs/guides/dns-manager/"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/dns-manager"
         title="Domain Details"
       />
-      {location.state && location.state.recordError && (
-        <StyledNotice text={location.state.recordError} variant="error" />
+      {locationState?.recordError && (
+        <StyledNotice text={locationState.recordError} variant="error" />
       )}
       <StyledRootGrid container>
         <StyledMainGrid xs={12}>
@@ -141,7 +142,7 @@ export const DomainDetail = () => {
             <DeleteDomain
               domainId={domain.id}
               domainLabel={domain.domain}
-              onSuccess={() => history.push('/domains')}
+              onSuccess={() => navigate({ to: '/domains' })}
             />
           </StyledDiv>
         </StyledTagSectionGrid>

@@ -1,43 +1,55 @@
+import { BetaChip, Box, Typography } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { makeStyles } from 'tss-react/mui';
 
+import LogoWhite from 'src/assets/icons/db-logo-white.svg';
 import Logo from 'src/assets/icons/db-logo.svg';
-import { BetaChip } from 'src/components/BetaChip/BetaChip';
-import { Box } from 'src/components/Box';
-import { Typography } from 'src/components/Typography';
+import { useIsDatabasesEnabled } from 'src/features/Databases/utilities';
 
-import type { Theme } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
 
 interface Props {
-  style?: React.CSSProperties;
+  sx?: SxProps<Theme>;
 }
 
-const useStyles = makeStyles()((theme: Theme) => ({
-  betaChip: {
-    backgroundColor: '#727272',
-    color: theme.color.white,
-  },
-  logo: {
-    color: '#32363C',
-    display: 'flex',
-    marginTop: '8px',
-  },
-}));
+export const DatabaseLogo = ({ sx }: Props) => {
+  const theme = useTheme();
 
-export const DatabaseLogo = ({ style }: Props) => {
-  const { classes } = useStyles();
+  const { isDatabasesV2GA } = useIsDatabasesEnabled();
   return (
     <Box
       display="flex"
       justifyContent="center"
-      sx={style ? style : { margin: '20px' }}
+      sx={sx ? sx : { margin: '20px' }}
     >
       <Typography sx={{ display: 'inline-block', textAlign: 'center' }}>
-        <BetaChip className={classes.betaChip} component="span" />
-        <span className={classes.logo}>
-          Powered by <Logo />
-        </span>
+        {!isDatabasesV2GA && (
+          <BetaChip
+            sx={{
+              backgroundColor:
+                theme.palette.mode === 'light'
+                  ? theme.color.label
+                  : theme.color.grey7,
+              color:
+                theme.palette.mode === 'light' ? theme.color.white : 'primary',
+            }}
+            component="span"
+          />
+        )}
+        <Typography
+          sx={{
+            color: theme.palette.mode === 'light' ? theme.color.headline : '',
+            display: 'flex',
+            marginTop: !isDatabasesV2GA ? theme.spacing(1) : '',
+          }}
+          component="span"
+        >
+          Powered by &nbsp;
+          {theme.palette.mode === 'light' ? <Logo /> : <LogoWhite />}
+        </Typography>
       </Typography>
     </Box>
   );
 };
+
+export default DatabaseLogo;

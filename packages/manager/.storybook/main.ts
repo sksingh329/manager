@@ -5,6 +5,7 @@ const config: StorybookConfig = {
   stories: [
     '../src/components/**/*.@(mdx|stories.@(js|ts|jsx|tsx))',
     '../src/features/**/*.@(mdx|stories.@(js|ts|jsx|tsx))',
+    '../../ui/src/components/**/*.@(mdx|stories.@(js|ts|jsx|tsx))',
   ],
   addons: [
     '@storybook/addon-docs',
@@ -14,6 +15,7 @@ const config: StorybookConfig = {
     '@storybook/addon-actions',
     'storybook-dark-mode',
     '@storybook/addon-storysource',
+    '@storybook/addon-a11y',
   ],
   staticDirs: ['../public'],
   framework: {
@@ -22,6 +24,11 @@ const config: StorybookConfig = {
   },
   typescript: {
     reactDocgenTypescriptOptions: {
+      // Speeds up Storybook build time
+      compilerOptions: {
+        allowSyntheticDefaultImports: false,
+        esModuleInterop: false,
+      },
       // makes union prop types like variant and size appear as select controls
       shouldExtractLiteralValuesFromEnum: true,
       // makes string and boolean types that can be undefined appear as inputs and switches
@@ -32,7 +39,6 @@ const config: StorybookConfig = {
           ? !/node_modules\/(?!@mui)/.test(prop.parent.fileName)
           : true,
     },
-
     reactDocgen: 'react-docgen-typescript',
   },
   docs: {
@@ -47,6 +53,17 @@ const config: StorybookConfig = {
       },
       define: {
         'process.env': {},
+      },
+      optimizeDeps: {
+        include: [
+          '@storybook/react',
+          '@storybook/react-vite',
+          'react',
+          'react-dom',
+        ],
+        esbuildOptions: {
+          target: 'esnext',
+        },
       },
     });
   },

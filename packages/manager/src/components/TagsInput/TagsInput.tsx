@@ -1,14 +1,14 @@
+import { Autocomplete, Chip } from '@linode/ui';
 import CloseIcon from '@mui/icons-material/Close';
-import { APIError } from '@linode/api-v4/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { concat } from 'ramda';
 import * as React from 'react';
 
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
-import { Chip } from 'src/components/Chip';
 import { useProfile } from 'src/queries/profile/profile';
-import { updateTagsSuggestionsData, useTagSuggestions } from 'src/queries/tags';
+import { updateTagsSuggestionsData, useAllTagsQuery } from 'src/queries/tags';
 import { getErrorMap } from 'src/utilities/errorUtils';
+
+import type { APIError } from '@linode/api-v4/lib/types';
 
 export interface Tag {
   label: string;
@@ -70,7 +70,7 @@ export const TagsInput = (props: TagsInputProps) => {
   const [errors, setErrors] = React.useState<APIError[]>([]);
 
   const { data: profile } = useProfile();
-  const { data: accountTags, error: accountTagsError } = useTagSuggestions(
+  const { data: accountTags, error: accountTagsError } = useAllTagsQuery(
     !profile?.restricted
   );
 

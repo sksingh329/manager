@@ -1,19 +1,22 @@
+import {
+  Accordion,
+  Button,
+  FormHelperText,
+  InputAdornment,
+  TextField,
+} from '@linode/ui';
 import { useTheme } from '@mui/material';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
 
-import { Accordion } from 'src/components/Accordion';
-import { Button } from 'src/components/Button/Button';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import { FormHelperText } from 'src/components/FormHelperText';
-import { InputAdornment } from 'src/components/InputAdornment';
-import { TextField } from 'src/components/TextField';
 import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
-import { useNodeBalancersFirewallsQuery } from 'src/queries/nodebalancers';
 import {
   useNodeBalancerQuery,
   useNodebalancerUpdateMutation,
 } from 'src/queries/nodebalancers';
+import { useNodeBalancersFirewallsQuery } from 'src/queries/nodebalancers';
 
 import { NodeBalancerDeleteDialog } from '../NodeBalancerDeleteDialog';
 import { NodeBalancerFirewalls } from './NodeBalancerFirewalls';
@@ -34,13 +37,13 @@ export const NodeBalancerSettings = () => {
 
   const {
     error: labelError,
-    isLoading: isUpdatingLabel,
+    isPending: isUpdatingLabel,
     mutateAsync: updateNodeBalancerLabel,
   } = useNodebalancerUpdateMutation(id);
 
   const {
     error: throttleError,
-    isLoading: isUpdatingThrottle,
+    isPending: isUpdatingThrottle,
     mutateAsync: updateNodeBalancerThrottle,
   } = useNodebalancerUpdateMutation(id);
 
@@ -140,6 +143,7 @@ export const NodeBalancerSettings = () => {
       <Accordion defaultExpanded heading="Delete NodeBalancer">
         <Button
           buttonType="primary"
+          data-testid="delete-nodebalancer"
           disabled={isNodeBalancerReadOnly}
           onClick={() => setIsDeleteDialogOpen(true)}
         >
@@ -156,4 +160,8 @@ export const NodeBalancerSettings = () => {
   );
 };
 
-export default NodeBalancerSettings;
+export const nodeBalancerSettingsLazyRoute = createLazyRoute(
+  '/nodebalancers/$nodeBalancerId/settings'
+)({
+  component: NodeBalancerSettings,
+});

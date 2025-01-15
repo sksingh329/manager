@@ -2,11 +2,6 @@ import { linodeFactory, regionFactory, VLANFactory } from 'src/factories';
 import { mockGetRegions } from 'support/intercepts/regions';
 import { ui } from 'support/ui';
 import { linodeCreatePage } from 'support/ui/pages';
-import {
-  mockAppendFeatureFlags,
-  mockGetFeatureFlagClientstream,
-} from 'support/intercepts/feature-flags';
-import { makeFeatureFlagData } from 'support/util/feature-flags';
 import { chooseRegion } from 'support/util/regions';
 import {
   randomIp,
@@ -18,14 +13,6 @@ import { mockGetVLANs } from 'support/intercepts/vlans';
 import { mockCreateLinode } from 'support/intercepts/linodes';
 
 describe('Create Linode with VLANs', () => {
-  // TODO Remove feature flag mocks when `linodeCreateRefactor` flag is retired.
-  beforeEach(() => {
-    mockAppendFeatureFlags({
-      linodeCreateRefactor: makeFeatureFlagData(true),
-    });
-    mockGetFeatureFlagClientstream();
-  });
-
   /*
    * - Uses mock API data to confirm VLAN attachment UI flow during Linode create.
    * - Confirms that outgoing Linode create API request contains expected data for VLAN.
@@ -55,7 +42,7 @@ describe('Create Linode with VLANs', () => {
 
     // Fill out necessary Linode create fields.
     linodeCreatePage.selectRegionById(mockLinodeRegion.id);
-    linodeCreatePage.selectImage('Debian 11');
+    linodeCreatePage.selectImage('Debian 12');
     linodeCreatePage.setLabel(mockLinode.label);
     linodeCreatePage.selectPlan('Shared CPU', 'Nanode 1 GB');
     linodeCreatePage.setRootPassword(randomString(32));
@@ -143,7 +130,7 @@ describe('Create Linode with VLANs', () => {
 
     // Fill out necessary Linode create fields.
     linodeCreatePage.selectRegionById(mockLinodeRegion.id);
-    linodeCreatePage.selectImage('Debian 11');
+    linodeCreatePage.selectImage('Debian 12');
     linodeCreatePage.setLabel(mockLinode.label);
     linodeCreatePage.selectPlan('Shared CPU', 'Nanode 1 GB');
     linodeCreatePage.setRootPassword(randomString(32));

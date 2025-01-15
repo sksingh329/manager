@@ -1,11 +1,10 @@
+import { TooltipIcon, convertToKebabCase } from '@linode/ui';
 import { IconButton, ListItemText } from '@mui/material';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import * as React from 'react';
 
 import KebabIcon from 'src/assets/icons/kebab.svg';
-import { TooltipIcon } from 'src/components/TooltipIcon';
-import { convertToKebabCase } from 'src/utilities/convertToKebobCase';
 
 export interface Action {
   disabled?: boolean;
@@ -63,6 +62,9 @@ export const ActionMenu = React.memo((props: ActionMenuProps) => {
       }
     }
   };
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>) =>
+    e.currentTarget.focus();
 
   if (!actionsList || actionsList.length === 0) {
     return null;
@@ -139,6 +141,7 @@ export const ActionMenu = React.memo((props: ActionMenuProps) => {
             data-testid={a.title}
             disabled={a.disabled}
             key={idx}
+            onMouseEnter={handleMouseEnter}
           >
             <ListItemText primaryTypographyProps={{ color: 'inherit' }}>
               {a.title}

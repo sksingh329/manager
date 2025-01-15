@@ -1,11 +1,8 @@
+import { Accordion, Button, Notice, Typography } from '@linode/ui';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
 
-import { Accordion } from 'src/components/Accordion';
-import { Button } from 'src/components/Button/Button';
-import { Notice } from 'src/components/Notice/Notice';
 import { TypeToConfirmDialog } from 'src/components/TypeToConfirmDialog/TypeToConfirmDialog';
-import { Typography } from 'src/components/Typography';
 import { useEventsPollingActions } from 'src/queries/events/events';
 import {
   useDeleteLinodeMutation,
@@ -22,7 +19,7 @@ export const LinodeSettingsDeletePanel = (props: Props) => {
   const { data: linode } = useLinodeQuery(linodeId);
   const {
     error,
-    isLoading,
+    isPending,
     mutateAsync: deleteLinode,
   } = useDeleteLinodeMutation(linodeId);
 
@@ -62,8 +59,9 @@ export const LinodeSettingsDeletePanel = (props: Props) => {
           type: 'Linode',
         }}
         errors={error}
+        expand
         label={'Linode Label'}
-        loading={isLoading}
+        loading={isPending}
         onClick={onDelete}
         onClose={() => setOpen(false)}
         open={open}

@@ -1,26 +1,32 @@
+import { Box, Typography } from '@linode/ui';
 import { useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { HashLink } from 'react-router-hash-link';
 
-import { Box } from 'src/components/Box';
+import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
 import {
   DISK_ENCRYPTION_NODE_POOL_GUIDANCE_COPY as UNENCRYPTED_LKE_LINODE_GUIDANCE_COPY,
   UNENCRYPTED_STANDARD_LINODE_GUIDANCE_COPY,
 } from 'src/components/Encryption/constants';
 import { useIsDiskEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
 import { Link } from 'src/components/Link';
-import { Typography } from 'src/components/Typography';
 import { AccessTable } from 'src/features/Linodes/AccessTable';
+import { usePreferences } from 'src/queries/profile/preferences';
 import { useProfile } from 'src/queries/profile/profile';
 import { pluralize } from 'src/utilities/pluralize';
 
-import { encryptionStatusTestId } from '../Kubernetes/KubernetesClusterDetail/NodePoolsDisplay/NodeTable';
 import { EncryptedStatus } from '../Kubernetes/KubernetesClusterDetail/NodePoolsDisplay/NodeTable';
+import { encryptionStatusTestId } from '../Kubernetes/KubernetesClusterDetail/NodePoolsDisplay/NodeTable';
+import { HighPerformanceVolumeIcon } from './HighPerformanceVolumeIcon';
 import {
   StyledBodyGrid,
   StyledColumnLabelGrid,
+  StyledCopyTooltip,
+  StyledIPv4Box,
+  StyledIPv4Item,
+  StyledIPv4Label,
   StyledLabelBox,
   StyledListItem,
   StyledSummaryGrid,
@@ -36,9 +42,10 @@ import type {
   EncryptionStatus,
   Interface,
   Linode,
+  LinodeCapabilities,
 } from '@linode/api-v4/lib/linodes/types';
 import type { Subnet } from '@linode/api-v4/lib/vpcs';
-import type { TypographyProps } from 'src/components/Typography';
+import type { TypographyProps } from '@linode/ui';
 
 interface LinodeEntityDetailProps {
   id: number;
@@ -61,6 +68,7 @@ export interface BodyProps {
   ipv6: Linode['ipv6'];
   isLKELinode: boolean; // indicates whether linode belongs to an LKE cluster
   isVPCOnlyLinode: boolean;
+  linodeCapabilities: LinodeCapabilities[];
   linodeId: number;
   linodeIsInDistributedRegion: boolean;
   linodeLabel: string;
@@ -80,6 +88,7 @@ export const LinodeEntityDetailBody = React.memo((props: BodyProps) => {
     ipv6,
     isLKELinode,
     isVPCOnlyLinode,
+    linodeCapabilities,
     linodeId,
     linodeIsInDistributedRegion,
     linodeLabel,
@@ -90,6 +99,9 @@ export const LinodeEntityDetailBody = React.memo((props: BodyProps) => {
   } = props;
 
   const { data: profile } = useProfile();
+  const { data: maskSensitiveDataPreference } = usePreferences(
+    (preferences) => preferences?.maskSensitiveData
+  );
   const username = profile?.username ?? 'none';
 
   const theme = useTheme();
@@ -145,9 +157,23 @@ export const LinodeEntityDetailBody = React.memo((props: BodyProps) => {
               <Typography>{gbRAM} GB RAM</Typography>
             </Grid>
             <Grid lg={6} sm={12} xs={6}>
-              <Typography>
-                {pluralize('Volume', 'Volumes', numVolumes)}
-              </Typography>
+              <Box
+                sx={(theme) => ({
+                  alignItems: 'center',
+                  display: 'flex',
+                  gap: theme.spacing(),
+                })}
+              >
+                <Typography>
+                  {pluralize('Volume', 'Volumes', numVolumes)}
+                </Typography>
+
+                {numVolumes > 0 && (
+                  <HighPerformanceVolumeIcon
+                    linodeCapabilities={linodeCapabilities}
+                  />
+                )}
+              </Box>
             </Grid>
             {isDiskEncryptionFeatureEnabled && encryptionStatus && (
               <Grid>
@@ -170,6 +196,7 @@ export const LinodeEntityDetailBody = React.memo((props: BodyProps) => {
             )}
           </StyledSummaryGrid>
         </Grid>
+
         <Grid container sm={isDisplayingEncryptedStatus ? 8 : 9} xs={12}>
           <Grid container xs={12}>
             <AccessTable
@@ -187,17 +214,35 @@ export const LinodeEntityDetailBody = React.memo((props: BodyProps) => {
                   </Typography>
                 ) : undefined
               }
+              rows={[
+                {
+                  isMasked: maskSensitiveDataPreference,
+                  maskedTextLength: 'ipv4',
+                  text: firstAddress,
+                },
+                {
+                  isMasked: maskSensitiveDataPreference,
+                  maskedTextLength: 'ipv6',
+                  text: secondAddress,
+                },
+              ]}
               gridSize={{ lg: 5, xs: 12 }}
               isVPCOnlyLinode={isVPCOnlyLinode}
-              rows={[{ text: firstAddress }, { text: secondAddress }]}
               sx={{ padding: 0 }}
               title={`Public IP Address${numIPAddresses > 1 ? 'es' : ''}`}
             />
             <AccessTable
               rows={[
-                { heading: 'SSH Access', text: sshLink(ipv4[0]) },
+                {
+                  heading: 'SSH Access',
+                  isMasked: maskSensitiveDataPreference,
+                  text: sshLink(ipv4[0]),
+                },
                 {
                   heading: 'LISH Console via SSH',
+                  isMasked: !linodeIsInDistributedRegion
+                    ? maskSensitiveDataPreference
+                    : false,
                   text: linodeIsInDistributedRegion
                     ? 'N/A'
                     : lishLink(username, region, linodeLabel),
@@ -229,11 +274,13 @@ export const LinodeEntityDetailBody = React.memo((props: BodyProps) => {
               margin: 0,
               padding: '0 0 8px 0',
               [theme.breakpoints.down('md')]: {
+                alignItems: 'start',
                 display: 'flex',
                 flexDirection: 'column',
                 paddingLeft: '8px',
               },
             }}
+            alignItems="center"
             container
             direction="row"
             spacing={2}
@@ -250,21 +297,29 @@ export const LinodeEntityDetailBody = React.memo((props: BodyProps) => {
               </StyledListItem>
             </StyledVPCBox>
             <StyledVPCBox>
-              <StyledListItem>
+              <StyledListItem sx={{ ...sxLastListItem }}>
                 <StyledLabelBox component="span" data-testid="subnets-string">
-                  Subnets:
+                  Subnet:
                 </StyledLabelBox>{' '}
                 {getSubnetsString(linodeAssociatedSubnets ?? [])}
               </StyledListItem>
             </StyledVPCBox>
-            <StyledVPCBox>
-              <StyledListItem sx={{ ...sxLastListItem }}>
-                <StyledLabelBox component="span" data-testid="vpc-ipv4">
-                  VPC IPv4:
-                </StyledLabelBox>{' '}
-                {configInterfaceWithVPC?.ipv4?.vpc}
-              </StyledListItem>
-            </StyledVPCBox>
+            {configInterfaceWithVPC?.ipv4?.vpc && (
+              <StyledIPv4Box>
+                <StyledIPv4Label data-testid="vpc-ipv4">
+                  VPC IPv4
+                </StyledIPv4Label>
+                <StyledIPv4Item component="span" data-testid="vpc-ipv4">
+                  <CopyTooltip
+                    copyableText
+                    text={configInterfaceWithVPC.ipv4.vpc}
+                  />
+                  <Box sx={{ ml: 1, position: 'relative', top: 1 }}>
+                    <StyledCopyTooltip text={configInterfaceWithVPC.ipv4.vpc} />
+                  </Box>
+                </StyledIPv4Item>
+              </StyledIPv4Box>
+            )}
           </Grid>
         </Grid>
       )}

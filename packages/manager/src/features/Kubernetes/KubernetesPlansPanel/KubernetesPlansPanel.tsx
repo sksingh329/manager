@@ -27,6 +27,7 @@ interface Props {
   getTypeCount: (planId: string) => number;
   hasSelectedRegion: boolean;
   header?: string;
+  isAPLEnabled?: boolean;
   isPlanPanelDisabled: (planType?: LinodeTypeClass) => boolean;
   isSelectedRegionEligibleForPlan: (planType?: LinodeTypeClass) => boolean;
   isSubmitting?: boolean;
@@ -48,6 +49,7 @@ export const KubernetesPlansPanel = (props: Props) => {
     getTypeCount,
     hasSelectedRegion,
     header,
+    isAPLEnabled,
     isPlanPanelDisabled,
     isSelectedRegionEligibleForPlan,
     onAdd,
@@ -66,6 +68,9 @@ export const KubernetesPlansPanel = (props: Props) => {
     selectedRegionId || '',
     Boolean(flags.soldOutChips) && selectedRegionId !== undefined
   );
+
+  const isPlanDisabledByAPL = (plan: 'shared' | LinodeTypeClass) =>
+    plan === 'shared' && Boolean(isAPLEnabled);
 
   const _types = types.filter(
     (type) =>
@@ -87,6 +92,7 @@ export const KubernetesPlansPanel = (props: Props) => {
         plansForThisLinodeTypeClass,
       } = extractPlansInformation({
         disableLargestGbPlansFlag: flags.disableLargestGbPlans,
+        isAPLEnabled,
         plans: plansMap,
         regionAvailabilities,
         selectedRegionId,
@@ -102,10 +108,14 @@ export const KubernetesPlansPanel = (props: Props) => {
                 )}
                 hasMajorityOfPlansDisabled={hasMajorityOfPlansDisabled}
                 hasSelectedRegion={hasSelectedRegion}
+                isAPLEnabled={isAPLEnabled}
                 planType={plan}
                 regionsData={regionsData}
               />
               <KubernetesPlanContainer
+                wholePanelIsDisabled={
+                  isPlanPanelDisabled(plan) || isPlanDisabledByAPL(plan)
+                }
                 allDisabledPlans={allDisabledPlans}
                 getTypeCount={getTypeCount}
                 hasMajorityOfPlansDisabled={hasMajorityOfPlansDisabled}
@@ -115,12 +125,11 @@ export const KubernetesPlansPanel = (props: Props) => {
                 selectedId={selectedId}
                 selectedRegionId={selectedRegionId}
                 updatePlanCount={updatePlanCount}
-                wholePanelIsDisabled={isPlanPanelDisabled(plan)}
               />
             </>
           );
         },
-        title: planTabInfoContent[plan === 'edge' ? 'dedicated' : plan]?.title,
+        title: planTabInfoContent[plan]?.title,
       };
     }
   );

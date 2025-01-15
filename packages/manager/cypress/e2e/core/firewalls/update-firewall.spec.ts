@@ -14,13 +14,11 @@ import {
   firewallRulesFactory,
 } from 'src/factories';
 import { authenticate } from 'support/api/authentication';
-import { containsClick } from 'support/helpers';
 import {
   interceptUpdateFirewallLinodes,
   interceptUpdateFirewallRules,
 } from 'support/intercepts/firewalls';
 import { randomItem, randomString, randomLabel } from 'support/util/random';
-import { fbtVisible, fbtClick } from 'support/helpers';
 import { ui } from 'support/ui';
 import { chooseRegion } from 'support/util/regions';
 import { cleanUp } from 'support/util/cleanup';
@@ -84,11 +82,13 @@ const addFirewallRules = (rule: FirewallRuleType, direction: string) => {
       const description = rule.description
         ? rule.description
         : 'test-description';
-      containsClick('Label').type('{selectall}{backspace}' + label);
-      containsClick('Description').type(description);
+      cy.contains('Label')
+        .click()
+        .type('{selectall}{backspace}' + label);
+      cy.contains('Description').click().type(description);
 
       const action = rule.action ? getRuleActionLabel(rule.action) : 'Accept';
-      containsClick(action).click();
+      cy.contains(action).click();
 
       ui.button
         .findByTitle('Add Rule')
@@ -170,6 +170,9 @@ describe('update firewall', () => {
   before(() => {
     cleanUp('firewalls');
   });
+  beforeEach(() => {
+    cy.tag('method:e2e');
+  });
 
   /*
    * - Confirms that a linode can be added and removed from a firewall.
@@ -219,7 +222,7 @@ describe('update firewall', () => {
       // Confirm that the inbound rules are listed on edit page with expected configuration
       cy.findByText(inboundRule.label!)
         .should('be.visible')
-        .closest('li')
+        .closest('tr')
         .within(() => {
           cy.findByText(inboundRule.protocol).should('be.visible');
           cy.findByText(inboundRule.ports!).should('be.visible');
@@ -234,7 +237,7 @@ describe('update firewall', () => {
       // Confirm that the outbound rules are listed on edit page with expected configuration
       cy.findByText(outboundRule.label!)
         .should('be.visible')
-        .closest('li')
+        .closest('tr')
         .within(() => {
           cy.findByText(outboundRule.protocol).should('be.visible');
           cy.findByText(outboundRule.ports!).should('be.visible');
@@ -343,8 +346,8 @@ describe('update firewall', () => {
         .should('be.visible')
         .closest('tr')
         .within(() => {
-          fbtVisible('Disable');
-          fbtClick('Disable');
+          cy.findByText('Disable').should('be.visible');
+          cy.findByText('Disable').click();
         });
 
       ui.dialog
@@ -372,8 +375,8 @@ describe('update firewall', () => {
         .should('be.visible')
         .closest('tr')
         .within(() => {
-          fbtVisible('Enable');
-          fbtClick('Enable');
+          cy.findByText('Enable').should('be.visible');
+          cy.findByText('Enable').click();
         });
 
       ui.dialog

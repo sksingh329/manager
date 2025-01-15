@@ -1,10 +1,6 @@
+import { Box, Button, Notice, Typography } from '@linode/ui';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
-
-import { Box } from 'src/components/Box';
-import { Button } from 'src/components/Button/Button';
-import { Notice } from 'src/components/Notice/Notice';
-import { Typography } from 'src/components/Typography';
 
 interface Props {
   hasSecurityQuestions: boolean;
@@ -28,7 +24,7 @@ export const VerificationDetailsBanner = ({
   }
 
   return (
-    <Notice important spacing={1} variant="warning">
+    <Notice important variant="warning">
       <Box
         alignItems="center"
         display="flex"

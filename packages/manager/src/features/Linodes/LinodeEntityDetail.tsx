@@ -1,10 +1,10 @@
+import { Notice } from '@linode/ui';
 import * as React from 'react';
 
 import { EntityDetail } from 'src/components/EntityDetail/EntityDetail';
-import { Notice } from 'src/components/Notice/Notice';
 import { getIsDistributedRegion } from 'src/components/RegionSelect/RegionSelect.utils';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
-import { notificationContext as _notificationContext } from 'src/features/NotificationCenter/NotificationContext';
+import { notificationCenterContext as _notificationContext } from 'src/features/NotificationCenter/NotificationCenterContext';
 import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
 import { useVPCConfigInterface } from 'src/hooks/useVPCConfigInterface';
 import { useInProgressEvents } from 'src/queries/events/events';
@@ -25,7 +25,7 @@ import {
 
 import type { LinodeHandlers } from './LinodesLanding/LinodesLanding';
 import type { Linode } from '@linode/api-v4/lib/linodes/types';
-import type { TypographyProps } from 'src/components/Typography';
+import type { TypographyProps } from '@linode/ui';
 
 interface LinodeEntityDetailProps {
   id: number;
@@ -117,6 +117,7 @@ export const LinodeEntityDetail = (props: Props) => {
             ipv6={trimmedIPv6}
             isLKELinode={Boolean(linode.lke_cluster_id)}
             isVPCOnlyLinode={isVPCOnlyLinode}
+            linodeCapabilities={linode.capabilities}
             linodeId={linode.id}
             linodeIsInDistributedRegion={linodeIsInDistributedRegion}
             linodeLabel={linode.label}

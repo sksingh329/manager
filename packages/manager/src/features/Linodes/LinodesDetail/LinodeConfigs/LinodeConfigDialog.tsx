@@ -1,3 +1,19 @@
+import {
+  Autocomplete,
+  Box,
+  Button,
+  CircleProgress,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  FormHelperText,
+  Notice,
+  Radio,
+  TextField,
+  Toggle,
+  TooltipIcon,
+  Typography,
+} from '@linode/ui';
 import { useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,24 +23,10 @@ import { equals, pathOr, repeat } from 'ramda';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
-import { Box } from 'src/components/Box';
-import { Button } from 'src/components/Button/Button';
-import { CircleProgress } from 'src/components/CircleProgress';
 import { Dialog } from 'src/components/Dialog/Dialog';
-import { Divider } from 'src/components/Divider';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
-import { FormControl } from 'src/components/FormControl';
-import { FormControlLabel } from 'src/components/FormControlLabel';
-import { FormHelperText } from 'src/components/FormHelperText';
 import { FormLabel } from 'src/components/FormLabel';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { Radio } from 'src/components/Radio/Radio';
-import { TextField } from 'src/components/TextField';
-import { Toggle } from 'src/components/Toggle/Toggle';
-import { TooltipIcon } from 'src/components/TooltipIcon';
-import { Typography } from 'src/components/Typography';
 import { DeviceSelection } from 'src/features/Linodes/LinodesDetail/LinodeRescue/DeviceSelection';
 import { titlecase } from 'src/features/Linodes/presentation';
 import {
@@ -288,7 +290,7 @@ export const LinodeConfigDialog = (props: Props) => {
   const [
     primaryInterfaceIndex,
     setPrimaryInterfaceIndex,
-  ] = React.useState<number>();
+  ] = React.useState<number>(0);
 
   const regionHasVLANS = regions.some(
     (thisRegion) =>
@@ -416,7 +418,7 @@ export const LinodeConfigDialog = (props: Props) => {
 
       if (vpcId) {
         queryClient.invalidateQueries({
-          queryKey: vpcQueries.all.queryKey,
+          queryKey: vpcQueries.all._def,
         });
         queryClient.invalidateQueries({
           queryKey: vpcQueries.paginated._def,
@@ -684,7 +686,7 @@ export const LinodeConfigDialog = (props: Props) => {
       Configure the network that a selected interface will connect to
       &quot;Public Internet&quot;, VLAN, or VPC. Each Linode can have up to
       three Network Interfaces. For more information, see our{' '}
-      <Link to="https://www.linode.com/docs/products/networking/vlans/guides/attach-to-compute-instance/#attaching-a-vlan-to-an-existing-compute-instance">
+      <Link to="https://techdocs.akamai.com/cloud-computing/docs/attach-a-vlan-to-a-compute-instance#attaching-a-vlan-to-an-existing-compute-instance">
         Network Interfaces guide
       </Link>
       .
@@ -1002,7 +1004,7 @@ export const LinodeConfigDialog = (props: Props) => {
                   disabled={isReadOnly}
                   label="Primary Interface (Default Route)"
                   options={getPrimaryInterfaceOptions(values.interfaces)}
-                  value={primaryInterfaceOptions[primaryInterfaceIndex ?? 0]}
+                  value={primaryInterfaceOptions[primaryInterfaceIndex]}
                 />
                 <Divider
                   sx={{
@@ -1152,7 +1154,7 @@ export const LinodeConfigDialog = (props: Props) => {
                         tooltipText={
                           <>
                             Automatically configure static networking
-                            <Link to="https://www.linode.com/docs/platform/network-helper/">
+                            <Link to="https://techdocs.akamai.com/cloud-computing/docs/automatically-configure-networking">
                               (more info)
                             </Link>
                           </>
@@ -1240,7 +1242,7 @@ export const unrecommendedConfigNoticeSelector = ({
   values,
 }: {
   _interface: ExtendedInterface;
-  primaryInterfaceIndex: number | undefined;
+  primaryInterfaceIndex: number;
   thisIndex: number;
   values: EditableFields;
 }): JSX.Element | null => {
@@ -1253,9 +1255,7 @@ export const unrecommendedConfigNoticeSelector = ({
 
   // Edge case: users w/ ability to have multiple VPC interfaces. Scenario 1 & 2 notices not helpful if that's done
   const primaryInterfaceIsVPC =
-    primaryInterfaceIndex !== undefined
-      ? values.interfaces[primaryInterfaceIndex].purpose === 'vpc'
-      : false;
+    values.interfaces[primaryInterfaceIndex].purpose === 'vpc';
 
   /*
    Scenario 1:

@@ -1,22 +1,24 @@
+import { Box, IconButton } from '@linode/ui';
 import Close from '@mui/icons-material/Close';
-import { Box } from 'src/components/Box';
+import { Typography } from '@mui/material';
 import _DialogTitle from '@mui/material/DialogTitle';
-import { SxProps } from '@mui/system';
 import * as React from 'react';
 
-import { IconButton } from 'src/components/IconButton';
+import type { SxProps, Theme } from '@mui/material';
 
-interface DialogTitleProps {
+export interface DialogTitleProps {
   className?: string;
   id?: string;
+  isFetching?: boolean;
   onClose?: () => void;
-  sx?: SxProps;
+  subtitle?: string;
+  sx?: SxProps<Theme>;
   title: string;
 }
 
 const DialogTitle = (props: DialogTitleProps) => {
   const ref = React.useRef<HTMLDivElement>(null);
-  const { className, id, onClose, sx, title } = props;
+  const { className, id, isFetching, onClose, subtitle, sx, title } = props;
 
   React.useEffect(() => {
     if (ref.current === null) {
@@ -47,8 +49,8 @@ const DialogTitle = (props: DialogTitleProps) => {
         data-qa-dialog-title={title}
         data-qa-drawer-title={title}
       >
-        {title}
-        {onClose != null && (
+        <Box component="span">{!isFetching && title}</Box>
+        {onClose !== null && (
           <IconButton
             sx={{
               right: '-12px',
@@ -63,6 +65,7 @@ const DialogTitle = (props: DialogTitleProps) => {
           </IconButton>
         )}
       </Box>
+      {subtitle && <Typography>{subtitle}</Typography>}
     </_DialogTitle>
   );
 };

@@ -84,6 +84,62 @@ module.exports = {
         'testing-library/await-async-query': 'off',
       },
     },
+    // restrict usage of react-router-dom during migration to tanstack/react-router
+    // TODO: TanStack Router - remove this override when migration is complete
+    {
+      files: [
+        // for each new features added to the migration router, add its directory here
+        'src/features/Betas/**/*',
+        'src/features/Domains/**/*',
+        'src/features/Longview/**/*',
+        'src/features/Volumes/**/*',
+      ],
+      rules: {
+        'no-restricted-imports': [
+          // This needs to remain an error however trying to link to a feature that is not yet migrated will break the router
+          // For those cases react-router-dom history.push is still needed
+          // using `eslint-disable-next-line no-restricted-imports` can help bypass those imports
+          'error',
+          {
+            paths: [
+              {
+                importNames: [
+                  // intentionally not including <Link> in this list as this will be updated last globally
+                  'useNavigate',
+                  'useParams',
+                  'useLocation',
+                  'useHistory',
+                  'useRouteMatch',
+                  'matchPath',
+                  'MemoryRouter',
+                  'Route',
+                  'RouteProps',
+                  'Switch',
+                  'Redirect',
+                  'RouteComponentProps',
+                  'withRouter',
+                ],
+                message:
+                  'Please use routing utilities intended for @tanstack/react-router.',
+                name: 'react-router-dom',
+              },
+              {
+                importNames: ['TabLinkList'],
+                message:
+                  'Please use the TanStackTabLinkList component for components being migrated to TanStack Router.',
+                name: 'src/components/Tabs/TabLinkList',
+              },
+              {
+                importNames: ['OrderBy', 'default'],
+                message:
+                  'Please use useOrderV2 hook for components being migrated to TanStack Router.',
+                name: 'src/components/OrderBy',
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
   parser: '@typescript-eslint/parser', // Specifies the ESLint parser
   parserOptions: {
@@ -111,16 +167,44 @@ module.exports = {
     'xss',
     'perfectionist',
     '@linode/eslint-plugin-cloud-manager',
+    'react-refresh',
   ],
   rules: {
+    '@linode/cloud-manager/deprecate-formik': 'warn',
     '@linode/cloud-manager/no-custom-fontWeight': 'error',
-    '@typescript-eslint/camelcase': 'off',
-    "@typescript-eslint/consistent-type-imports": "warn",
+    '@typescript-eslint/consistent-type-imports': 'warn',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/naming-convention': [
+      'warn',
+      {
+        format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
+        leadingUnderscore: 'allow',
+        selector: 'variable',
+        trailingUnderscore: 'allow',
+      },
+      {
+        format: null,
+        modifiers: ['destructured'],
+        selector: 'variable',
+      },
+      {
+        format: ['camelCase', 'PascalCase'],
+        selector: 'function',
+      },
+      {
+        format: ['camelCase'],
+        leadingUnderscore: 'allow',
+        selector: 'parameter',
+      },
+      {
+        format: ['PascalCase'],
+        selector: 'typeLike',
+      },
+    ],
     '@typescript-eslint/no-empty-interface': 'warn',
-    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-inferrable-types': 'off',
     '@typescript-eslint/no-namespace': 'warn',
     // this would disallow usage of ! postfix operator on non null types
@@ -161,6 +245,7 @@ module.exports = {
       'error',
       'rxjs',
       '@mui/core',
+      '@mui/system',
       '@mui/icons-material',
     ],
     'no-throw-literal': 'warn',
@@ -227,8 +312,10 @@ module.exports = {
     'react/no-unescaped-entities': 'warn',
     // requires the definition of proptypes for react components
     'react/prop-types': 'off',
+    'react/self-closing-comp': 'warn',
     'react-hooks/exhaustive-deps': 'warn',
     'react-hooks/rules-of-hooks': 'error',
+    'react-refresh/only-export-components': 'warn',
     'scanjs-rules/assign_to_hostname': 'warn',
     'scanjs-rules/assign_to_href': 'warn',
     'scanjs-rules/assign_to_location': 'warn',

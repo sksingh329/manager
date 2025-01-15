@@ -1,11 +1,11 @@
-import { Theme } from '@mui/material/styles';
+import { Paper, Typography } from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { makeStyles } from 'tss-react/mui';
 
 import { Link } from 'src/components/Link';
-import { Paper } from 'src/components/Paper';
-import { Typography } from 'src/components/Typography';
+
+import type { Theme } from '@mui/material/styles';
 
 const useStyles = makeStyles()((theme: Theme) => ({
   post: {
@@ -35,17 +35,17 @@ export const PopularPosts = () => {
     return (
       <React.Fragment>
         <div className={classes.post}>
-          <Link to="https://www.linode.com/docs/getting-started/">
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/getting-started">
             Getting Started with Linode
           </Link>
         </div>
         <div className={classes.post}>
-          <Link to="https://www.linode.com/docs/security/securing-your-server/">
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/set-up-and-secure-a-compute-instance">
             How to Secure Your Server
           </Link>
         </div>
         <div className={classes.post}>
-          <Link to="https://www.linode.com/docs/troubleshooting/troubleshooting/">
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/troubleshooting-general-issues-on-compute-instances">
             Troubleshooting
           </Link>
         </div>

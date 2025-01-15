@@ -1,22 +1,25 @@
-import { AutoscaleSettings, KubeNodePoolResponse } from '@linode/api-v4';
+import {
+  Button,
+  FormControlLabel,
+  Notice,
+  TextField,
+  Toggle,
+  Typography,
+} from '@linode/ui';
 import { AutoscaleNodePoolSchema } from '@linode/validation/lib/kubernetes.schema';
 import Grid from '@mui/material/Unstable_Grid2';
-import { Theme } from '@mui/material/styles';
-import { makeStyles } from 'tss-react/mui';
 import { useFormik } from 'formik';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
+import { makeStyles } from 'tss-react/mui';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Button } from 'src/components/Button/Button';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { FormControlLabel } from 'src/components/FormControlLabel';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { TextField } from 'src/components/TextField';
-import { Toggle } from 'src/components/Toggle/Toggle';
-import { Typography } from 'src/components/Typography';
 import { useUpdateNodePoolMutation } from 'src/queries/kubernetes';
+
+import type { AutoscaleSettings, KubeNodePoolResponse } from '@linode/api-v4';
+import type { Theme } from '@mui/material/styles';
 
 interface Props {
   clusterId: number;
@@ -72,7 +75,7 @@ export const AutoscalePoolDialog = (props: Props) => {
   const { classes, cx } = useStyles();
   const { enqueueSnackbar } = useSnackbar();
 
-  const { error, isLoading, mutateAsync } = useUpdateNodePoolMutation(
+  const { error, isPending, mutateAsync } = useUpdateNodePoolMutation(
     clusterId,
     nodePool?.id ?? -1
   );
@@ -126,7 +129,7 @@ export const AutoscalePoolDialog = (props: Props) => {
                 values.max === autoscaler?.max) ||
               Object.keys(errors).length !== 0,
             label: 'Save Changes',
-            loading: isLoading || isSubmitting,
+            loading: isPending || isSubmitting,
             onClick: () => handleSubmit(),
           }}
           secondaryButtonProps={{
@@ -165,7 +168,7 @@ export const AutoscalePoolDialog = (props: Props) => {
         Set minimum and maximum node pool constraints for LKE to resize your
         cluster automatically based on resource demand and overall usage.
         Maximum limit is 100 nodes.{' '}
-        <Link to="https://www.linode.com/docs/products/compute/kubernetes/guides/enable-cluster-autoscaling">
+        <Link to="https://techdocs.akamai.com/cloud-computing/docs/manage-nodes-and-node-pools">
           Learn more.
         </Link>
       </Typography>

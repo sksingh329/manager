@@ -1,14 +1,11 @@
+import { Box, Button, Notice, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Box } from 'src/components/Box';
-import { Button } from 'src/components/Button/Button';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { Typography } from 'src/components/Typography';
 import { useSMSOptOutMutation } from 'src/queries/profile/profile';
 import { useProfile } from 'src/queries/profile/profile';
 
@@ -19,7 +16,7 @@ export const SMSMessaging = () => {
   const { data: profile } = useProfile();
   const {
     error,
-    isLoading,
+    isPending,
     mutateAsync: optOut,
     reset,
   } = useSMSOptOutMutation();
@@ -80,7 +77,7 @@ export const SMSMessaging = () => {
           <ActionsPanel
             primaryButtonProps={{
               label: 'Opt Out',
-              loading: isLoading,
+              loading: isPending,
               onClick: onOptOut,
             }}
             secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
@@ -94,7 +91,7 @@ export const SMSMessaging = () => {
         <Typography>
           Opting out of SMS messaging will reduce security and limit the ways
           you can securely access your account.{' '}
-          <Link to="https://www.linode.com/docs/guides/linode-manager-security-controls/">
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/security-controls-for-user-accounts">
             Learn more about security options.
           </Link>
         </Typography>

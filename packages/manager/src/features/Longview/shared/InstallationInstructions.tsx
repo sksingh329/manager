@@ -1,10 +1,12 @@
+import { Typography } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 
-import { Box } from 'src/components/Box';
 import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
 import { Link } from 'src/components/Link';
-import { Typography } from 'src/components/Typography';
+import { MaskableText } from 'src/components/MaskableText/MaskableText';
+
 import {
   StyledContainerGrid,
   StyledInstructionGrid,
@@ -17,6 +19,7 @@ interface Props {
 
 export const InstallationInstructions = React.memo((props: Props) => {
   const command = `curl -s https://lv.linode.com/${props.installationKey} | sudo bash`;
+  const theme = useTheme();
 
   return (
     <Grid container spacing={2}>
@@ -35,15 +38,28 @@ export const InstallationInstructions = React.memo((props: Props) => {
           </Grid>
           <Grid
             sx={{
-              paddingTop: 0,
+              overflowX: 'auto',
               paddingBottom: 0,
               paddingLeft: '8px',
-              overflowX: 'auto',
+              paddingTop: 0,
             }}
           >
-            <pre>
-              <code>{command}</code>
-            </pre>
+            <MaskableText
+              sxVisibilityTooltip={{
+                '& svg': {
+                  height: 'auto',
+                  width: '20px',
+                },
+                marginRight: '24px',
+              }}
+              iconPosition="start"
+              isToggleable
+              text={command}
+            >
+              <pre>
+                <code>{command}</code>
+              </pre>
+            </MaskableText>
           </Grid>
         </StyledContainerGrid>
       </Grid>
@@ -58,28 +74,29 @@ export const InstallationInstructions = React.memo((props: Props) => {
         <Grid container spacing={2}>
           <StyledInstructionGrid>
             <Typography>
-              <Link to="https://www.linode.com/docs/platform/longview/troubleshooting-linode-longview/">
+              <Link to="https://techdocs.akamai.com/cloud-computing/docs/troubleshooting-linode-longview">
                 Troubleshooting guide
               </Link>
             </Typography>
           </StyledInstructionGrid>
           <StyledInstructionGrid>
             <Typography>
-              <Link to="https://www.linode.com/docs/platform/longview/what-is-longview/#install-the-longview-agent">
+              <Link to="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-longview#install-the-longview-agent">
                 Manual installation instructions
               </Link>
             </Typography>
           </StyledInstructionGrid>
           <StyledInstructionGrid>
-            <Typography data-testid="api-key">
-              API Key:{' '}
-              <Box
-                component="span"
-                sx={(theme) => ({ color: theme.color.grey1 })}
-              >
-                {props.APIKey}
-              </Box>
+            <Typography data-testid="api-key" sx={{ marginRight: 0.5 }}>
+              API Key:
             </Typography>
+            <MaskableText
+              iconPosition="start"
+              isToggleable
+              sxTypography={{ color: theme.color.grey1 }}
+              sxVisibilityTooltip={{ marginLeft: 1 }}
+              text={props.APIKey}
+            />
           </StyledInstructionGrid>
         </Grid>
       </Grid>

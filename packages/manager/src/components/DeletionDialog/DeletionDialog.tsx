@@ -1,18 +1,17 @@
+import { Notice, Typography } from '@linode/ui';
 import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { Notice } from 'src/components/Notice/Notice';
 import { TypeToConfirm } from 'src/components/TypeToConfirm/TypeToConfirm';
-import { Typography } from 'src/components/Typography';
 import { titlecase } from 'src/features/Linodes/presentation';
 import { usePreferences } from 'src/queries/profile/preferences';
 import { capitalize } from 'src/utilities/capitalize';
 
-import { DialogProps } from '../Dialog/Dialog';
+import type { DialogProps } from '../Dialog/Dialog';
 
-interface DeletionDialogProps extends Omit<DialogProps, 'title'> {
+export interface DeletionDialogProps extends Omit<DialogProps, 'title'> {
   entity: string;
   error?: string;
   label: string;
@@ -20,15 +19,8 @@ interface DeletionDialogProps extends Omit<DialogProps, 'title'> {
   onClose: () => void;
   onDelete: () => void;
   open: boolean;
-  typeToConfirm?: boolean;
 }
 
-/**
- * A Deletion Dialog is used for deleting entities such as Linodes, NodeBalancers, Volumes, or other entities.
- *
- * Require `typeToConfirm` when an action would have a significant negative impact if done in error, consider requiring the user to enter a unique identifier such as entity label before activating the action button.
- * If a user has opted out of type-to-confirm this will be ignored
- */
 export const DeletionDialog = React.memo((props: DeletionDialogProps) => {
   const theme = useTheme();
   const {
@@ -39,18 +31,21 @@ export const DeletionDialog = React.memo((props: DeletionDialogProps) => {
     onClose,
     onDelete,
     open,
-    typeToConfirm,
     ...rest
   } = props;
-  const { data: preferences } = usePreferences();
+
+  const { data: typeToConfirmPreference } = usePreferences(
+    (preferences) => preferences?.type_to_confirm ?? true
+  );
+
   const [confirmationText, setConfirmationText] = React.useState('');
-  const typeToConfirmRequired =
-    typeToConfirm && preferences?.type_to_confirm !== false;
+
   const renderActions = () => (
     <ActionsPanel
       primaryButtonProps={{
         'data-testid': 'confirm',
-        disabled: typeToConfirmRequired && confirmationText !== label,
+        disabled:
+          Boolean(typeToConfirmPreference) && confirmationText !== label,
         label: ` Delete ${titlecase(entity)}`,
         loading,
         onClick: onDelete,
@@ -102,10 +97,11 @@ export const DeletionDialog = React.memo((props: DeletionDialogProps) => {
         onChange={(input) => {
           setConfirmationText(input);
         }}
+        expand
         label={`${capitalize(entity)} Name:`}
         placeholder={label}
         value={confirmationText}
-        visible={typeToConfirmRequired}
+        visible={Boolean(typeToConfirmPreference)}
       />
     </ConfirmationDialog>
   );

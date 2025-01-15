@@ -1,11 +1,10 @@
+import { CircleProgress, TooltipIcon, Typography } from '@linode/ui';
+import { useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { makeStyles } from 'tss-react/mui';
 
-import { CircleProgress } from 'src/components/CircleProgress';
-import { TooltipIcon } from 'src/components/TooltipIcon';
-import { Typography } from 'src/components/Typography';
 import {
   useAllKubernetesNodePoolQuery,
   useKubernetesTypesQuery,
@@ -32,7 +31,6 @@ interface Props {
 
 const useStyles = makeStyles()((theme: Theme) => ({
   iconTextOuter: {
-    flexBasis: '72%',
     minWidth: 115,
   },
   item: {
@@ -44,16 +42,6 @@ const useStyles = makeStyles()((theme: Theme) => ({
     },
     paddingBottom: theme.spacing(1),
     paddingTop: theme.spacing(1),
-  },
-  mainGridContainer: {
-    position: 'relative',
-    [theme.breakpoints.up('lg')]: {
-      justifyContent: 'space-between',
-    },
-  },
-  root: {
-    marginBottom: theme.spacing(3),
-    padding: `${theme.spacing(2.5)} ${theme.spacing(2.5)} ${theme.spacing(3)}`,
   },
   tooltip: {
     '& .MuiTooltip-tooltip': {
@@ -80,10 +68,18 @@ export const KubeClusterSpecs = React.memo((props: Props) => {
     data: kubernetesHighAvailabilityTypesData,
     isError: isErrorKubernetesTypes,
     isLoading: isLoadingKubernetesTypes,
-  } = useKubernetesTypesQuery();
+  } = useKubernetesTypesQuery(cluster.tier === 'enterprise');
+
+  const matchesColGapBreakpointDown = useMediaQuery(
+    theme.breakpoints.down(theme.breakpoints.values.lg)
+  );
 
   const lkeHAType = kubernetesHighAvailabilityTypesData?.find(
     (type) => type.id === 'lke-ha'
+  );
+
+  const lkeEnterpriseType = kubernetesHighAvailabilityTypesData?.find(
+    (type) => type.id === 'lke-e'
   );
 
   const region = regions?.find((r) => r.id === cluster.region);
@@ -92,6 +88,7 @@ export const KubeClusterSpecs = React.memo((props: Props) => {
   const highAvailabilityPrice = cluster.control_plane.high_availability
     ? getDCSpecificPriceByType({ regionId: region?.id, type: lkeHAType })
     : undefined;
+  const enterprisePrice = lkeEnterpriseType?.price.monthly ?? undefined;
 
   const kubeSpecsLeft = [
     `Version ${cluster.k8s_version}`,
@@ -115,6 +112,7 @@ export const KubeClusterSpecs = React.memo((props: Props) => {
       </>
     ) : (
       `$${getTotalClusterPrice({
+        enterprisePrice: enterprisePrice,
         highAvailabilityPrice: highAvailabilityPrice
           ? Number(highAvailabilityPrice)
           : undefined,
@@ -147,7 +145,13 @@ export const KubeClusterSpecs = React.memo((props: Props) => {
   };
 
   return (
-    <Grid container direction="row" lg={3} spacing={0} xs={12}>
+    <Grid
+      columnGap={matchesColGapBreakpointDown ? 2 : 0}
+      container
+      direction="row"
+      lg={3}
+      xs={12}
+    >
       <Grid lg={6}>{kubeSpecsLeft.map(kubeSpecItem)}</Grid>
       <Grid lg={6}>{kubeSpecsRight.map(kubeSpecItem)}</Grid>
     </Grid>

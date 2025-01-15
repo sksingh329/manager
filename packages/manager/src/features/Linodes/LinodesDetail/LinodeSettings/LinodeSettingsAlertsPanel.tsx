@@ -1,12 +1,10 @@
-import { Linode } from '@linode/api-v4';
+import { Accordion, Notice } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import { useFormik } from 'formik';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
-import { Accordion } from 'src/components/Accordion';
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Notice } from 'src/components/Notice/Notice';
 import {
   useLinodeQuery,
   useLinodeUpdateMutation,
@@ -15,6 +13,8 @@ import { useTypeQuery } from 'src/queries/types';
 import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
 
 import { AlertSection } from './AlertSection';
+
+import type { Linode } from '@linode/api-v4';
 
 interface Props {
   isReadOnly?: boolean;
@@ -29,7 +29,7 @@ export const LinodeSettingsAlertsPanel = (props: Props) => {
 
   const {
     error,
-    isLoading,
+    isPending,
     mutateAsync: updateLinode,
   } = useLinodeUpdateMutation(linodeId);
 
@@ -216,7 +216,7 @@ export const LinodeSettingsAlertsPanel = (props: Props) => {
           'data-testid': 'alerts-save',
           disabled: isReadOnly || !formik.dirty,
           label: 'Save',
-          loading: isLoading,
+          loading: isPending,
           onClick: () => formik.handleSubmit(),
         }}
       />

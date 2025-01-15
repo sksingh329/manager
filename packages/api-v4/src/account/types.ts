@@ -59,28 +59,35 @@ export interface Account {
 
 export type BillingSource = 'linode' | 'akamai';
 
-export type AccountCapability =
-  | 'Akamai Cloud Load Balancer'
-  | 'Akamai Cloud Pulse'
-  | 'Block Storage'
-  | 'Block Storage Encryption'
-  | 'Cloud Firewall'
-  | 'CloudPulse'
-  | 'Disk Encryption'
-  | 'Kubernetes'
-  | 'Linodes'
-  | 'LKE HA Control Planes'
-  | 'Machine Images'
-  | 'Managed Databases'
-  | 'Managed Databases V2'
-  | 'NodeBalancers'
-  | 'Object Storage Access Key Regions'
-  | 'Object Storage Endpoint Types'
-  | 'Object Storage'
-  | 'Placement Group'
-  | 'Support Ticket Severity'
-  | 'Vlans'
-  | 'VPCs';
+export const accountCapabilities = [
+  'Akamai Cloud Load Balancer',
+  'Akamai Cloud Pulse',
+  'Block Storage',
+  'Block Storage Encryption',
+  'Cloud Firewall',
+  'CloudPulse',
+  'Disk Encryption',
+  'Kubernetes',
+  'Kubernetes Enterprise',
+  'Linodes',
+  'LKE HA Control Planes',
+  'LKE Network Access Control List (IP ACL)',
+  'Machine Images',
+  'Managed Databases',
+  'Managed Databases Beta',
+  'NETINT Quadra T1U',
+  'NodeBalancers',
+  'Object Storage Access Key Regions',
+  'Object Storage Endpoint Types',
+  'Object Storage',
+  'Placement Group',
+  'SMTP Enabled',
+  'Support Ticket Severity',
+  'Vlans',
+  'VPCs',
+] as const;
+
+export type AccountCapability = typeof accountCapabilities[number];
 
 export interface AccountAvailability {
   region: string; // will be slug of dc (matches id field of region object returned by API)
@@ -179,6 +186,7 @@ export interface Grant {
 }
 export type GlobalGrantTypes =
   | 'account_access'
+  | 'add_databases'
   | 'add_domains'
   | 'add_firewalls'
   | 'add_images'
@@ -255,6 +263,7 @@ export type NotificationType =
   | 'reboot_scheduled'
   | 'outage'
   | 'maintenance'
+  | 'maintenance_scheduled'
   | 'payment_due'
   | 'ticket_important'
   | 'ticket_abuse'
@@ -263,7 +272,7 @@ export type NotificationType =
   | 'user_email_bounce'
   | 'volume_migration_scheduled'
   | 'volume_migration_imminent'
-  | 'tax_id_invalid';
+  | 'tax_id_verifying';
 
 export type NotificationSeverity = 'minor' | 'major' | 'critical';
 
@@ -598,8 +607,12 @@ export interface AccountBeta {
   label: string;
   started: string;
   id: string;
-  ended?: string;
-  description?: string;
+  ended: string | null;
+  description: string | null;
+  /**
+   * The datetime the account enrolled into the beta
+   * @example 2024-10-23T14:22:29
+   */
   enrolled: string;
 }
 

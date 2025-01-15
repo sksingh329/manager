@@ -1,3 +1,129 @@
+## [2024-12-10] - v0.131.0
+
+### Added:
+
+- Extend support for Object Storage in Support tickets ([#11178](https://github.com/linode/manager/pull/11178))
+- Missing `+eq` type to `FilterConditionTypes` interface ([#11233](https://github.com/linode/manager/pull/11233))
+- New Accelerated-related fields and capabilities to API types ([#11256](https://github.com/linode/manager/pull/11256))
+- Placement Groups migrations Types ([#11261](https://github.com/linode/manager/pull/11261))
+- `service_type` as parameter for the Create Alert POST request ([#11286](https://github.com/linode/manager/pull/11286))
+
+### Removed:
+
+- `deleted` from the `ImageStatus` type ([#11257](https://github.com/linode/manager/pull/11257))
+
+### Tech Stories:
+
+- Update yup from `0.32.9` to `1.4.0` (#11324)
+- Add Linter rules for naming convention ([#11337](https://github.com/linode/manager/pull/11337))
+- Update Linter rules for common PR feedback points (#11258)
+- Remove recently added camelCase rule ([#11330](https://github.com/linode/manager/pull/11330))
+
+### Upcoming Features:
+
+- Modify `chart_type` property type in `types.ts` ([#11204](https://github.com/linode/manager/pull/11204))
+- Add POST request endpoint for create alert in `alerts.ts`, add Alert, add CreateAlertPayload types ([#11255](https://github.com/linode/manager/pull/11255))
+- Add v4beta/account endpoint and update Capabilities for LKE-E ([#11259](https://github.com/linode/manager/pull/11259))
+- Add remaining new types and v4beta endpoints for LKE-E ([#11302](https://github.com/linode/manager/pull/11302))
+- New IAM endpoints and types ([#11146](https://github.com/linode/manager/pull/11146), [#11181](https://github.com/linode/manager/pull/11181))
+
+## [2024-11-12] - v0.130.0
+
+### Added:
+
+- DBaaS: Suspend and Resume backend calls ([#11152](https://github.com/linode/manager/pull/11152))
+
+### Removed:
+
+- DBaaS: Deprecated types including MongoDB and Redis ([#11218](https://github.com/linode/manager/pull/11218))
+
+### Tech Stories:
+
+- Remove `@types/node` dependency ([#11157](https://github.com/linode/manager/pull/11157))
+
+### Upcoming Features:
+
+- DBaaS: Modify update payload to include version, add patch API ([#11196](https://github.com/linode/manager/pull/11196))
+
+## [2024-10-28] - v0.129.0
+
+### Added:
+
+- ACL related endpoints and types for LKE clusters ([#10968](https://github.com/linode/manager/pull/10968))
+- `StackScripts` to Region capabilities type ([#11139](https://github.com/linode/manager/pull/11139))
+
+### Fixed:
+
+- Incorrect documentation on how to set a page size ([#11129](https://github.com/linode/manager/pull/11129))
+
+## [2024-10-14] - v0.128.0
+
+### Added:
+
+- `SMTP Enabled` account & Linode capabilities ([#10991](https://github.com/linode/manager/pull/10991))
+- `allow_list` to the DatabaseInstance ([#11039](https://github.com/linode/manager/pull/11039))
+
+### Changed:
+
+- Rename `notification tax_id_invalid` to `tax_id_verifying` ([#10967](https://github.com/linode/manager/pull/10967))
+- Firewall attributes `created_dt` to `created` and `updated_dt` to `updated` ([#11023](https://github.com/linode/manager/pull/11023))
+- Databases types to have UpdateDatabasePayload include `cluster_size` and export the Engines type ([#11040](https://github.com/linode/manager/pull/11040))
+- Specify DBaaS fork restore payload and return types ([#11048](https://github.com/linode/manager/pull/11048))
+
+### Removed:
+
+- `edge` type reference in `LinodeTypeClass` and `RegionSite` ([#10639](https://github.com/linode/manager/pull/10639))
+
+### Upcoming Features:
+
+- Add export to FilterValue interface ([#10853](https://github.com/linode/manager/pull/10853))
+
+## [2024-09-30] - v0.127.0
+
+### Changed:
+
+- Make `replication_type` and `replication_commit_type` optional in MySQL and Postgres interfaces ([#10980](https://github.com/linode/manager/pull/10980))
+- DBaaS restore method name ([#10988](https://github.com/linode/manager/pull/10988))
+
+### Fixed:
+
+- Include `standby` field in `DatabaseHosts` interface ([#10989](https://github.com/linode/manager/pull/10989))
+
+### Upcoming Features:
+
+- DBaaS V2 readonly hosts ([#10939](https://github.com/linode/manager/pull/10939))
+
+## [2024-09-16] - v0.126.0
+
+### Added:
+
+- LinodeCapabilities type used for `capabilities` property of Linode interface ([#10920](https://github.com/linode/manager/pull/10920))
+
+### Tech Stories:
+
+- Update vitest to latest ([#10843](https://github.com/linode/manager/pull/10843))
+
+### Upcoming Features:
+
+- Change 'bs_encryption_supported' property on Linode object to 'capabilities' ([#10837](https://github.com/linode/manager/pull/10837))
+- Add beta API root for CloudPulse endpoints ([#10851](https://github.com/linode/manager/pull/10851))
+
+## [2024-09-03] - v0.125.0
+
+### Added:
+
+- Managed Databases V2 capability and types ([#10786](https://github.com/linode/manager/pull/10786))
+
+### Changed:
+
+- Deprecate `getClusters` ([#10801](https://github.com/linode/manager/pull/10801))
+- Increase block storage max volume size to 16TB ([#10865](https://github.com/linode/manager/pull/10865))
+
+### Upcoming Features:
+
+- Update `AclpConfig` type ([#10769](https://github.com/linode/manager/pull/10769))
+- Add service types and `getCloudPulseServiceTypes` request ([#10805](https://github.com/linode/manager/pull/10805))
+
 ## [2024-08-19] - v0.124.0
 
 ### Added:

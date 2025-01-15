@@ -1,10 +1,7 @@
+import { Autocomplete, ListItem, Tooltip, Typography } from '@linode/ui';
 import * as React from 'react';
 
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
 import { Link } from 'src/components/Link';
-import { ListItem } from 'src/components/ListItem';
-import { Tooltip } from 'src/components/Tooltip';
-import { Typography } from 'src/components/Typography';
 
 import { PLACEMENT_GROUPS_DOCS_LINK } from './constants';
 import { placementGroupTypeOptions } from './utils';
@@ -28,6 +25,7 @@ export const PlacementGroupTypeSelect = (props: Props) => {
         setFieldValue('placement_group_type', value?.value ?? '');
       }}
       renderOption={(props, option) => {
+        const { key, ...rest } = props;
         const isDisabledMenuItem = option.value === 'affinity:local';
 
         return (
@@ -49,10 +47,10 @@ export const PlacementGroupTypeSelect = (props: Props) => {
             enterDelay={200}
             enterNextDelay={200}
             enterTouchDelay={200}
-            key={option.value}
+            key={key}
           >
             <ListItem
-              {...props}
+              {...rest}
               className={
                 isDisabledMenuItem
                   ? `${props.className} Mui-disabled`

@@ -1,8 +1,9 @@
-import Grid from '@mui/material/Unstable_Grid2';
+import { Button, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 
-import AddNewLink from 'src/components/AddNewLink';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { Hidden } from 'src/components/Hidden';
 import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
@@ -14,7 +15,6 @@ import { TableRow } from 'src/components/TableRow';
 import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
 import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
-import { Typography } from 'src/components/Typography';
 import DeleteSSHKeyDialog from 'src/features/Profile/SSHKeys/DeleteSSHKeyDialog';
 import SSHKeyActionMenu from 'src/features/Profile/SSHKeys/SSHKeyActionMenu';
 import { usePagination } from 'src/hooks/usePagination';
@@ -108,10 +108,12 @@ export const SSHKeys = () => {
         spacing={2}
       >
         <StyledAddNewWrapperGridItem>
-          <AddNewLink
-            label="Add an SSH Key"
+          <Button
+            buttonType="primary"
             onClick={() => setIsCreateDrawerOpen(true)}
-          />
+          >
+            Add an SSH Key
+          </Button>
         </StyledAddNewWrapperGridItem>
       </Grid>
       <Table>
@@ -162,3 +164,7 @@ const StyledAddNewWrapperGridItem = styled(Grid)(({ theme }) => ({
     marginRight: theme.spacing(),
   },
 }));
+
+export const SSHKeysLazyRoute = createLazyRoute('/profile/keys')({
+  component: SSHKeys,
+});

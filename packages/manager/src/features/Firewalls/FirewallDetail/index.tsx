@@ -1,8 +1,9 @@
+import { CircleProgress } from '@linode/ui';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 
 import { AkamaiBanner } from 'src/components/AkamaiBanner/AkamaiBanner';
-import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { GenerateFirewallDialog } from 'src/components/GenerateFirewallDialog/GenerateFirewallDialog';
@@ -134,7 +135,7 @@ export const FirewallDetail = () => {
           pathname: `/firewalls/${firewall.label}`,
         }}
         docsLabel="Docs"
-        docsLink="https://linode.com/docs/platform/cloud-firewall/getting-started-with-cloud-firewall/"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-cloud-firewalls"
         title="Firewall Details"
       />
       {secureVMFirewallBanner && secureVMFirewallBanner.firewallDetails && (
@@ -189,3 +190,7 @@ export const FirewallDetail = () => {
     </React.Fragment>
   );
 };
+
+export const firewallDetailLazyRoute = createLazyRoute('/firewalls/$id')({
+  component: FirewallDetail,
+});

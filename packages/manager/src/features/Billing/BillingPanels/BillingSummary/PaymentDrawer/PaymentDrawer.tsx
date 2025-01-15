@@ -1,28 +1,29 @@
-import { PaymentMethod } from '@linode/api-v4';
 import { makePayment } from '@linode/api-v4/lib/account';
-import { APIWarning } from '@linode/api-v4/lib/types';
+import { Typography } from '@linode/ui';
+import {
+  Button,
+  Divider,
+  InputAdornment,
+  Notice,
+  Stack,
+  TextField,
+  TooltipIcon,
+} from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 import { makeStyles } from 'tss-react/mui';
 
-import { Button } from 'src/components/Button/Button';
 import { Currency } from 'src/components/Currency';
-import { Divider } from 'src/components/Divider';
 import { Drawer } from 'src/components/Drawer';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
-import { InputAdornment } from 'src/components/InputAdornment';
 import { LinearProgress } from 'src/components/LinearProgress';
-import { Notice } from 'src/components/Notice/Notice';
-import { Stack } from 'src/components/Stack';
 import { SupportLink } from 'src/components/SupportLink';
-import { TextField } from 'src/components/TextField';
-import { TooltipIcon } from 'src/components/TooltipIcon';
-import { Typography } from 'src/components/Typography';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 import { useAccount } from 'src/queries/account/account';
+import { accountQueries } from 'src/queries/account/queries';
 import { useProfile } from 'src/queries/profile/profile';
 import { isCreditCardExpired } from 'src/utilities/creditCard';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
@@ -32,16 +33,18 @@ import GooglePayButton from './GooglePayButton';
 import { CreditCardDialog } from './PaymentBits/CreditCardDialog';
 import { PaymentMethodCard } from './PaymentMethodCard';
 import PayPalButton from './PayPalButton';
-import { SetSuccess } from './types';
-import { accountQueries } from 'src/queries/account/queries';
 
-const useStyles = makeStyles()(() => ({
+import type { SetSuccess } from './types';
+import type { PaymentMethod } from '@linode/api-v4';
+import type { APIWarning } from '@linode/api-v4/lib/types';
+
+const useStyles = makeStyles()((theme) => ({
   button: {
     alignSelf: 'flex-end',
     marginLeft: 'auto',
   },
   credit: {
-    color: '#02b159',
+    color: theme.tokens.color.Green[70],
   },
   currentBalance: {
     fontSize: '1.1rem',

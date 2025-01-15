@@ -1,10 +1,9 @@
+import { Autocomplete } from '@linode/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 
 import { useProfile } from 'src/queries/profile/profile';
-import { updateTagsSuggestionsData, useTagSuggestions } from 'src/queries/tags';
-
-import { Autocomplete } from '../Autocomplete/Autocomplete';
+import { updateTagsSuggestionsData, useAllTagsQuery } from 'src/queries/tags';
 
 interface AddTagProps {
   addTag: (tag: string) => Promise<void>;
@@ -17,10 +16,9 @@ export const AddTag = (props: AddTagProps) => {
 
   const queryClient = useQueryClient();
   const { data: profile } = useProfile();
-  const {
-    data: accountTags,
-    isFetching: accountTagsLoading,
-  } = useTagSuggestions(!profile?.restricted);
+  const { data: accountTags, isFetching: accountTagsLoading } = useAllTagsQuery(
+    !profile?.restricted
+  );
   // @todo should we toast for this? If we swallow the error the only
   // thing we lose is preexisting tabs as options; the add tag flow
   // should still work.
@@ -80,9 +78,15 @@ export const AddTag = (props: AddTagProps) => {
           handleAddTag(typeof value == 'string' ? value : value.label);
         }
       }}
-      renderOption={(props, option) => (
-        <li {...props}>{option.displayLabel ?? option.label}</li>
-      )}
+      renderOption={(props, option) => {
+        const { key, ...rest } = props;
+
+        return (
+          <li {...rest} key={key}>
+            {option.displayLabel ?? option.label}
+          </li>
+        );
+      }}
       disableClearable
       forcePopupIcon
       label={'Create or Select a Tag'}

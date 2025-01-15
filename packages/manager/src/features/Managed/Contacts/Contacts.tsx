@@ -1,8 +1,7 @@
-import { ManagedContact } from '@linode/api-v4/lib/managed';
+import { Button } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
-import AddNewLink from 'src/components/AddNewLink';
 import { DeletionDialog } from 'src/components/DeletionDialog/DeletionDialog';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { Hidden } from 'src/components/Hidden';
@@ -23,14 +22,16 @@ import {
 } from 'src/queries/managed/managed';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
+import {
+  StyledHeaderGrid,
+  StyledTypography,
+  StyledWrapperGrid,
+} from './Contacts.styles';
 import ContactDrawer from './ContactsDrawer';
 import ContactTableContact from './ContactsTableContent';
-import { ManagedContactGroup, Mode } from './common';
-import {
-  StyledWrapperGrid,
-  StyledTypography,
-  StyledHeaderGrid,
-} from './Contacts.styles';
+
+import type { ManagedContactGroup, Mode } from './common';
+import type { ManagedContact } from '@linode/api-v4/lib/managed';
 
 const Contacts = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -99,13 +100,15 @@ const Contacts = () => {
         spacing={2}
       >
         <StyledWrapperGrid>
-          <AddNewLink
+          <Button
             onClick={() => {
               setContactDrawerMode('create');
               contactDrawer.open();
             }}
-            label="Add Contact"
-          />
+            buttonType="primary"
+          >
+            Add Contact
+          </Button>
         </StyledWrapperGrid>
       </StyledHeaderGrid>
       <OrderBy data={contacts} order="asc" orderBy="name">
@@ -129,16 +132,16 @@ const Contacts = () => {
                             active={orderBy === 'name'}
                             direction={order}
                             handleClick={handleOrderChange}
-                            label={'name'}
+                            label="name"
                           >
                             Name
                           </TableSortCell>
-                          <Hidden smDown>
+                          <Hidden mdDown>
                             <TableSortCell
                               active={orderBy === 'group'}
                               direction={order}
                               handleClick={handleOrderChange}
-                              label={'group'}
+                              label="group"
                             >
                               Group
                             </TableSortCell>
@@ -147,7 +150,7 @@ const Contacts = () => {
                             active={orderBy === 'email'}
                             direction={order}
                             handleClick={handleOrderChange}
-                            label={'email'}
+                            label="email"
                           >
                             E-mail
                           </TableSortCell>
@@ -156,7 +159,7 @@ const Contacts = () => {
                               active={orderBy === 'phone:primary'}
                               direction={order}
                               handleClick={handleOrderChange}
-                              label={'phone:primary'}
+                              label="phone:primary"
                             >
                               Primary Phone
                             </TableSortCell>
@@ -164,7 +167,7 @@ const Contacts = () => {
                               active={orderBy === 'phone:secondary'}
                               direction={order}
                               handleClick={handleOrderChange}
-                              label={'phone:secondary'}
+                              label="phone:secondary"
                             >
                               Secondary Phone
                             </TableSortCell>

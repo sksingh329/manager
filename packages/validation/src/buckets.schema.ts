@@ -7,8 +7,16 @@ export const CreateBucketSchema = object()
     {
       label: string()
         .required('Label is required.')
-        .matches(/^\S*$/, 'Label must not contain spaces.')
         .min(3, 'Label must be between 3 and 63 characters.')
+        .matches(/^\S*$/, 'Label must not contain spaces.')
+        .matches(
+          /^[a-z0-9].*[a-z0-9]$/,
+          'Label must start and end with a letter or number.'
+        )
+        .matches(
+          /^(?!.*[.-]{2})[a-z0-9.-]+$/,
+          'Label must contain only lowercase letters, numbers, periods (.), and hyphens (-). Adjacent periods and hyphens are not allowed.'
+        )
         .max(63, 'Label must be between 3 and 63 characters.')
         .test(
           'unique-label',
@@ -31,16 +39,25 @@ export const CreateBucketSchema = object()
         ),
       cluster: string().when('region', {
         is: (region: string) => !region || region.length === 0,
-        then: string().required('Cluster is required.'),
+        then: (schema) => schema.required('Cluster is required.'),
       }),
       region: string().when('cluster', {
         is: (cluster: string) => !cluster || cluster.length === 0,
-        then: string().required('Region is required.'),
+        then: (schema) => schema.required('Region is required.'),
       }),
       endpoint_type: string()
         .oneOf([...ENDPOINT_TYPES])
-        .notRequired(),
-      cors_enabled: boolean().notRequired(),
+        .optional(),
+      cors_enabled: boolean().optional(),
+      acl: string()
+        .oneOf([
+          'private',
+          'public-read',
+          'authenticated-read',
+          'public-read-write',
+        ])
+        .optional(),
+      s3_endpoint: string().optional(),
     },
     [['cluster', 'region']]
   )

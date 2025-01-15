@@ -1,18 +1,13 @@
-import {
-  ObjectStorageKeyBucketAccessPermissions,
-  ObjectStorageKeyBucketAccess,
-} from '@linode/api-v4/lib/object-storage/types';
+import { Radio } from '@linode/ui';
 import { update } from 'ramda';
 import * as React from 'react';
 
-import { Radio } from 'src/components/Radio/Radio';
 import { TableBody } from 'src/components/TableBody';
 import { TableCell } from 'src/components/TableCell';
 import { TableHead } from 'src/components/TableHead';
 import { TableRow } from 'src/components/TableRow';
 import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
-import { useRegionsQuery } from 'src/queries/regions/regions';
-import { getRegionsByRegionId } from 'src/utilities/regions';
+import { useObjectStorageRegions } from 'src/features/ObjectStorage/hooks/useObjectStorageRegions';
 
 import { AccessCell } from './AccessCell';
 import {
@@ -25,6 +20,10 @@ import {
 } from './AccessTable.styles';
 
 import type { MODE } from './types';
+import type {
+  ObjectStorageKeyBucketAccess,
+  ObjectStorageKeyBucketAccessPermissions,
+} from '@linode/api-v4/lib/object-storage/types';
 
 export const getUpdatedScopes = (
   oldScopes: ObjectStorageKeyBucketAccess[],
@@ -58,11 +57,9 @@ interface Props {
 
 export const BucketPermissionsTable = React.memo((props: Props) => {
   const { bucket_access, checked, mode, selectedRegions, updateScopes } = props;
+  const { regionsByIdMap } = useObjectStorageRegions();
 
-  const { data: regionsData } = useRegionsQuery();
-  const regionsLookup = regionsData && getRegionsByRegionId(regionsData);
-
-  if (!bucket_access || !regionsLookup) {
+  if (!bucket_access || !regionsByIdMap) {
     return null;
   }
 
@@ -185,7 +182,7 @@ export const BucketPermissionsTable = React.memo((props: Props) => {
                   padding="checkbox"
                   sx={{ minWidth: '150px' }}
                 >
-                  {regionsLookup[thisScope.region ?? '']?.label}
+                  {regionsByIdMap[thisScope.region ?? '']?.label}
                 </StyledClusterCell>
                 <StyledBucketCell padding="checkbox">
                   {thisScope.bucket_name}

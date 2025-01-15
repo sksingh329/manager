@@ -2,6 +2,7 @@
  * ONLY USED IN LONGVIEW
  * Delete when Lonview is sunsetted, along with AccessibleGraphData
  */
+import { Typography } from '@linode/ui';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { Chart } from 'chart.js';
@@ -11,7 +12,6 @@ import * as React from 'react';
 import { humanizeLargeData } from 'src/components/AreaChart/utils';
 import { TableCell } from 'src/components/TableCell';
 import { TableRow } from 'src/components/TableRow';
-import { Typography } from 'src/components/Typography';
 import { setUpCharts } from 'src/utilities/charts';
 import { roundTo } from 'src/utilities/roundTo';
 
@@ -108,7 +108,7 @@ export interface LineGraphProps {
   /**
    * Custom styles for the table.
    */
-  sxTableStyles?: SxProps;
+  sxTableStyles?: SxProps<Theme>;
   /**
    * The suggested maximum y-axis value passed to **Chart,js**.
    */
@@ -202,6 +202,11 @@ export const LineGraph = (props: LineGraphProps) => {
       },
       legend: {
         display: _nativeLegend,
+        onClick: (_e, legendItem) => {
+          if (legendItem && legendItem.datasetIndex !== undefined) {
+            handleLegendClick(legendItem.datasetIndex); // when we click on native legend, also call the handle legend click function
+          }
+        },
         position: _nativeLegend ? 'bottom' : undefined,
       },
       maintainAspectRatio: false,
@@ -266,9 +271,9 @@ export const LineGraph = (props: LineGraphProps) => {
         ],
       },
       tooltips: {
-        backgroundColor: '#fbfbfb',
-        bodyFontColor: '#32363C',
-        borderColor: '#999',
+        backgroundColor: theme.tokens.color.Neutrals[5],
+        bodyFontColor: theme.tokens.color.Neutrals[90],
+        borderColor: theme.tokens.color.Neutrals[50],
         borderWidth: 0.5,
         callbacks: {
           label: _formatTooltip(data, formatTooltip, _tooltipUnit),
@@ -279,7 +284,7 @@ export const LineGraph = (props: LineGraphProps) => {
         intersect: false,
         mode: 'index',
         position: 'nearest',
-        titleFontColor: '#606469',
+        titleFontColor: theme.tokens.color.Neutrals[70],
         xPadding: 8,
         yPadding: 10,
       },
@@ -454,6 +459,8 @@ export const LineGraph = (props: LineGraphProps) => {
                               rowHeaders ? rowHeaders[idx] : undefined
                             }
                             data-qa-body-cell
+                            data-qa-graph-column-title={finalRowHeaders[i]}
+                            data-qa-graph-row-title={title}
                             key={i}
                           >
                             <Typography
@@ -515,7 +522,7 @@ export const _formatTooltip = curry(
      */
     const dataset = t?.datasetIndex ? data[t?.datasetIndex] : data[0];
     const label = dataset.label;
-    const val = t?.index ? dataset.data[t?.index][1] || 0 : 0;
+    const val = t?.index !== undefined ? dataset.data[t?.index][1] || 0 : 0; // bug, t?.index if 0, it is considered as false, so added undefined check directly
     const value = formatter ? formatter(val) : roundTo(val);
     return `${label}: ${value}${unit ? unit : ''}`;
   }

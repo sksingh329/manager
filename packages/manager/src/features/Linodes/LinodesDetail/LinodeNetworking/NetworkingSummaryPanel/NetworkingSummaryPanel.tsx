@@ -2,7 +2,7 @@ import { styled, useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 
-import { Paper } from 'src/components/Paper';
+import { Paper } from '@linode/ui';
 import { useIsGeckoEnabled } from 'src/components/RegionSelect/RegionSelect.utils';
 import { useLinodeQuery } from 'src/queries/linodes/linodes';
 
@@ -17,7 +17,7 @@ interface Props {
 export const LinodeNetworkingSummaryPanel = React.memo((props: Props) => {
   // @todo maybe move this query closer to the consuming component
   const { data: linode } = useLinodeQuery(props.linodeId);
-  const { isGeckoGAEnabled } = useIsGeckoEnabled();
+  const { isGeckoLAEnabled } = useIsGeckoEnabled();
   const theme = useTheme();
 
   if (!linode) {
@@ -25,7 +25,7 @@ export const LinodeNetworkingSummaryPanel = React.memo((props: Props) => {
   }
 
   const hideNetworkTransfer =
-    isGeckoGAEnabled && linode.site_type === 'distributed';
+    isGeckoLAEnabled && linode.site_type === 'distributed';
 
   return (
     <Paper>

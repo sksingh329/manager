@@ -17,7 +17,12 @@ import {
   updateVPC,
 } from '@linode/api-v4';
 import { createQueryKeys } from '@lukemorales/query-key-factory';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { getAllVPCsRequest } from './requests';
 
@@ -30,10 +35,10 @@ import type {
 
 // VPC queries
 export const vpcQueries = createQueryKeys('vpcs', {
-  all: {
-    queryFn: getAllVPCsRequest,
-    queryKey: null,
-  },
+  all: (filter: Filter = {}) => ({
+    queryFn: () => getAllVPCsRequest(filter),
+    queryKey: [filter],
+  }),
   paginated: (params: Params = {}, filter: Filter = {}) => ({
     queryFn: () => getVPCs(params, filter),
     queryKey: [params, filter],
@@ -59,10 +64,15 @@ export const vpcQueries = createQueryKeys('vpcs', {
   }),
 });
 
-export const useAllVPCsQuery = (enabled = true) =>
+interface AllVPCsOptions {
+  enabled?: boolean;
+  filter?: Filter;
+}
+
+export const useAllVPCsQuery = (options: AllVPCsOptions) =>
   useQuery<VPC[], APIError[]>({
-    ...vpcQueries.all,
-    enabled,
+    ...vpcQueries.all(options.filter),
+    enabled: options.enabled,
   });
 
 export const useVPCsQuery = (
@@ -73,7 +83,7 @@ export const useVPCsQuery = (
   return useQuery<ResourcePage<VPC>, APIError[]>({
     ...vpcQueries.paginated(params, filter),
     enabled,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -89,7 +99,7 @@ export const useCreateVPCMutation = () => {
     mutationFn: createVPC,
     onSuccess(vpc) {
       queryClient.invalidateQueries({
-        queryKey: vpcQueries.all.queryKey,
+        queryKey: vpcQueries.all._def,
       });
       queryClient.invalidateQueries({
         queryKey: vpcQueries.paginated._def,
@@ -118,12 +128,14 @@ export const useDeleteVPCMutation = (id: number) => {
     mutationFn: () => deleteVPC(id),
     onSuccess() {
       queryClient.invalidateQueries({
-        queryKey: vpcQueries.all.queryKey,
+        queryKey: vpcQueries.all._def,
       });
       queryClient.invalidateQueries({
         queryKey: vpcQueries.paginated._def,
       });
-      queryClient.removeQueries(vpcQueries.vpc(id).queryKey);
+      queryClient.removeQueries({
+        queryKey: vpcQueries.vpc(id).queryKey,
+      });
     },
   });
 };
@@ -138,7 +150,7 @@ export const useSubnetsQuery = (
   useQuery<ResourcePage<Subnet>, APIError[]>({
     ...vpcQueries.vpc(vpcId)._ctx.subnets._ctx.paginated(params, filter),
     enabled,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
 export const useCreateSubnetMutation = (vpcId: number) => {
@@ -148,7 +160,7 @@ export const useCreateSubnetMutation = (vpcId: number) => {
     onSuccess() {
       // New subnet created --> refresh the VPC queries (all, paginated, & individual), plus the /subnets VPC query
       queryClient.invalidateQueries({
-        queryKey: vpcQueries.all.queryKey,
+        queryKey: vpcQueries.all._def,
       });
       queryClient.invalidateQueries({
         queryKey: vpcQueries.paginated._def,
@@ -167,7 +179,7 @@ export const useUpdateSubnetMutation = (vpcId: number, subnetId: number) => {
     onSuccess() {
       // New subnet created --> refresh the VPC queries (all, paginated, & individual), plus the /subnets VPC query
       queryClient.invalidateQueries({
-        queryKey: vpcQueries.all.queryKey,
+        queryKey: vpcQueries.all._def,
       });
       queryClient.invalidateQueries({
         queryKey: vpcQueries.paginated._def,
@@ -186,7 +198,7 @@ export const useDeleteSubnetMutation = (vpcId: number, subnetId: number) => {
     onSuccess() {
       // New subnet created --> refresh the VPC queries (all, paginated, & individual), plus the /subnets VPC query
       queryClient.invalidateQueries({
-        queryKey: vpcQueries.all.queryKey,
+        queryKey: vpcQueries.all._def,
       });
       queryClient.invalidateQueries({
         queryKey: vpcQueries.paginated._def,

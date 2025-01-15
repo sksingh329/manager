@@ -1,14 +1,13 @@
+import { Button, Notice, Stack, Typography } from '@linode/ui';
 import React from 'react';
 
 import { useFlags } from 'src/hooks/useFlags';
 import { replaceNewlinesWithLineBreaks } from 'src/utilities/replaceNewlinesWithLineBreaks';
 
-import { Button } from '../Button/Button';
 import { Dialog } from '../Dialog/Dialog';
+import { ErrorMessage } from '../ErrorMessage';
 import { LinearProgress } from '../LinearProgress';
 import { Link } from '../Link';
-import { Stack } from '../Stack';
-import { Typography } from '../Typography';
 import { useCreateFirewallFromTemplate } from './useCreateFirewallFromTemplate';
 
 import type { Firewall } from '@linode/api-v4';
@@ -209,7 +208,9 @@ const ErrorDialogContent = (
   return (
     <Stack gap={3}>
       <Typography variant="h2">An error occurred</Typography>
-      <Typography>{error}</Typography>
+      <Notice variant="error">
+        <ErrorMessage entity={{ type: 'firewall_id' }} message={error} />
+      </Notice>
       <Stack direction="row-reverse" gap={2}>
         <Button buttonType="primary" onClick={createFirewallFromTemplate}>
           Retry

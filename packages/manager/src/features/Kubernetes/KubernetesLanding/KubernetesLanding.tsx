@@ -1,7 +1,8 @@
+import { CircleProgress, Typography } from '@linode/ui';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { DismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import {
@@ -20,7 +21,6 @@ import { TableHead } from 'src/components/TableHead';
 import { TableRow } from 'src/components/TableRow';
 import { TableSortCell } from 'src/components/TableSortCell';
 import { TransferDisplay } from 'src/components/TransferDisplay/TransferDisplay';
-import { Typography } from 'src/components/Typography';
 import { useOrder } from 'src/hooks/useOrder';
 import { usePagination } from 'src/hooks/usePagination';
 import { useKubernetesClustersQuery } from 'src/queries/kubernetes';
@@ -32,7 +32,7 @@ import { DeleteKubernetesClusterDialog } from '../KubernetesClusterDetail/Delete
 import UpgradeVersionModal from '../UpgradeVersionModal';
 import { KubernetesEmptyState } from './KubernetesLandingEmptyState';
 
-import type { KubeNodePoolResponse } from '@linode/api-v4';
+import type { KubeNodePoolResponse, KubernetesTier } from '@linode/api-v4';
 
 interface ClusterDialogState {
   loading: boolean;
@@ -47,6 +47,7 @@ interface UpgradeDialogState {
   open: boolean;
   selectedClusterID: number;
   selectedClusterLabel: string;
+  selectedClusterTier: KubernetesTier;
 }
 
 const defaultDialogState = {
@@ -63,6 +64,7 @@ const defaultUpgradeDialogState = {
   open: false,
   selectedClusterID: 0,
   selectedClusterLabel: '',
+  selectedClusterTier: 'standard' as KubernetesTier,
 };
 
 const preferenceKey = 'kubernetes';
@@ -97,7 +99,7 @@ export const KubernetesLanding = () => {
 
   const isRestricted = profile?.restricted ?? false;
 
-  const { data, error, isFetching } = useKubernetesClustersQuery(
+  const { data, error, isLoading } = useKubernetesClustersQuery(
     {
       page: pagination.page,
       page_size: pagination.pageSize,
@@ -113,6 +115,7 @@ export const KubernetesLanding = () => {
   const openUpgradeDialog = (
     clusterID: number,
     clusterLabel: string,
+    clusterTier: KubernetesTier,
     currentVersion: string
   ) => {
     setUpgradeDialogState({
@@ -120,6 +123,7 @@ export const KubernetesLanding = () => {
       open: true,
       selectedClusterID: clusterID,
       selectedClusterLabel: clusterLabel,
+      selectedClusterTier: clusterTier,
     });
   };
 
@@ -156,7 +160,7 @@ export const KubernetesLanding = () => {
     );
   }
 
-  if (isFetching) {
+  if (isLoading) {
     return <CircleProgress />;
   }
 
@@ -170,16 +174,16 @@ export const KubernetesLanding = () => {
       {isDiskEncryptionFeatureEnabled && (
         <DismissibleBanner
           preferenceKey={DISK_ENCRYPTION_UPDATE_PROTECT_CLUSTERS_BANNER_KEY}
-          sx={{ margin: '1rem 0 1rem 0' }}
+          spacingBottom={8}
           variant="info"
         >
-          <Typography>
+          <Typography fontSize="inherit">
             {DISK_ENCRYPTION_UPDATE_PROTECT_CLUSTERS_COPY}
           </Typography>
         </DismissibleBanner>
       )}
       <LandingHeader
-        docsLink="https://www.linode.com/docs/kubernetes/deploy-and-manage-a-cluster-with-linode-kubernetes-engine-a-tutorial/"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-lke-linode-kubernetes-engine"
         entity="Cluster"
         onButtonClick={() => push('/kubernetes/create')}
         removeCrumbX={1}
@@ -244,6 +248,7 @@ export const KubernetesLanding = () => {
                 openUpgradeDialog(
                   cluster.id,
                   cluster.label,
+                  cluster?.tier ?? 'standard', // TODO LKE: remove fallback once LKE-E is in GA and tier is required
                   cluster.k8s_version
                 )
               }
@@ -272,6 +277,7 @@ export const KubernetesLanding = () => {
       <UpgradeVersionModal
         clusterID={upgradeDialog.selectedClusterID}
         clusterLabel={upgradeDialog.selectedClusterLabel}
+        clusterTier={upgradeDialog.selectedClusterTier}
         currentVersion={upgradeDialog.currentVersion}
         isOpen={upgradeDialog.open}
         onClose={closeUpgradeDialog}
@@ -280,4 +286,8 @@ export const KubernetesLanding = () => {
   );
 };
 
-export default KubernetesLanding;
+export const kubernetesLandingLazyRoute = createLazyRoute(
+  '/kubernetes/clusters'
+)({
+  component: KubernetesLanding,
+});

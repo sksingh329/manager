@@ -1,3 +1,5 @@
+import { CircleProgress } from '@linode/ui';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import {
   Redirect,
@@ -8,7 +10,6 @@ import {
   useRouteMatch,
 } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { SuspenseLoader } from 'src/components/SuspenseLoader';
 import { useLinodeQuery } from 'src/queries/linodes/linodes';
@@ -88,3 +89,7 @@ export const LinodeDetail = () => {
     </React.Suspense>
   );
 };
+
+export const linodeDetailLazyRoute = createLazyRoute('/linodes/$linodeId')({
+  component: LinodeDetail,
+});

@@ -1,7 +1,6 @@
+import { Autocomplete } from '@linode/ui';
 import { groupBy } from 'ramda';
 import * as React from 'react';
-
-import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
 
 import type { Kernel } from '@linode/api-v4';
 
@@ -33,8 +32,9 @@ export const KernelSelect = React.memo((props: KernelSelectProps) => {
   return (
     <Autocomplete
       renderOption={(props, kernel) => {
+        const { key, ...rest } = props;
         return (
-          <li {...props} data-testid="kernel-option">
+          <li {...rest} data-testid="kernel-option" key={key}>
             {kernel.label}
           </li>
         );

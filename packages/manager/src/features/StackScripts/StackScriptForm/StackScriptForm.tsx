@@ -1,11 +1,8 @@
+import { InputAdornment, Paper, TextField, Typography } from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 
-import { InputAdornment } from 'src/components/InputAdornment';
-import { Paper } from 'src/components/Paper';
-import { TextField } from 'src/components/TextField';
-import { Typography } from 'src/components/Typography';
-import ImageSelect from 'src/features/Images/ImageSelect';
+import { ImageSelect } from 'src/components/ImageSelect/ImageSelect';
 import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
 
 import {
@@ -23,20 +20,12 @@ interface TextFieldHandler {
   value: string;
 }
 
-interface Images {
-  // available to select in the dropdown
-  available: Image[];
-  // image ids that are already selected
-  selected: string[];
-}
-
 interface Props {
   currentUser: string;
   description: TextFieldHandler;
   disableSubmit: boolean;
   disabled?: boolean;
   errors?: APIError[];
-  images: Images;
   isSubmitting: boolean;
   label: TextFieldHandler;
   mode: 'create' | 'edit';
@@ -45,6 +34,7 @@ interface Props {
   onSubmit: () => void;
   revision: TextFieldHandler;
   script: TextFieldHandler;
+  selectedImages: string[];
 }
 
 const errorResources = {
@@ -60,7 +50,6 @@ export const StackScriptForm = React.memo((props: Props) => {
     disableSubmit,
     disabled,
     errors,
-    images,
     isSubmitting,
     label,
     mode,
@@ -69,6 +58,7 @@ export const StackScriptForm = React.memo((props: Props) => {
     onSubmit,
     revision,
     script,
+    selectedImages,
   } = props;
 
   const hasErrorFor = getAPIErrorFor(errorResources, errors);
@@ -103,21 +93,6 @@ export const StackScriptForm = React.memo((props: Props) => {
             rows={1}
             value={description.value}
           />
-          <ImageSelect
-            helperText={
-              'Select which images are compatible with this StackScript. "Any/All" allows you to use private images.'
-            }
-            anyAllOption
-            data-qa-stackscript-target-select
-            disabled={disabled}
-            errorText={hasErrorFor('images')}
-            images={images.available}
-            isMulti
-            label="Target Images"
-            onSelect={onSelectChange}
-            required
-            value={images.selected}
-          />
         </StyledGridWithTips>
         <StyledGridWithTips>
           <StyledNotice>
@@ -134,6 +109,23 @@ export const StackScriptForm = React.memo((props: Props) => {
           </StyledNotice>
         </StyledGridWithTips>
       </Grid>
+      <ImageSelect
+        textFieldProps={{
+          required: true,
+          tooltipText:
+            'Select which images are compatible with this StackScript. "Any/All" allows you to use private images.',
+        }}
+        anyAllOption
+        data-qa-stackscript-target-select
+        disabled={disabled}
+        errorText={hasErrorFor('images')}
+        label="Target Images"
+        multiple
+        onChange={onSelectChange}
+        placeholder="Select image(s)"
+        value={selectedImages}
+        variant="public"
+      />
       <TextField
         InputProps={{ sx: { maxWidth: '100%' } }}
         data-qa-stackscript-script
@@ -174,5 +166,3 @@ export const StackScriptForm = React.memo((props: Props) => {
     </Paper>
   );
 });
-
-export default React.memo(StackScriptForm);

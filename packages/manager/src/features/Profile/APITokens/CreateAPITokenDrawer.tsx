@@ -1,19 +1,21 @@
+import {
+  Autocomplete,
+  FormControl,
+  FormHelperText,
+  Notice,
+  Radio,
+  TextField,
+} from '@linode/ui';
 import { useFormik } from 'formik';
 import { DateTime } from 'luxon';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { Drawer } from 'src/components/Drawer';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import { FormControl } from 'src/components/FormControl';
-import { FormHelperText } from 'src/components/FormHelperText';
-import { Notice } from 'src/components/Notice/Notice';
-import { Radio } from 'src/components/Radio/Radio';
 import { TableBody } from 'src/components/TableBody';
 import { TableCell } from 'src/components/TableCell';
 import { TableHead } from 'src/components/TableHead';
 import { TableRow } from 'src/components/TableRow';
-import { TextField } from 'src/components/TextField';
 import { ISO_DATETIME_NO_TZ_FORMAT } from 'src/constants';
 import { AccessCell } from 'src/features/ObjectStorage/AccessKeyLanding/AccessCell';
 import { VPC_READ_ONLY_TOOLTIP } from 'src/features/VPCs/constants';
@@ -30,13 +32,15 @@ import {
   StyledSelectCell,
 } from './APITokenDrawer.styles';
 import {
-  Permission,
   allScopesAreTheSame,
   basePermNameMap,
   hasAccessBeenSelectedForAllScopes,
+  levelMap,
   permTuplesToScopeString,
   scopeStringToPermTuples,
 } from './utils';
+
+import type { Permission } from './utils';
 
 type Expiry = [string, string];
 
@@ -103,7 +107,7 @@ export const CreateAPITokenDrawer = (props: Props) => {
 
   const {
     error,
-    isLoading,
+    isPending,
     mutateAsync: createPersonalAccessToken,
   } = useCreatePersonalAccessTokenMutation();
 
@@ -172,15 +176,11 @@ export const CreateAPITokenDrawer = (props: Props) => {
     form.setFieldValue('scopes', newScopes);
   };
 
-  const handleExpiryChange = (e: Item<string>) => {
-    form.setFieldValue('expiry', e.value);
-  };
-
   // Permission scopes with a different default when Selecting All for the specified access level.
   const excludedScopesFromSelectAll: ExcludedScope[] = [
     {
-      defaultAccessLevel: 0,
-      invalidAccessLevels: [1],
+      defaultAccessLevel: levelMap.none,
+      invalidAccessLevels: [levelMap.read_only],
       name: 'vpc',
     },
   ];
@@ -214,11 +214,30 @@ export const CreateAPITokenDrawer = (props: Props) => {
         value={form.values.label}
       />
       <FormControl data-testid="expiry-select">
-        <Select
-          isClearable={false}
+        <Autocomplete
+          onChange={(_, selected) =>
+            form.setFieldValue('expiry', selected.value)
+          }
+          slotProps={{
+            popper: {
+              sx: {
+                '&& .MuiAutocomplete-listbox': {
+                  padding: 0,
+                },
+              },
+            },
+          }}
+          sx={{
+            '&& .MuiAutocomplete-inputRoot': {
+              paddingLeft: 1,
+              paddingRight: 0,
+            },
+            '&& .MuiInput-input': {
+              padding: '0px 2px',
+            },
+          }}
+          disableClearable
           label="Expiry"
-          name="expiry"
-          onChange={handleExpiryChange}
           options={expiryList}
           value={expiryList.find((item) => item.value === form.values.expiry)}
         />
@@ -365,9 +384,12 @@ export const CreateAPITokenDrawer = (props: Props) => {
       <ActionsPanel
         primaryButtonProps={{
           'data-testid': 'create-button',
-          disabled: !hasAccessBeenSelectedForAllScopes(form.values.scopes),
+          disabled: !hasAccessBeenSelectedForAllScopes(
+            form.values.scopes,
+            hideChildAccountAccessScope ? ['child_account'] : []
+          ),
           label: 'Create Token',
-          loading: isLoading,
+          loading: isPending,
           onClick: () => form.handleSubmit(),
         }}
         secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}

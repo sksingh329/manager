@@ -1,12 +1,11 @@
+import { Box, Button, omittedProps } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import * as React from 'react';
 import { useStyles } from 'tss-react/mui';
 
-import { Button, ButtonProps } from 'src/components/Button/Button';
+import type { BoxProps, ButtonProps } from '@linode/ui';
 
-import { Box, BoxProps } from '../Box';
-
-interface ActionButtonsProps extends ButtonProps {
+export interface ActionButtonsProps extends ButtonProps {
   'data-node-idx'?: number;
   'data-qa-form-data-loading'?: boolean;
   'data-testid'?: string;
@@ -18,6 +17,10 @@ export interface ActionPanelProps extends BoxProps {
    * primary type actionable button custom aria descripton.
    */
   primaryButtonProps?: ActionButtonsProps;
+  /**
+   * Determines the position of the primary button within the actions panel.
+   */
+  reversePrimaryButtonPosition?: boolean;
   /**
    * secondary type actionable button custom aria descripton.
    */
@@ -32,6 +35,7 @@ export const ActionsPanel = (props: ActionPanelProps) => {
   const {
     className,
     primaryButtonProps,
+    reversePrimaryButtonPosition = false,
     secondaryButtonProps,
     ...rest
   } = props;
@@ -45,6 +49,7 @@ export const ActionsPanel = (props: ActionPanelProps) => {
     <StyledBox
       className={cx(className, 'actionPanel')}
       data-qa-buttons
+      reversePrimaryButtonPosition={reversePrimaryButtonPosition}
       {...rest}
     >
       {secondaryButtonProps ? (
@@ -70,14 +75,13 @@ export const ActionsPanel = (props: ActionPanelProps) => {
   );
 };
 
-const StyledBox = styled(Box)(({ theme: { spacing } }) => ({
-  '& > :first-of-type': {
-    marginLeft: 0,
-    marginRight: spacing(),
-  },
-  '& > :only-child': {
-    marginRight: 0,
-  },
+const StyledBox = styled(Box, {
+  label: 'StyledActionsPanel',
+  shouldForwardProp: omittedProps(['reversePrimaryButtonPosition']),
+})<ActionPanelProps>(({ theme: { spacing }, ...props }) => ({
+  display: 'flex',
+  flexDirection: props.reversePrimaryButtonPosition ? 'row-reverse' : 'row',
+  gap: spacing(),
   justifyContent: 'flex-end',
   marginTop: spacing(1),
   paddingBottom: spacing(1),

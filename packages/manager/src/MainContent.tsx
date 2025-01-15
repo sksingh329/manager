@@ -1,13 +1,14 @@
+import { Box } from '@linode/ui';
 import Grid from '@mui/material/Unstable_Grid2';
+import { useQueryClient } from '@tanstack/react-query';
+import { RouterProvider } from '@tanstack/react-router';
 import * as React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { makeStyles } from 'tss-react/mui';
 
 import Logo from 'src/assets/logo/akamai-logo.svg';
-import { Box } from 'src/components/Box';
 import { MainContentBanner } from 'src/components/MainContentBanner';
 import { MaintenanceScreen } from 'src/components/MaintenanceScreen';
-import { NotFound } from 'src/components/NotFound';
 import { SideMenu } from 'src/components/PrimaryNav/SideMenu';
 import { SIDEBAR_WIDTH } from 'src/components/PrimaryNav/SideMenu';
 import { SuspenseLoader } from 'src/components/SuspenseLoader';
@@ -15,11 +16,10 @@ import { useDialogContext } from 'src/context/useDialogContext';
 import { Footer } from 'src/features/Footer';
 import { GlobalNotifications } from 'src/features/GlobalNotifications/GlobalNotifications';
 import {
-  notificationContext,
+  notificationCenterContext,
   useNotificationContext,
-} from 'src/features/NotificationCenter/NotificationContext';
+} from 'src/features/NotificationCenter/NotificationCenterContext';
 import { TopMenu } from 'src/features/TopMenu/TopMenu';
-import { useFlags } from 'src/hooks/useFlags';
 import {
   useMutatePreferences,
   usePreferences,
@@ -31,12 +31,15 @@ import { sessionExpirationContext } from './context/sessionExpirationContext';
 import { switchAccountSessionContext } from './context/switchAccountSessionContext';
 import { useIsACLPEnabled } from './features/CloudPulse/Utils/utils';
 import { useIsDatabasesEnabled } from './features/Databases/utilities';
+import { useIsIAMEnabled } from './features/IAM/Shared/utilities';
 import { useIsPlacementGroupsEnabled } from './features/PlacementGroups/utils';
 import { useGlobalErrors } from './hooks/useGlobalErrors';
 import { useAccountSettings } from './queries/account/settings';
 import { useProfile } from './queries/profile/profile';
+import { migrationRouter } from './routes';
 
 import type { Theme } from '@mui/material/styles';
+import type { AnyRouter } from '@tanstack/react-router';
 
 const useStyles = makeStyles()((theme: Theme) => ({
   activationWrapper: {
@@ -128,12 +131,6 @@ const LinodesRoutes = React.lazy(() =>
     default: module.LinodesRoutes,
   }))
 );
-const Volumes = React.lazy(() => import('src/features/Volumes'));
-const Domains = React.lazy(() =>
-  import('src/features/Domains').then((module) => ({
-    default: module.DomainsRoutes,
-  }))
-);
 const Images = React.lazy(() => import('src/features/Images'));
 const Kubernetes = React.lazy(() =>
   import('src/features/Kubernetes').then((module) => ({
@@ -141,7 +138,11 @@ const Kubernetes = React.lazy(() =>
   }))
 );
 const ObjectStorage = React.lazy(() => import('src/features/ObjectStorage'));
-const Profile = React.lazy(() => import('src/features/Profile/Profile'));
+const Profile = React.lazy(() =>
+  import('src/features/Profile/Profile').then((module) => ({
+    default: module.Profile,
+  }))
+);
 const NodeBalancers = React.lazy(
   () => import('src/features/NodeBalancers/NodeBalancers')
 );
@@ -158,7 +159,6 @@ const SupportTicketDetail = React.lazy(() =>
     })
   )
 );
-const Longview = React.lazy(() => import('src/features/Longview'));
 const Managed = React.lazy(() => import('src/features/Managed/ManagedLanding'));
 const Help = React.lazy(() =>
   import('./features/Help/index').then((module) => ({
@@ -178,7 +178,6 @@ const AccountActivationLanding = React.lazy(
 );
 const Firewalls = React.lazy(() => import('src/features/Firewalls'));
 const Databases = React.lazy(() => import('src/features/Databases'));
-const BetaRoutes = React.lazy(() => import('src/features/Betas'));
 const VPC = React.lazy(() => import('src/features/VPCs'));
 const PlacementGroups = React.lazy(() =>
   import('src/features/PlacementGroups').then((module) => ({
@@ -192,15 +191,23 @@ const CloudPulse = React.lazy(() =>
   }))
 );
 
+const IAM = React.lazy(() =>
+  import('src/features/IAM').then((module) => ({
+    default: module.IdentityAccessManagement,
+  }))
+);
+
 export const MainContent = () => {
   const { classes, cx } = useStyles();
-  const flags = useFlags();
-  const { data: preferences } = usePreferences();
+  const { data: isDesktopSidebarOpenPreference } = usePreferences(
+    (preferences) => preferences?.desktop_sidebar_open
+  );
   const { mutateAsync: updatePreferences } = useMutatePreferences();
+  const queryClient = useQueryClient();
 
   const globalErrors = useGlobalErrors();
 
-  const NotificationProvider = notificationContext.Provider;
+  const NotificationProvider = notificationCenterContext.Provider;
   const contextValue = useNotificationContext();
 
   const ComplianceUpdateProvider = complianceUpdateContext.Provider;
@@ -228,6 +235,8 @@ export const MainContent = () => {
   const defaultRoot = accountSettings?.managed ? '/managed' : '/linodes';
 
   const { isACLPEnabled } = useIsACLPEnabled();
+
+  const { isIAMEnabled } = useIsIAMEnabled();
 
   /**
    * this is the case where the user has successfully completed signup
@@ -274,11 +283,11 @@ export const MainContent = () => {
     return <MaintenanceScreen />;
   }
 
-  const desktopMenuIsOpen = preferences?.desktop_sidebar_open ?? false;
+  const desktopMenuIsOpen = isDesktopSidebarOpenPreference ?? false;
 
   const desktopMenuToggle = () => {
     updatePreferences({
-      desktop_sidebar_open: !preferences?.desktop_sidebar_open,
+      desktop_sidebar_open: !isDesktopSidebarOpenPreference,
     });
   };
 
@@ -324,15 +333,11 @@ export const MainContent = () => {
                               path="/placement-groups"
                             />
                           )}
-                          <Route component={Volumes} path="/volumes" />
-                          <Redirect path="/volumes*" to="/volumes" />
                           <Route
                             component={NodeBalancers}
                             path="/nodebalancers"
                           />
-                          <Route component={Domains} path="/domains" />
                           <Route component={Managed} path="/managed" />
-                          <Route component={Longview} path="/longview" />
                           <Route component={Images} path="/images" />
                           <Route
                             component={StackScripts}
@@ -343,6 +348,9 @@ export const MainContent = () => {
                             path="/object-storage"
                           />
                           <Route component={Kubernetes} path="/kubernetes" />
+                          {isIAMEnabled && (
+                            <Route component={IAM} path="/iam" />
+                          )}
                           <Route component={Account} path="/account" />
                           <Route component={Profile} path="/profile" />
                           <Route component={Help} path="/support" />
@@ -352,20 +360,25 @@ export const MainContent = () => {
                           {isDatabasesEnabled && (
                             <Route component={Databases} path="/databases" />
                           )}
-                          {flags.selfServeBetas && (
-                            <Route component={BetaRoutes} path="/betas" />
-                          )}
                           <Route component={VPC} path="/vpcs" />
                           {isACLPEnabled && (
-                            <Route
-                              component={CloudPulse}
-                              path="/monitor/cloudpulse"
-                            />
+                            <Route component={CloudPulse} path="/monitor" />
                           )}
                           <Redirect exact from="/" to={defaultRoot} />
                           {/** We don't want to break any bookmarks. This can probably be removed eventually. */}
                           <Redirect from="/dashboard" to={defaultRoot} />
-                          <Route component={NotFound} />
+                          {/**
+                           * This is the catch all routes that allows TanStack Router to take over.
+                           * When a route is not found here, it will be handled by the migration router, which in turns handles the NotFound component.
+                           * It is currently set to the migration router in order to incrementally migrate the app to the new routing.
+                           * This is a temporary solution until we are ready to fully migrate to TanStack Router.
+                           */}
+                          <Route path="*">
+                            <RouterProvider
+                              context={{ queryClient }}
+                              router={migrationRouter as AnyRouter}
+                            />
+                          </Route>
                         </Switch>
                       </React.Suspense>
                     </Grid>

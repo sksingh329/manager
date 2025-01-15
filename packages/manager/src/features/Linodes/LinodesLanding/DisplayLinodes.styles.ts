@@ -1,9 +1,7 @@
+import { IconButton, Typography, omittedProps } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 
-import { IconButton } from 'src/components/IconButton';
 import { TableRow } from 'src/components/TableRow';
-import { Typography } from 'src/components/Typography';
-import { omittedProps } from 'src/utilities/omittedProps';
 
 export const StyledTagHeaderRow = styled(TableRow, {
   label: 'StyledTagHeaderRow',
@@ -27,14 +25,13 @@ export const StyledTagHeader = styled(Typography, {
 
 export const StyledControlHeader = styled('div', {
   label: 'StyledControlHeader',
-  shouldForwardProp: omittedProps(['isGroupedByTag']),
-})<{ isGroupedByTag: boolean }>(({ isGroupedByTag, theme }) => ({
+})(({ theme }) => ({
   alignItems: 'center',
   backgroundColor: theme.bg.tableHeader,
   display: 'flex',
   height: 46,
   justifyContent: 'flex-end',
-  marginBottom: isGroupedByTag ? theme.spacing(4) : 0,
+  marginBottom: theme.spacing(4),
 }));
 
 export const StyledToggleButton = styled(IconButton, {
@@ -46,7 +43,7 @@ export const StyledToggleButton = styled(IconButton, {
   },
   '&:focus': {
     // Browser default until we get styling direction for focus states
-    outline: '1px dotted #999',
+    outline: `1px dotted ${theme.tokens.color.Neutrals[50]}`,
   },
   '&:hover': {
     backgroundColor: theme.palette.grey[300],

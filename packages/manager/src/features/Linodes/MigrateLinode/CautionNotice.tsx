@@ -1,11 +1,9 @@
+import { Checkbox, Notice, Typography } from '@linode/ui';
 import { styled, useTheme } from '@mui/material/styles';
 import { DateTime } from 'luxon';
 import * as React from 'react';
 
-import { Checkbox } from 'src/components/Checkbox';
 import { Link } from 'src/components/Link';
-import { Notice } from 'src/components/Notice/Notice';
-import { Typography } from 'src/components/Typography';
 import { API_MAX_PAGE_SIZE } from 'src/constants';
 import { useLinodeVolumesQuery } from 'src/queries/volumes/volumes';
 
@@ -69,14 +67,14 @@ export const CautionNotice = React.memo((props: Props) => {
         <li>
           Any DNS records (including Reverse DNS) will need to be updated. You
           can use the <Link to="/domains">DNS Manager</Link> or{' '}
-          <Link to="https://linode.com/docs/networking/dns/configure-your-linode-for-reverse-dns/">
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/configure-rdns-reverse-dns-on-a-compute-instance">
             Configure Your Linode for Reverse DNS (rDNS).
           </Link>
         </li>
         <li>
           Any attached VLANs will be inaccessible if the destination region does
           not support VLANs.{` `}
-          <Link to="https://linode.com/docs/products/networking/vlans/">
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/vlan">
             Check VLAN region compatibility.
           </Link>
         </li>

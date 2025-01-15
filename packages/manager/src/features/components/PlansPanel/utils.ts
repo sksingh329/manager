@@ -1,21 +1,24 @@
+import { useFlags } from 'src/hooks/useFlags';
+import { useAccount } from 'src/queries/account/account';
+import { isFeatureEnabledV2 } from 'src/utilities/accountCapabilities';
 import { arrayToList } from 'src/utilities/arrayToList';
-import { ExtendedType } from 'src/utilities/extendType';
 
 import {
-  DBAAS_DEDICATED_512_GB_PLAN,
   DEDICATED_512_GB_PLAN,
   LIMITED_AVAILABILITY_COPY,
   PLAN_IS_CURRENTLY_UNAVAILABLE_COPY,
+  PLAN_IS_SMALLER_THAN_USAGE_COPY,
+  PLAN_IS_TOO_SMALL_FOR_APL_COPY,
   PLAN_NOT_AVAILABLE_IN_REGION_COPY,
   PREMIUM_512_GB_PLAN,
   SMALLER_PLAN_DISABLED_COPY,
 } from './constants';
-import {
+
+import type {
   DisabledTooltipReasons,
   PlanSelectionType,
   PlanWithAvailability,
 } from './types';
-
 import type {
   Capabilities,
   LinodeTypeClass,
@@ -23,6 +26,7 @@ import type {
   RegionAvailability,
 } from '@linode/api-v4';
 import type { Flags } from 'src/featureFlags';
+import type { ExtendedType } from 'src/utilities/extendType';
 
 export type PlansTypes<T> = Record<LinodeTypeClass, T[]>;
 
@@ -42,7 +46,32 @@ export const planTypeOrder: (
   'gpu',
   'metal',
   'premium',
+  'accelerated',
 ];
+
+export const useIsAcceleratedPlansEnabled = () => {
+  const flags = useFlags();
+
+  const { data: account } = useAccount();
+
+  const isAcceleratedLinodePlans = Boolean(
+    flags?.acceleratedPlans?.linodePlans
+  );
+  const isAcceleratedLKEPlans = Boolean(flags?.acceleratedPlans?.lkePlans);
+
+  const isAcceleratedLinodePlansEnabled = isFeatureEnabledV2(
+    'NETINT Quadra T1U',
+    isAcceleratedLinodePlans,
+    account?.capabilities ?? []
+  );
+  const isAcceleratedLKEPlansEnabled = isFeatureEnabledV2(
+    'NETINT Quadra T1U',
+    isAcceleratedLKEPlans,
+    account?.capabilities ?? []
+  );
+
+  return { isAcceleratedLKEPlansEnabled, isAcceleratedLinodePlansEnabled };
+};
 
 /**
  * getPlanSelectionsByPlanType function takes an array of types, groups
@@ -165,6 +194,13 @@ export const getIsLimitedAvailability = ({
 };
 
 export const planTabInfoContent = {
+  accelerated: {
+    dataId: 'data-qa-accelerated',
+    key: 'accelerated',
+    title: 'Accelerated',
+    typography:
+      'Accelerated instances leverage ASICs to accelerate specialized tasks such as video transcoding, media processing, and other compute heavy workloads.',
+  },
   dedicated: {
     dataId: 'data-qa-dedicated',
     key: 'dedicated',
@@ -223,7 +259,11 @@ export const planTabInfoContent = {
 export const replaceOrAppendPlaceholder512GbPlans = (
   types: (ExtendedType | PlanSelectionType)[]
 ) => {
+  // DBaaS does not currently offer a 512 GB plan
   const isInDatabasesFlow = types.some((type) => type.label.includes('DBaaS'));
+  if (isInDatabasesFlow) {
+    return types;
+  }
 
   // Function to replace or append a specific plan
   const replaceOrAppendPlan = <T extends ExtendedType | PlanSelectionType>(
@@ -239,13 +279,9 @@ export const replaceOrAppendPlaceholder512GbPlans = (
     }
   };
 
-  if (isInDatabasesFlow) {
-    replaceOrAppendPlan('DBaaS - Dedicated 512GB', DBAAS_DEDICATED_512_GB_PLAN);
-  } else {
-    // For Linodes and LKE
-    replaceOrAppendPlan('Dedicated 512GB', DEDICATED_512_GB_PLAN);
-    replaceOrAppendPlan('Premium 512GB', PREMIUM_512_GB_PLAN);
-  }
+  // For Linodes and LKE
+  replaceOrAppendPlan('Dedicated 512GB', DEDICATED_512_GB_PLAN);
+  replaceOrAppendPlan('Premium 512GB', PREMIUM_512_GB_PLAN);
 
   return types;
 };
@@ -254,6 +290,8 @@ interface ExtractPlansInformationProps {
   disableLargestGbPlansFlag: Flags['disableLargestGbPlans'] | undefined;
   disabledClasses?: LinodeTypeClass[];
   disabledSmallerPlans?: PlanSelectionType[];
+  isAPLEnabled?: boolean;
+  isLegacyDatabase?: boolean;
   plans: PlanSelectionType[];
   regionAvailabilities: RegionAvailability[] | undefined;
   selectedRegionId: Region['id'] | undefined;
@@ -275,6 +313,8 @@ export const extractPlansInformation = ({
   disableLargestGbPlansFlag,
   disabledClasses,
   disabledSmallerPlans,
+  isAPLEnabled,
+  isLegacyDatabase,
   plans,
   regionAvailabilities,
   selectedRegionId,
@@ -294,18 +334,27 @@ export const extractPlansInformation = ({
       const planBelongsToDisabledClass = Boolean(
         disabledClasses?.includes(plan.class)
       );
-      const planIsTooSmall = Boolean(
+      const disabledPlans = Boolean(
         disabledSmallerPlans?.find(
           (disabledPlan) => disabledPlan.id === plan.id
         )
       );
+      const planIsTooSmall = Boolean(isLegacyDatabase && disabledPlans);
+      const planIsSmallerThanUsage = Boolean(
+        !isLegacyDatabase && disabledPlans
+      );
+
+      const planIsTooSmallForAPL =
+        isAPLEnabled && Boolean(plan.memory < 8000 || plan.vcpus < 4);
 
       return {
         ...plan,
         planBelongsToDisabledClass,
         planHasLimitedAvailability,
         planIsDisabled512Gb,
+        planIsSmallerThanUsage,
         planIsTooSmall,
+        planIsTooSmallForAPL,
       };
     }
   );
@@ -315,7 +364,9 @@ export const extractPlansInformation = ({
       planBelongsToDisabledClass,
       planHasLimitedAvailability,
       planIsDisabled512Gb,
+      planIsSmallerThanUsage,
       planIsTooSmall,
+      planIsTooSmallForAPL,
     } = plan;
 
     // Determine if the plan should be disabled due to
@@ -326,7 +377,9 @@ export const extractPlansInformation = ({
       planBelongsToDisabledClass ||
       planHasLimitedAvailability ||
       planIsDisabled512Gb ||
-      planIsTooSmall
+      planIsTooSmall ||
+      planIsSmallerThanUsage ||
+      planIsTooSmallForAPL
     ) {
       return [...acc, plan];
     }
@@ -353,13 +406,17 @@ export const getDisabledPlanReasonCopy = ({
   planBelongsToDisabledClass,
   planHasLimitedAvailability,
   planIsDisabled512Gb,
+  planIsSmallerThanUsage,
   planIsTooSmall,
+  planIsTooSmallForAPL,
   wholePanelIsDisabled,
 }: {
   planBelongsToDisabledClass: DisabledTooltipReasons['planBelongsToDisabledClass'];
   planHasLimitedAvailability: DisabledTooltipReasons['planHasLimitedAvailability'];
   planIsDisabled512Gb: DisabledTooltipReasons['planIsDisabled512Gb'];
+  planIsSmallerThanUsage?: DisabledTooltipReasons['planIsSmallerThanUsage'];
   planIsTooSmall: DisabledTooltipReasons['planIsTooSmall'];
+  planIsTooSmallForAPL?: DisabledTooltipReasons['planIsTooSmallForAPL'];
   wholePanelIsDisabled?: DisabledTooltipReasons['wholePanelIsDisabled'];
 }): string => {
   if (wholePanelIsDisabled) {
@@ -372,6 +429,12 @@ export const getDisabledPlanReasonCopy = ({
 
   if (planIsTooSmall) {
     return SMALLER_PLAN_DISABLED_COPY;
+  } else if (planIsSmallerThanUsage) {
+    return PLAN_IS_SMALLER_THAN_USAGE_COPY;
+  }
+
+  if (planIsTooSmallForAPL) {
+    return PLAN_IS_TOO_SMALL_FOR_APL_COPY;
   }
 
   if (planHasLimitedAvailability || planIsDisabled512Gb) {

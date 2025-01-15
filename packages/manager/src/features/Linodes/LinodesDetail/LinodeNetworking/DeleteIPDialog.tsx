@@ -1,9 +1,9 @@
+import { Typography } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
-import { Typography } from 'src/components/Typography';
 import { useLinodeIPDeleteMutation } from 'src/queries/linodes/networking';
 
 interface Props {
@@ -17,7 +17,7 @@ export const DeleteIPDialog = (props: Props) => {
   const { address, linodeId, onClose, open } = props;
   const { enqueueSnackbar } = useSnackbar();
 
-  const { error, isLoading, mutateAsync: removeIP } = useLinodeIPDeleteMutation(
+  const { error, isPending, mutateAsync: removeIP } = useLinodeIPDeleteMutation(
     linodeId,
     address
   );
@@ -34,7 +34,7 @@ export const DeleteIPDialog = (props: Props) => {
         <ActionsPanel
           primaryButtonProps={{
             label: 'Delete IP',
-            loading: isLoading,
+            loading: isPending,
             onClick: handleDeleteIP,
           }}
           secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}

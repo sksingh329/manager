@@ -108,7 +108,7 @@ export const seriesDataFormatter = (
 
   const formattedArray: StatWithDummyPoint[] = data.map(([x, y]) => ({
     x: Number(x),
-    y: y ? Number(y) : null,
+    y: y !== null ? Number(y) : null,
   }));
 
   return convertData(formattedArray, startTime, endTime);
@@ -141,7 +141,7 @@ export const getAllDashboards = (
   let error = '';
   let isLoading = false;
   const data: Dashboard[] = queryResults
-    .filter((queryResult: UseQueryResult, index) => {
+    .filter((queryResult, index) => {
       if (queryResult.isError) {
         error += serviceTypes[index] + ' ,';
       }

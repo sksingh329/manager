@@ -1,3 +1,12 @@
+import {
+  Divider,
+  List,
+  ListItem,
+  Notice,
+  Stack,
+  TextField,
+  Typography,
+} from '@linode/ui';
 import { createPlacementGroupSchema } from '@linode/validation';
 import { useFormik } from 'formik';
 import { useSnackbar } from 'notistack';
@@ -6,15 +15,8 @@ import { useLocation } from 'react-router-dom';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { DescriptionList } from 'src/components/DescriptionList/DescriptionList';
-import { Divider } from 'src/components/Divider';
 import { Drawer } from 'src/components/Drawer';
-import { List } from 'src/components/List';
-import { ListItem } from 'src/components/ListItem';
-import { Notice } from 'src/components/Notice/Notice';
 import { RegionSelect } from 'src/components/RegionSelect/RegionSelect';
-import { Stack } from 'src/components/Stack';
-import { TextField } from 'src/components/TextField';
-import { Typography } from 'src/components/Typography';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { useFormValidateOnChange } from 'src/hooks/useFormValidateOnChange';
 import {
@@ -35,7 +37,7 @@ import {
   hasRegionReachedPlacementGroupCapacity,
 } from './utils';
 
-import type { LinodeCreateType } from '../Linodes/LinodesCreate/types';
+import type { LinodeCreateType } from '../Linodes/LinodeCreate/types';
 import type { PlacementGroupsCreateDrawerProps } from './types';
 import type {
   CreatePlacementGroupPayload,
@@ -43,7 +45,7 @@ import type {
   Region,
 } from '@linode/api-v4';
 import type { FormikHelpers } from 'formik';
-import type { DisableRegionOption } from 'src/components/RegionSelect/RegionSelect.types';
+import type { DisableItemOption } from 'src/components/ListItemOption';
 
 export const PlacementGroupsCreateDrawer = (
   props: PlacementGroupsCreateDrawerProps
@@ -156,7 +158,7 @@ export const PlacementGroupsCreateDrawer = (
     selectedRegion
   )}`;
 
-  const disabledRegions = regions?.reduce<Record<string, DisableRegionOption>>(
+  const disabledRegions = regions?.reduce<Record<string, DisableItemOption>>(
     (acc, region) => {
       const isRegionAtCapacity = hasRegionReachedPlacementGroupCapacity({
         allPlacementGroups: allPlacementGroupsInRegion,

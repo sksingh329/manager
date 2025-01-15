@@ -1,8 +1,5 @@
 import Factory from 'src/factories/factoryProxy';
 
-import { placementGroupFactory } from './placementGroups';
-
-import type { RegionalNetworkUtilization } from '@linode/api-v4/lib/account';
 import type {
   CreateLinodeRequest,
   Linode,
@@ -10,12 +7,14 @@ import type {
   LinodeBackup,
   LinodeBackups,
   LinodeIPsResponse,
+  LinodePlacementGroupPayload,
   LinodeSpecs,
   LinodeType,
   NetStats,
+  RegionalNetworkUtilization,
   Stats,
   StatsData,
-} from '@linode/api-v4/lib/linodes/types';
+} from '@linode/api-v4';
 
 export const linodeAlertsFactory = Factory.Sync.makeFactory<LinodeAlerts>({
   cpu: 10,
@@ -26,6 +25,7 @@ export const linodeAlertsFactory = Factory.Sync.makeFactory<LinodeAlerts>({
 });
 
 export const linodeSpecsFactory = Factory.Sync.makeFactory<LinodeSpecs>({
+  accelerated_devices: 1,
   disk: 51200,
   gpus: 0,
   memory: 2048,
@@ -117,6 +117,20 @@ export const linodeIPFactory = Factory.Sync.makeFactory<LinodeIPsResponse>({
   },
 });
 
+export const linodeBackupFactory = Factory.Sync.makeFactory<LinodeBackup>({
+  available: true,
+  configs: ['My Alpine 3.17 Disk Profile'],
+  created: '2020-01-01',
+  disks: [],
+  finished: '2020-01-01',
+  id: Factory.each((i) => i),
+  label: Factory.each((i) => `Backup ${i}`),
+  region: 'us-east',
+  status: 'successful',
+  type: 'auto',
+  updated: '2020-01-01',
+});
+
 export const linodeBackupsFactory = Factory.Sync.makeFactory<LinodeBackups>({
   enabled: true,
   last_successful: '2020-01-01',
@@ -149,6 +163,7 @@ export const linodeTransferFactory = Factory.Sync.makeFactory<RegionalNetworkUti
 );
 
 export const linodeTypeFactory = Factory.Sync.makeFactory<LinodeType>({
+  accelerated_devices: 0,
   addons: {
     backups: {
       price: {
@@ -204,6 +219,7 @@ export const dedicatedTypeFactory = linodeTypeFactory.extend({
 });
 
 export const proDedicatedTypeFactory = Factory.Sync.makeFactory<LinodeType>({
+  accelerated_devices: 0,
   addons: {
     backups: {
       price: {
@@ -252,23 +268,33 @@ export const proDedicatedTypeFactory = Factory.Sync.makeFactory<LinodeType>({
   vcpus: 56,
 });
 
+export const linodePlacementGroupPayloadFactory = Factory.Sync.makeFactory<LinodePlacementGroupPayload>(
+  {
+    id: Factory.each((i) => i),
+    label: Factory.each((i) => `pg-${i}`),
+    migrating_to: null,
+    placement_group_policy: 'strict',
+    placement_group_type: 'anti_affinity:local',
+  }
+);
+
 export const linodeFactory = Factory.Sync.makeFactory<Linode>({
   alerts: linodeAlertsFactory.build(),
   backups: linodeBackupsFactory.build(),
+  capabilities: [],
   created: '2020-01-01',
   disk_encryption: 'enabled',
   group: '',
   hypervisor: 'kvm',
   id: Factory.each((i) => i),
-  image: 'linode/debian10',
+  image: 'linode/debian12',
   ipv4: ['50.116.6.212', '192.168.203.1'],
   ipv6: '2600:3c00::f03c:92ff:fee2:6c40/64',
   label: Factory.each((i) => `linode-${i}`),
   lke_cluster_id: null,
-  placement_group: placementGroupFactory.build({
+  placement_group: linodePlacementGroupPayloadFactory.build({
     id: 1,
     label: 'pg-1',
-    placement_group_type: 'anti_affinity:local',
   }),
   region: 'us-east',
   site_type: 'core',
@@ -283,7 +309,7 @@ export const linodeFactory = Factory.Sync.makeFactory<Linode>({
 export const createLinodeRequestFactory = Factory.Sync.makeFactory<CreateLinodeRequest>(
   {
     booted: true,
-    image: 'linode/debian10',
+    image: 'linode/debian12',
     label: Factory.each((i) => `linode-${i}`),
     region: 'us-southeast',
     root_pass: 'linode-root-password',

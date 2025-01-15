@@ -1,33 +1,24 @@
+import { Autocomplete, Box, Paper, Stack, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { useLocation } from 'react-router-dom';
 
-import { Box } from 'src/components/Box';
-import { Paper } from 'src/components/Paper';
-import { Stack } from 'src/components/Stack';
-import { Typography } from 'src/components/Typography';
 import { CreateFirewallDrawer } from 'src/features/Firewalls/FirewallLanding/CreateFirewallDrawer';
 import { useFlags } from 'src/hooks/useFlags';
 import { useSecureVMNoticesEnabled } from 'src/hooks/useSecureVMNoticesEnabled';
 import { useFirewallsQuery } from 'src/queries/firewalls';
-import { sendLinodeCreateFormInputEvent } from 'src/utilities/analytics/formEventAnalytics';
-import { getQueryParamsFromQueryString } from 'src/utilities/queryParams';
 
 import { AkamaiBanner } from '../AkamaiBanner/AkamaiBanner';
-import { Autocomplete } from '../Autocomplete/Autocomplete';
 import { GenerateFirewallDialog } from '../GenerateFirewallDialog/GenerateFirewallDialog';
 import { LinkButton } from '../LinkButton';
 
 import type { Firewall, FirewallDeviceEntityType } from '@linode/api-v4';
-import type { LinodeCreateQueryParams } from 'src/features/Linodes/types';
-import type { LinodeCreateFormEventOptions } from 'src/utilities/analytics/types';
 
 interface Props {
   disabled?: boolean;
   entityType: FirewallDeviceEntityType | undefined;
-  handleFirewallChange: (firewallID: number) => void;
+  handleFirewallChange: (firewallID: number | undefined) => void;
   helperText: JSX.Element;
-  selectedFirewallId: number;
+  selectedFirewallId: number | undefined;
 }
 
 export const SelectFirewallPanel = (props: Props) => {
@@ -41,18 +32,7 @@ export const SelectFirewallPanel = (props: Props) => {
 
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [isFirewallDialogOpen, setIsFirewallDialogOpen] = React.useState(false);
-  const location = useLocation();
-  const isFromLinodeCreate = location.pathname.includes('/linodes/create');
-  const queryParams = getQueryParamsFromQueryString<LinodeCreateQueryParams>(
-    location.search
-  );
 
-  const firewallFormEventOptions: LinodeCreateFormEventOptions = {
-    createType: queryParams.type ?? 'OS',
-    headerName: 'Firewall',
-    interaction: 'click',
-    label: 'Firewall',
-  };
   const flags = useFlags();
 
   const { secureVMNoticesEnabled } = useSecureVMNoticesEnabled();
@@ -61,12 +41,6 @@ export const SelectFirewallPanel = (props: Props) => {
 
   const handleCreateFirewallClick = () => {
     setIsDrawerOpen(true);
-    if (isFromLinodeCreate) {
-      sendLinodeCreateFormInputEvent({
-        ...firewallFormEventOptions,
-        label: 'Create Firewall',
-      });
-    }
   };
 
   const handleFirewallCreated = (firewall: Firewall) => {
@@ -82,17 +56,14 @@ export const SelectFirewallPanel = (props: Props) => {
   }));
 
   const selectedFirewall =
-    selectedFirewallId !== -1
+    selectedFirewallId !== undefined
       ? firewallsDropdownOptions.find(
           (option) => option.value === selectedFirewallId
         ) || null
       : null;
 
   return (
-    <Paper
-      data-testid="select-firewall-panel"
-      sx={(theme) => ({ marginTop: theme.spacing(3) })}
-    >
+    <Paper data-testid="select-firewall-panel">
       <Typography
         sx={(theme) => ({ marginBottom: theme.spacing(2) })}
         variant="h2"
@@ -116,30 +87,12 @@ export const SelectFirewallPanel = (props: Props) => {
             />
           )}
         <Autocomplete
-          onChange={(_, selection) => {
-            handleFirewallChange(selection?.value ?? -1);
-            // Track clearing and changing the value once per page view, configured by inputValue in AA backend.
-            if (!selection) {
-              sendLinodeCreateFormInputEvent({
-                ...firewallFormEventOptions,
-                interaction: 'clear',
-                subheaderName: 'Assign Firewall',
-                trackOnce: true,
-              });
-            } else {
-              sendLinodeCreateFormInputEvent({
-                ...firewallFormEventOptions,
-                interaction: 'change',
-                subheaderName: 'Assign Firewall',
-                trackOnce: true,
-              });
-            }
-          }}
           disabled={disabled}
           errorText={error?.[0].reason}
           label="Assign Firewall"
           loading={isLoading}
           noOptionsText="No Firewalls available"
+          onChange={(_, selection) => handleFirewallChange(selection?.value)}
           options={firewallsDropdownOptions}
           placeholder={'None'}
           value={selectedFirewall}

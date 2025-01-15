@@ -1,5 +1,6 @@
-import { shouldEnableDevTools } from 'src/dev-tools/load';
+import { shouldLoadDevTools } from 'src/dev-tools/load';
 
+import type { RegionSite } from '@linode/api-v4';
 import type { StackScriptPayload } from '@linode/api-v4/lib/stackscripts/types';
 import type { SupportTicketFormFields } from 'src/features/Support/SupportTickets/SupportTicketDialog';
 
@@ -54,8 +55,10 @@ const SUPPORT = 'support';
 const TICKET = 'ticket';
 const STACKSCRIPT = 'stackscript';
 const DEV_TOOLS_ENV = 'devTools/env';
+const REGION_FILTER = 'regionFilter';
 
 export type PageSize = number;
+export type RegionFilter = 'all' | RegionSite;
 
 interface AuthGetAndSet {
   get: () => any;
@@ -112,6 +115,10 @@ export interface Storage {
   pageSize: {
     get: () => PageSize;
     set: (perPage: PageSize) => void;
+  };
+  regionFilter: {
+    get: () => RegionFilter;
+    set: (v: RegionFilter) => void;
   };
   stackScriptInProgress: {
     get: () => StackScriptData;
@@ -181,6 +188,10 @@ export const storage: Storage = {
     },
     set: (v) => setStorage(PAGE_SIZE, `${v}`),
   },
+  regionFilter: {
+    get: () => getStorage(REGION_FILTER),
+    set: (v) => setStorage(REGION_FILTER, v),
+  },
   stackScriptInProgress: {
     get: () =>
       getStorage(STACKSCRIPT, {
@@ -217,7 +228,7 @@ export const {
 export const getEnvLocalStorageOverrides = () => {
   // This is broken into two logical branches so that local storage is accessed
   // ONLY if the dev tools are enabled and it's a development build.
-  if (shouldEnableDevTools && import.meta.env.DEV) {
+  if (shouldLoadDevTools && import.meta.env.DEV) {
     const localStorageOverrides = storage.devToolsEnv.get();
     if (localStorageOverrides) {
       return localStorageOverrides;

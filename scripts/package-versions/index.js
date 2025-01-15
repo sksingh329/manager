@@ -9,6 +9,7 @@
  * - `<manager-version>`    (Optional) Desired Cloud Manager package version.
  * - `<api-version>`        (Optional) Desired APIv4 package version.
  * - `<validation-version>` (Optional) Desired Validation package version.
+ * - `<ui-version>`         (Optional) Desired UI package version.
  *
  * Optional Flags:
  * - `-f | --force`         Forces the script to update package versions without
@@ -18,9 +19,9 @@
  *                          will fail otherwise.
  */
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
+import fs from 'fs';
+import path from 'path';
+import readline from 'readline';
 
 // Command line arguments with executable path and name excluded.
 const args = process.argv.slice(2);
@@ -48,7 +49,7 @@ const flags = args.filter((arg) => {
  *
  * @var {string}
  */
-const root = path.resolve(__dirname, '..', '..');
+const root = path.resolve(import.meta.dirname, '..', '..');
 
 /**
  * Gets the path to the package.json file for the package with the given name.
@@ -99,6 +100,7 @@ const [
   desiredManagerVersion,
   desiredApiVersion,
   desiredValidationVersion,
+  desiredUiVersion
 ] = desiredVersions;
 
 // Describes packages that should be modified by this script.
@@ -106,6 +108,7 @@ const jobs = [
   { name: 'manager', path: getPackagePath('manager'), desiredVersion: desiredManagerVersion },
   { name: 'api-v4', path: getPackagePath('api-v4'), desiredVersion: desiredApiVersion },
   { name: 'validation', path: getPackagePath('validation'), desiredVersion: desiredValidationVersion },
+  { name: 'ui', path: getPackagePath('ui'), desiredVersion: desiredUiVersion },
 ];
 
 // Describes the files that will be written to, and the changes that will be made.
@@ -135,7 +138,7 @@ const main = async () => {
   console.info('Package info:');
   console.table(currentPackageInfo);
 
-  for (job of jobs) {
+  for (const job of jobs) {
     const jobName = job.name;
     const jobPath = job.path;
     const jobVersion = job.desiredVersion;
@@ -181,7 +184,7 @@ const main = async () => {
     });
   };
 
-  for (writeTask of writeTasks) {
+  for (const writeTask of writeTasks) {
     try {
       fs.writeFileSync(writeTask.filepath, writeTask.contents);
       summary.push({

@@ -1,7 +1,7 @@
 import type { Region, RegionSite } from '../regions';
 import type { IPAddress, IPRange } from '../networking/types';
 import type { SSHKey } from '../profile/types';
-import type { PlacementGroupPayload } from '../placement-groups/types';
+import type { LinodePlacementGroupPayload } from '../placement-groups/types';
 
 export type Hypervisor = 'kvm' | 'zen';
 
@@ -13,13 +13,14 @@ export interface LinodeSpecs {
   vcpus: number;
   transfer: number;
   gpus: number;
+  accelerated_devices: number;
 }
 
 export interface Linode {
   id: number;
   alerts: LinodeAlerts;
   backups: LinodeBackups;
-  bs_encryption_supported?: boolean; // @TODO BSE: Remove optionality once BSE is fully rolled out
+  capabilities: LinodeCapabilities[];
   created: string;
   disk_encryption?: EncryptionStatus; // @TODO LDE: Remove optionality once LDE is fully rolled out
   region: string;
@@ -29,7 +30,7 @@ export interface Linode {
   ipv6: string | null;
   label: string;
   lke_cluster_id: number | null;
-  placement_group?: PlacementGroupPayload; // If not in a placement group, this will be excluded from the response.
+  placement_group?: LinodePlacementGroupPayload; // If not in a placement group, this will be excluded from the response.
   type: string | null;
   status: LinodeStatus;
   updated: string;
@@ -53,6 +54,11 @@ export interface LinodeBackups {
   schedule: LinodeBackupSchedule;
   last_successful: string | null;
 }
+
+export type LinodeCapabilities =
+  | 'Block Storage Encryption'
+  | 'SMTP Enabled'
+  | 'Block Storage Performance B1';
 
 export type Window =
   | 'Scheduling'
@@ -320,6 +326,7 @@ export interface LinodeType extends BaseType {
   successor: string | null;
   network_out: number;
   gpus: number;
+  accelerated_devices: number;
   price: PriceObject;
   region_prices: RegionPriceObject[];
   addons: {
@@ -328,6 +335,7 @@ export interface LinodeType extends BaseType {
 }
 
 export type LinodeTypeClass =
+  | 'accelerated'
   | 'nanode'
   | 'standard'
   | 'dedicated'
@@ -335,8 +343,7 @@ export type LinodeTypeClass =
   | 'gpu'
   | 'metal'
   | 'prodedicated'
-  | 'premium'
-  | 'edge';
+  | 'premium';
 
 export interface IPAllocationRequest {
   type: 'ipv4';

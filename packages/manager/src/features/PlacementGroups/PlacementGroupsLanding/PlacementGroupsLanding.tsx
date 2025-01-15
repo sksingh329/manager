@@ -1,15 +1,13 @@
-import CloseIcon from '@mui/icons-material/Close';
+import { CircleProgress } from '@linode/ui';
 import { useMediaQuery, useTheme } from '@mui/material';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { useHistory } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 
-import { CircleProgress } from 'src/components/CircleProgress';
 import { DebouncedSearchTextField } from 'src/components/DebouncedSearchTextField';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { Hidden } from 'src/components/Hidden';
-import { IconButton } from 'src/components/IconButton';
-import { InputAdornment } from 'src/components/InputAdornment';
 import { LandingHeader } from 'src/components/LandingHeader';
 import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
 import { Table } from 'src/components/Table';
@@ -174,26 +172,12 @@ export const PlacementGroupsLanding = React.memo(() => {
         title="Placement Groups"
       />
       <DebouncedSearchTextField
-        InputProps={{
-          endAdornment: query && (
-            <InputAdornment position="end">
-              {isFetching && <CircleProgress size="sm" />}
-
-              <IconButton
-                aria-label="Clear"
-                onClick={() => setQuery('')}
-                size="small"
-                sx={{ padding: 'unset' }}
-              >
-                <CloseIcon sx={{ color: '#aaa !important' }} />
-              </IconButton>
-            </InputAdornment>
-          ),
-        }}
+        clearable
         debounceTime={250}
         hideLabel
+        isSearching={isFetching}
         label="Search"
-        onChange={(e) => setQuery(e.target.value)}
+        onSearch={setQuery}
         placeholder="Search Placement Groups"
         sx={{ mb: 4 }}
         value={query}
@@ -296,4 +280,10 @@ export const PlacementGroupsLanding = React.memo(() => {
       />
     </>
   );
+});
+
+export const placementGroupsLandingLazyRoute = createLazyRoute(
+  '/placement-groups'
+)({
+  component: PlacementGroupsLanding,
 });

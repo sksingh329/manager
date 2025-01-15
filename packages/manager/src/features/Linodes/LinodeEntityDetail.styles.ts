@@ -1,15 +1,15 @@
-// This component was built asuming an unmodified MUI <Table />
+// This component was built assuming an unmodified MUI <Table />
+import { Box, Typography } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import Grid from '@mui/material/Unstable_Grid2';
-import { styled } from '@mui/material/styles';
-import { Theme } from '@mui/material/styles';
 import { Link } from 'react-router-dom';
 
-import { Box } from 'src/components/Box';
 import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
 import { TableCell } from 'src/components/TableCell';
 import { TableRow } from 'src/components/TableRow';
-import { Typography } from 'src/components/Typography';
+
+import type { Theme } from '@mui/material/styles';
 
 // ---------------------------------------------------------------------
 // Header Styles
@@ -87,6 +87,46 @@ export const sxLastListItem = {
   paddingRight: 0,
 };
 
+// ---------------------------------------------------------------------
+// VPC Label Styles
+// ---------------------------------------------------------------------
+
+export const StyledIPv4Box = styled(Box, { label: 'StyledIPv4Box' })(
+  ({ theme }) => ({
+    '&:hover .copy-tooltip > svg, & .copy-tooltip:focus > svg': {
+      opacity: 1,
+    },
+    border: 0,
+    display: 'flex',
+    marginLeft: theme.spacing(2),
+    [theme.breakpoints.down('md')]: {
+      margin: theme.spacing(0),
+    },
+  })
+);
+
+export const StyledIPv4Label = styled(Box, { label: 'StyledIPv4Label' })(
+  ({ theme }) => ({
+    alignContent: 'center',
+    backgroundColor: theme.name === 'light' ? theme.color.grey10 : theme.bg.app,
+    color: theme.textColors.textAccessTable,
+    fontFamily: theme.font.bold,
+    padding: `${theme.spacing(1)} ${theme.spacing(3)} ${theme.spacing(
+      1
+    )} ${theme.spacing(1.5)}`,
+  })
+);
+
+export const StyledIPv4Item = styled(Box, { label: 'StyledIPv4Item' })(
+  ({ theme }) => ({
+    alignItems: 'center',
+    backgroundColor: theme.tokens.interaction.Background.Secondary,
+    display: 'flex',
+    fontFamily: '"UbuntuMono", monospace, sans-serif',
+    padding: `${theme.spacing(0.5)} ${theme.spacing(1)}`,
+  })
+);
+
 export const StyledListItem = styled(Typography, { label: 'StyledTypography' })(
   ({ theme }) => ({
     borderRight: `1px solid ${theme.borderColors.borderTypography}`,
@@ -157,7 +197,7 @@ export const StyledTableCell = styled(TableCell, { label: 'StyledTableCell' })(
       fontSize: 15,
     },
     alignItems: 'center',
-    backgroundColor: theme.bg.bgAccessRow,
+    backgroundColor: theme.tokens.interaction.Background.Secondary,
     color: theme.textColors.tableStatic,
     display: 'flex',
     fontFamily: '"UbuntuMono", monospace, sans-serif',
@@ -180,7 +220,7 @@ export const StyledCopyTooltip = styled(CopyTooltip, {
 export const StyledGradientDiv = styled('div', { label: 'StyledGradientDiv' })(
   ({ theme }) => ({
     '&:after': {
-      backgroundImage: `linear-gradient(to right,  ${theme.bg.bgAccessRowTransparentGradient}, ${theme.bg.bgAccessRow});`,
+      backgroundImage: `linear-gradient(to right,  ${theme.bg.bgAccessRowTransparentGradient}, ${theme.tokens.interaction.Background.Secondary});`,
       bottom: 0,
       content: '""',
       height: '100%',
@@ -188,6 +228,7 @@ export const StyledGradientDiv = styled('div', { label: 'StyledGradientDiv' })(
       right: 0,
       width: 30,
     },
+    display: 'flex',
     overflowX: 'auto',
     overflowY: 'hidden', // For Edge
     paddingRight: 15,

@@ -1,41 +1,15 @@
-import Dialog, { DialogProps } from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import { Theme } from '@mui/material/styles';
+import { Stack } from '@linode/ui';
 import * as React from 'react';
-import { makeStyles } from 'tss-react/mui';
 
-import { DialogTitle } from 'src/components/DialogTitle/DialogTitle';
+import { Dialog } from 'src/components/Dialog/Dialog';
 
-const useStyles = makeStyles()((theme: Theme) => ({
-  actions: {
-    '& button': {
-      marginBottom: 0,
-    },
-    justifyContent: 'flex-end',
-  },
-  dialogContent: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  error: {
-    color: '#C44742',
-    marginTop: theme.spacing(2),
-  },
-  root: {
-    '& .MuiDialogTitle-root': {
-      marginBottom: 10,
-    },
-  },
-}));
+import type { DialogProps } from 'src/components/Dialog/Dialog';
 
 export interface ConfirmationDialogProps extends DialogProps {
-  actions?: ((props: any) => JSX.Element) | JSX.Element;
-  error?: JSX.Element | string;
-  onClose: () => void;
-  onExited?: () => void;
-  title: string;
+  /**
+   * The actions to be displayed in the dialog.
+   */
+  actions?: ((props: DialogProps) => JSX.Element) | JSX.Element;
 }
 
 /**
@@ -47,52 +21,25 @@ export interface ConfirmationDialogProps extends DialogProps {
  * - Avoid “Are you sure?” language. Assume the user knows what they want to do while helping them avoid unintended consequences.
  *
  */
-export const ConfirmationDialog = (props: ConfirmationDialogProps) => {
-  const { classes } = useStyles();
-
-  const {
-    actions,
-    children,
-    error,
-    onClose,
-    onExited,
-    title,
-    ...dialogProps
-  } = props;
+export const ConfirmationDialog = React.forwardRef<
+  HTMLDivElement,
+  ConfirmationDialogProps
+>((props, ref) => {
+  const { actions, children, ...dialogProps } = props;
 
   return (
-    <Dialog
-      {...dialogProps}
-      TransitionProps={{
-        ...dialogProps.TransitionProps,
-        onExited,
-      }}
-      onClose={(_, reason) => {
-        if (reason !== 'backdropClick') {
-          onClose();
-        }
-      }}
-      PaperProps={{ role: undefined }}
-      className={classes.root}
-      data-qa-dialog
-      data-qa-drawer
-      data-testid="drawer"
-      role="dialog"
-    >
-      <DialogTitle onClose={onClose} title={title} />
-      <DialogContent className={classes.dialogContent} data-qa-dialog-content>
-        {children}
-        {error && (
-          <DialogContentText className={`${classes.error} error-for-scroll`}>
-            {error}
-          </DialogContentText>
-        )}
-      </DialogContent>
-      <DialogActions className={classes.actions}>
+    <Dialog {...dialogProps} PaperProps={{ role: undefined }} ref={ref}>
+      {children}
+      <Stack
+        direction="row"
+        justifyContent="flex-end"
+        spacing={2}
+        sx={{ mt: 4 }}
+      >
         {actions && typeof actions === 'function'
           ? actions(dialogProps)
           : actions}
-      </DialogActions>
+      </Stack>
     </Dialog>
   );
-};
+});

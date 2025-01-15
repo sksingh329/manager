@@ -1,15 +1,19 @@
-import * as React from 'react';
+import { Stack, Tooltip } from '@linode/ui';
+import React from 'react';
 
+import CloudInitIcon from 'src/assets/icons/cloud-init.svg';
 import { Hidden } from 'src/components/Hidden';
+import { LinkButton } from 'src/components/LinkButton';
 import { TableCell } from 'src/components/TableCell';
 import { TableRow } from 'src/components/TableRow';
-import { Typography } from 'src/components/Typography';
+import { useFlags } from 'src/hooks/useFlags';
 import { useProfile } from 'src/queries/profile/profile';
-import { capitalizeAllWords } from 'src/utilities/capitalize';
 import { formatDate } from 'src/utilities/formatDate';
+import { pluralize } from 'src/utilities/pluralize';
+import { convertStorageUnit } from 'src/utilities/unitConversions';
 
 import { ImagesActionMenu } from './ImagesActionMenu';
-import { RegionsList } from './RegionsList';
+import { ImageStatus } from './ImageStatus';
 
 import type { Handlers } from './ImagesActionMenu';
 import type { Event, Image, ImageCapabilities } from '@linode/api-v4';
@@ -42,30 +46,14 @@ export const ImageRow = (props: Props) => {
   } = image;
 
   const { data: profile } = useProfile();
-
-  const isFailed = status === 'pending_upload' && event?.status === 'failed';
+  const flags = useFlags();
 
   const compatibilitiesList = multiRegionsEnabled
     ? capabilities.map((capability) => capabilityMap[capability]).join(', ')
     : '';
 
-  const getStatusForImage = (status: string) => {
-    switch (status) {
-      case 'creating':
-        return (
-          <ProgressDisplay
-            progress={progressFromEvent(event)}
-            text="Creating"
-          />
-        );
-      case 'available':
-        return 'Ready';
-      case 'pending_upload':
-        return isFailed ? 'Failed' : 'Processing';
-      default:
-        return capitalizeAllWords(status.replace('_', ' '));
-    }
-  };
+  const isFailedUpload =
+    image.status === 'pending_upload' && event?.status === 'failed';
 
   const getSizeForImage = (
     size: number,
@@ -73,8 +61,15 @@ export const ImageRow = (props: Props) => {
     eventStatus: string | undefined
   ) => {
     if (status === 'available' || eventStatus === 'finished') {
-      return `${size} MB`;
-    } else if (isFailed) {
+      const sizeInGB = convertStorageUnit('MB', size, 'GB');
+
+      const formattedSizeInGB = Intl.NumberFormat('en-US', {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 0,
+      }).format(sizeInGB);
+
+      return `${formattedSizeInGB} GB`;
+    } else if (isFailedUpload) {
       return 'N/A';
     } else {
       return 'Pending';
@@ -83,26 +78,44 @@ export const ImageRow = (props: Props) => {
 
   return (
     <TableRow data-qa-image-cell={id} key={id}>
-      <TableCell data-qa-image-label>{label}</TableCell>
+      <TableCell data-qa-image-label noWrap>
+        {capabilities.includes('cloud-init') &&
+        flags.imageServiceGen2 &&
+        flags.imageServiceGen2Ga ? (
+          <Stack alignItems="center" direction="row" gap={1.5}>
+            <Tooltip title="This image supports our Metadata service via cloud-init.">
+              <div style={{ display: 'flex' }}>
+                <CloudInitIcon />
+              </div>
+            </Tooltip>
+            {label}
+          </Stack>
+        ) : (
+          label
+        )}
+      </TableCell>
       <Hidden smDown>
-        {status ? <TableCell>{getStatusForImage(status)}</TableCell> : null}
+        <TableCell noWrap>
+          <ImageStatus event={event} image={image} />
+        </TableCell>
       </Hidden>
       {multiRegionsEnabled && (
-        <>
-          <Hidden smDown>
-            <TableCell>
-              {regions && regions.length > 0 && (
-                <RegionsList
-                  onManageRegions={() => handlers.onManageRegions?.(image)}
-                  regions={regions}
-                />
-              )}
-            </TableCell>
-          </Hidden>
-          <Hidden smDown>
-            <TableCell>{compatibilitiesList}</TableCell>
-          </Hidden>
-        </>
+        <Hidden smDown>
+          <TableCell>
+            {regions.length > 0 ? (
+              <LinkButton onClick={() => handlers.onManageRegions?.(image)}>
+                {pluralize('Region', 'Regions', regions.length)}
+              </LinkButton>
+            ) : (
+              'N/A'
+            )}
+          </TableCell>
+        </Hidden>
+      )}
+      {multiRegionsEnabled && !flags.imageServiceGen2Ga && (
+        <Hidden smDown>
+          <TableCell>{compatibilitiesList}</TableCell>
+        </Hidden>
       )}
       <TableCell data-qa-image-size>
         {getSizeForImage(size, status, event?.status)}
@@ -122,13 +135,13 @@ export const ImageRow = (props: Props) => {
         </TableCell>
       </Hidden>
       <Hidden smDown>
-        {expiry ? (
+        {expiry && (
           <TableCell data-qa-image-date>
             {formatDate(expiry, {
               timezone: profile?.timezone,
             })}
           </TableCell>
-        ) : null}
+        )}
       </Hidden>
       {multiRegionsEnabled && (
         <Hidden mdDown>
@@ -139,35 +152,5 @@ export const ImageRow = (props: Props) => {
         <ImagesActionMenu {...props} />
       </TableCell>
     </TableRow>
-  );
-};
-
-export const isImageUpdating = (e?: Event) => {
-  // Make Typescript happy, since this function can otherwise technically return undefined
-  if (!e) {
-    return false;
-  }
-  return (
-    e?.action === 'disk_imagize' && ['scheduled', 'started'].includes(e.status)
-  );
-};
-
-const progressFromEvent = (e?: Event) => {
-  return e?.status === 'started' && e?.percent_complete
-    ? e.percent_complete
-    : undefined;
-};
-
-const ProgressDisplay: React.FC<{
-  progress: number | undefined;
-  text: string;
-}> = (props) => {
-  const { progress, text } = props;
-  const displayProgress = progress ? `${progress}%` : `scheduled`;
-
-  return (
-    <Typography variant="body1">
-      {text}: {displayProgress}
-    </Typography>
   );
 };

@@ -1,15 +1,12 @@
-import { ContactPayload, ManagedContact } from '@linode/api-v4/lib/managed';
+import { Notice, Select, TextField } from '@linode/ui';
 import { createContactSchema } from '@linode/validation/lib/managed.schema';
 import Grid from '@mui/material/Unstable_Grid2';
-import { Formik, FormikHelpers } from 'formik';
+import { Formik } from 'formik';
 import { pathOr, pick } from 'ramda';
 import * as React from 'react';
 
 import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { Drawer } from 'src/components/Drawer';
-import Select from 'src/components/EnhancedSelect/Select';
-import { Notice } from 'src/components/Notice/Notice';
-import { TextField } from 'src/components/TextField';
 import {
   useCreateContactMutation,
   useUpdateContactMutation,
@@ -20,7 +17,12 @@ import {
 } from 'src/utilities/formikErrorUtils';
 import { handleFormikBlur } from 'src/utilities/formikTrimUtil';
 
-import { ManagedContactGroup, Mode } from './common';
+import type { ManagedContactGroup, Mode } from './common';
+import type {
+  ContactPayload,
+  ManagedContact,
+} from '@linode/api-v4/lib/managed';
+import type { FormikHelpers } from 'formik';
 
 interface ContactsDrawerProps {
   closeDrawer: () => void;
@@ -186,9 +188,8 @@ const ContactsDrawer = (props: ContactsDrawerProps) => {
                   </Grid>
                 </Grid>
 
-                {/* @todo: This <Select /> should be clearable eventually, but isn't currently allowed by the API. */}
                 <Select
-                  onChange={(selectedGroup) =>
+                  onChange={(_, selectedGroup) =>
                     setFieldValue('group', selectedGroup?.value)
                   }
                   options={groups.map((group) => ({
@@ -205,7 +206,6 @@ const ContactsDrawer = (props: ContactsDrawerProps) => {
                   }
                   creatable
                   errorText={errors.group}
-                  isClearable={false}
                   label="Group"
                   placeholder="Create or Select a Group"
                 />

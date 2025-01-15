@@ -2,7 +2,7 @@ import { act, waitFor } from '@testing-library/react';
 import * as React from 'react';
 
 import { profileFactory } from 'src/factories';
-import { http, HttpResponse, server } from 'src/mocks/testServer';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { ObjectDetailsDrawer } from './ObjectDetailsDrawer';
@@ -22,8 +22,6 @@ vi.mock('@linode/api-v4/lib/object-storage/objects', async () => {
     updateObjectACL: vi.fn().mockResolvedValue({}),
   };
 });
-
-vi.mock('src/components/EnhancedSelect/Select');
 
 const props: ObjectDetailsDrawerProps = {
   bucketName: 'my-bucket',
@@ -51,7 +49,7 @@ describe('ObjectDetailsDrawer', () => {
       expect(getByText(/^Last modified: 2019-12-31/)).toBeInTheDocument()
     );
 
-    expect(getByText('12.1 KB')).toBeInTheDocument();
+    expect(getByText('12.3 KB')).toBeInTheDocument();
     expect(getByText(/^https:\/\/my-bucket/)).toBeInTheDocument();
   });
 
@@ -62,6 +60,17 @@ describe('ObjectDetailsDrawer', () => {
 
     await act(async () => {
       expect(queryByTestId('lastModified')).not.toBeInTheDocument();
+    });
+  });
+
+  it("doesn't show the ACL Switch for E2 and E3 buckets", async () => {
+    const { queryByLabelText } = renderWithTheme(
+      <ObjectDetailsDrawer {...props} endpointType="E3" />
+    );
+    await waitFor(() => {
+      expect(
+        queryByLabelText('Access Control List (ACL)')
+      ).not.toBeInTheDocument();
     });
   });
 });

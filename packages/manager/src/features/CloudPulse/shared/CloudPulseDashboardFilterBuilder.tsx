@@ -1,30 +1,36 @@
-import KeyboardArrowDownIcon from '@mui/icons-material/ArrowDropDown';
-import KeyboardArrowRightIcon from '@mui/icons-material/ArrowRight';
-import { Grid, Typography } from '@mui/material';
+import { Button } from '@linode/ui';
+import { Grid, Typography, useTheme } from '@mui/material';
 import * as React from 'react';
 
+import KeyboardArrowDownIcon from 'src/assets/icons/arrow_down.svg';
+import KeyboardArrowRightIcon from 'src/assets/icons/arrow_right.svg';
 import InfoIcon from 'src/assets/icons/info.svg';
-import { Button } from 'src/components/Button/Button';
-import { Divider } from 'src/components/Divider';
 import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import NullComponent from 'src/components/NullComponent';
 
 import RenderComponent from '../shared/CloudPulseComponentRenderer';
 import {
+  DASHBOARD_ID,
   REGION,
   RELATIVE_TIME_DURATION,
   RESOURCE_ID,
+  RESOURCES,
+  TAGS,
 } from '../Utils/constants';
 import {
+  getCustomSelectProperties,
+  getFilters,
   getRegionProperties,
   getResourcesProperties,
+  getTagsProperties,
 } from '../Utils/FilterBuilder';
 import { FILTER_CONFIG } from '../Utils/FilterConfig';
 
 import type { FilterValueType } from '../Dashboard/CloudPulseDashboardLanding';
 import type { CloudPulseServiceTypeFilters } from '../Utils/models';
 import type { CloudPulseResources } from './CloudPulseResourcesSelect';
-import type { Dashboard } from '@linode/api-v4';
+import type { CloudPulseTags } from './CloudPulseTagsFilter';
+import type { AclpConfig, Dashboard } from '@linode/api-v4';
 
 export interface CloudPulseDashboardFilterBuilderProps {
   /**
@@ -36,12 +42,25 @@ export interface CloudPulseDashboardFilterBuilderProps {
   /**
    * all the selection changes in the filter goes through this method
    */
-  emitFilterChange: (filterKey: string, value: FilterValueType) => void;
+  emitFilterChange: (
+    filterKey: string,
+    value: FilterValueType,
+    labels: string[],
+    savePref?: boolean,
+    updatePreferenceData?: {}
+  ) => void;
+
+  handleToggleAppliedFilter: (isVisible: boolean) => void;
 
   /**
    * this will handle the restrictions, if the parent of the component is going to be integrated in service analytics page
    */
   isServiceAnalyticsIntegration: boolean;
+
+  /**
+   * Last selected values from user preferences
+   */
+  preferences?: AclpConfig;
 }
 
 export const CloudPulseDashboardFilterBuilder = React.memo(
@@ -49,7 +68,9 @@ export const CloudPulseDashboardFilterBuilder = React.memo(
     const {
       dashboard,
       emitFilterChange,
+      handleToggleAppliedFilter,
       isServiceAnalyticsIntegration,
+      preferences,
     } = props;
 
     const [, setDependentFilters] = React.useState<{
@@ -57,6 +78,8 @@ export const CloudPulseDashboardFilterBuilder = React.memo(
     }>({});
 
     const [showFilter, setShowFilter] = React.useState<boolean>(true);
+
+    const theme = useTheme();
 
     const dependentFilterReference: React.MutableRefObject<{
       [key: string]: FilterValueType;
@@ -87,35 +110,118 @@ export const CloudPulseDashboardFilterBuilder = React.memo(
     );
 
     const emitFilterChangeByFilterKey = React.useCallback(
-      (filterKey: string, filterValue: FilterValueType) => {
-        emitFilterChange(filterKey, filterValue);
+      (
+        filterKey: string,
+        filterValue: FilterValueType,
+        labels: string[],
+        savePref: boolean = false,
+        updatedPreferenceData: AclpConfig = {}
+      ) => {
+        emitFilterChange(
+          filterKey,
+          filterValue,
+          labels,
+          savePref,
+          updatedPreferenceData
+        );
         checkAndUpdateDependentFilters(filterKey, filterValue);
       },
       [emitFilterChange, checkAndUpdateDependentFilters]
     );
 
+    const handleTagsChange = React.useCallback(
+      (tags: CloudPulseTags[], savePref: boolean = false) => {
+        const selectedTags = tags.map((tag) => tag.label);
+        emitFilterChangeByFilterKey(
+          TAGS,
+          selectedTags,
+          selectedTags,
+          savePref,
+          {
+            [TAGS]: selectedTags,
+          }
+        );
+      },
+      [emitFilterChangeByFilterKey]
+    );
+
     const handleResourceChange = React.useCallback(
-      (resourceId: CloudPulseResources[]) => {
+      (resourceId: CloudPulseResources[], savePref: boolean = false) => {
         emitFilterChangeByFilterKey(
           RESOURCE_ID,
-          resourceId.map((resource) => resource.id)
+          resourceId.map((resource) => resource.id),
+          resourceId.map((resource) => resource.label),
+          savePref,
+          {
+            [RESOURCES]: resourceId.map((resource: { id: string }) =>
+              String(resource.id)
+            ),
+          }
         );
       },
       [emitFilterChangeByFilterKey]
     );
 
     const handleRegionChange = React.useCallback(
-      (region: string | undefined) => {
-        emitFilterChangeByFilterKey(REGION, region);
+      (
+        region: string | undefined,
+        labels: string[],
+        savePref: boolean = false
+      ) => {
+        const updatedPreferenceData = {
+          [REGION]: region,
+          [RESOURCES]: undefined,
+        };
+        emitFilterChangeByFilterKey(
+          REGION,
+          region,
+          labels,
+          savePref,
+          updatedPreferenceData
+        );
+      },
+      [emitFilterChangeByFilterKey]
+    );
+
+    const handleCustomSelectChange = React.useCallback(
+      (
+        filterKey: string,
+        value: FilterValueType,
+        labels: string[],
+        savePref: boolean = false,
+        updatedPreferenceData: {} = {}
+      ) => {
+        emitFilterChangeByFilterKey(
+          filterKey,
+          value,
+          labels,
+          savePref,
+          updatedPreferenceData
+        );
       },
       [emitFilterChangeByFilterKey]
     );
 
     const getProps = React.useCallback(
       (config: CloudPulseServiceTypeFilters) => {
-        if (config.configuration.filterKey === REGION) {
+        if (config.configuration.filterKey === TAGS) {
+          return getTagsProperties(
+            {
+              config,
+              dashboard,
+              isServiceAnalyticsIntegration,
+              preferences,
+            },
+            handleTagsChange
+          );
+        } else if (config.configuration.filterKey === REGION) {
           return getRegionProperties(
-            { config, dashboard, isServiceAnalyticsIntegration },
+            {
+              config,
+              dashboard,
+              isServiceAnalyticsIntegration,
+              preferences,
+            },
             handleRegionChange
           );
         } else if (config.configuration.filterKey === RESOURCE_ID) {
@@ -125,27 +231,41 @@ export const CloudPulseDashboardFilterBuilder = React.memo(
               dashboard,
               dependentFilters: dependentFilterReference.current,
               isServiceAnalyticsIntegration,
+              preferences,
             },
             handleResourceChange
           );
         } else {
-          return {};
+          return getCustomSelectProperties(
+            {
+              config,
+              dashboard,
+              dependentFilters: dependentFilterReference.current,
+              isServiceAnalyticsIntegration,
+              preferences,
+            },
+            handleCustomSelectChange
+          );
         }
       },
       [
         dashboard,
+        handleTagsChange,
         handleRegionChange,
         handleResourceChange,
+        handleCustomSelectChange,
         isServiceAnalyticsIntegration,
+        preferences,
       ]
     );
 
     const toggleShowFilter = () => {
+      handleToggleAppliedFilter(showFilter);
       setShowFilter((showFilterPrev) => !showFilterPrev);
     };
 
     const RenderFilters = React.useCallback(() => {
-      const filters = FILTER_CONFIG.get(dashboard.service_type)?.filters || [];
+      const filters = getFilters(dashboard, isServiceAnalyticsIntegration);
 
       if (!filters || filters.length === 0) {
         // if the filters are not defined , print an error state
@@ -154,7 +274,7 @@ export const CloudPulseDashboardFilterBuilder = React.memo(
             CustomIcon={InfoIcon}
             CustomIconStyles={{ height: '40px', width: '40px' }}
             errorText={'Please configure filters to continue'}
-          ></ErrorState>
+          />
         );
       }
 
@@ -168,7 +288,10 @@ export const CloudPulseDashboardFilterBuilder = React.memo(
         .map((filter, index) => (
           <Grid item key={filter.configuration.filterKey} md={4} sm={6} xs={12}>
             {RenderComponent({
-              componentKey: filter.configuration.filterKey,
+              componentKey:
+                filter.configuration.type !== undefined
+                  ? 'customSelect'
+                  : filter.configuration.filterKey,
               componentProps: { ...getProps(filter) },
               key: index + filter.configuration.filterKey,
             })}
@@ -185,40 +308,55 @@ export const CloudPulseDashboardFilterBuilder = React.memo(
     }
 
     return (
-      <Grid container item xs={12}>
-        <Grid item key={'toggleFilter'} px={2} xs={12}>
+      <Grid
+        container
+        item
+        m={3}
+        paddingBottom={isServiceAnalyticsIntegration ? 3 : 0}
+        xs={12}
+      >
+        <Grid
+          sx={{
+            m: 0,
+            p: 0,
+          }}
+          item
+          key="toggleFilter"
+          xs={12}
+        >
           <Button
             startIcon={
               showFilter ? (
-                <KeyboardArrowDownIcon
-                  sx={{ color: 'grey', height: '30px', width: '30px' }}
-                />
+                <KeyboardArrowDownIcon />
               ) : (
-                <KeyboardArrowRightIcon
-                  sx={{ color: 'grey', height: '30px', width: '30px' }}
-                />
+                <KeyboardArrowRightIcon />
               )
             }
+            sx={{
+              justifyContent: 'start',
+              m: theme.spacing(0),
+              marginBottom: theme.spacing(showFilter ? 1 : 0),
+              minHeight: 'auto',
+              minWidth: 'auto',
+              p: theme.spacing(0),
+              svg: {
+                color: theme.color.grey4,
+              },
+            }}
             onClick={toggleShowFilter}
-            sx={{ justifyContent: 'start', mb: showFilter ? 0 : 2, p: 0 }}
           >
-            <Typography>Filters</Typography>
+            <Typography variant="h3">Filters</Typography>
           </Button>
         </Grid>
-        <Grid display={showFilter ? 'block' : 'none'} item xs={12}>
-          <Divider />
-        </Grid>
         <Grid
-          columnSpacing={2}
+          columnSpacing={theme.spacing(2)}
           container
           display={showFilter ? 'flex' : 'none'}
           item
-          maxHeight={'120px'}
-          mb={1}
+          maxHeight={theme.spacing(23)}
           overflow={'auto'}
-          px={2}
-          py={1}
-          rowGap={2}
+          pr={{ sm: 0, xs: 2 }}
+          rowGap={theme.spacing(2)}
           xs={12}
         >
           <RenderFilters />
@@ -233,5 +371,9 @@ function compareProps(
   oldProps: CloudPulseDashboardFilterBuilderProps,
   newProps: CloudPulseDashboardFilterBuilderProps
 ) {
-  return oldProps.dashboard?.id === newProps.dashboard?.id;
+  return (
+    oldProps.dashboard?.id === newProps.dashboard?.id &&
+    oldProps.preferences?.[DASHBOARD_ID] ===
+      newProps.preferences?.[DASHBOARD_ID]
+  );
 }

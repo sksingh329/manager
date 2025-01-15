@@ -1,3 +1,4 @@
+import { Typography } from '@linode/ui';
 import * as React from 'react';
 
 import DocsIcon from 'src/assets/icons/docs.svg';
@@ -8,7 +9,6 @@ import { ResourcesLinksSection } from 'src/components/EmptyLandingPageResources/
 import { ResourcesLinksSubSection } from 'src/components/EmptyLandingPageResources/ResourcesLinksSubSection';
 import { ResourcesMoreLink } from 'src/components/EmptyLandingPageResources/ResourcesMoreLink';
 import { Placeholder } from 'src/components/Placeholder/Placeholder';
-import { Typography } from 'src/components/Typography';
 import {
   getLinkOnClick,
   youtubeChannelLink,
@@ -111,7 +111,7 @@ export const ResourcesSection = (props: ResourcesSectionProps) => {
     wide = false,
     youtubeLinkData,
   } = props;
-  const { description, subtitle, title } = headers;
+  const { description, logo, subtitle, title } = headers;
 
   return (
     <Placeholder
@@ -171,6 +171,7 @@ export const ResourcesSection = (props: ResourcesSectionProps) => {
       subtitle={subtitle}
       title={title}
     >
+      {logo}
       <Typography variant="subtitle1">{description}</Typography>
     </Placeholder>
   );
