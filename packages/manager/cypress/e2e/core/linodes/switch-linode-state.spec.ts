@@ -1,8 +1,9 @@
-import { ui } from 'support/ui';
 import { authenticate } from 'support/api/authentication';
 import { LINODE_CREATE_TIMEOUT } from 'support/constants/linodes';
+import { ui } from 'support/ui';
 import { cleanUp } from 'support/util/cleanup';
 import { createTestLinode } from 'support/util/linodes';
+
 import type { Linode } from '@linode/api-v4';
 
 authenticate();
@@ -81,7 +82,13 @@ describe('switch linode state', () => {
       );
       cy.findByText(linode.label).should('be.visible');
 
-      cy.findByText('Power Off').should('be.visible').click();
+      ui.actionMenu
+        .findByTitle(`Action menu for Linode ${linode.label}`)
+        .should('be.visible')
+        .click();
+
+      ui.actionMenuItem.findByTitle('Power Off').should('be.visible').click();
+
       ui.dialog
         .findByTitle(`Power Off Linode ${linode.label}?`)
         .should('be.visible')
@@ -160,7 +167,13 @@ describe('switch linode state', () => {
         );
         cy.findByText(linode.label).should('be.visible');
 
-        cy.findByText('Power On').should('be.visible').click();
+        ui.actionMenu
+          .findByTitle(`Action menu for Linode ${linode.label}`)
+          .should('be.visible')
+          .click();
+
+        ui.actionMenuItem.findByTitle('Power On').should('be.visible').click();
+
         ui.dialog
           .findByTitle(`Power On Linode ${linode.label}?`)
           .should('be.visible')
@@ -246,7 +259,13 @@ describe('switch linode state', () => {
       );
       cy.findByText(linode.label).should('be.visible');
 
-      cy.findByText('Reboot').should('be.visible').click();
+      ui.actionMenu
+        .findByTitle(`Action menu for Linode ${linode.label}`)
+        .should('be.visible')
+        .click();
+
+      ui.actionMenuItem.findByTitle('Reboot').should('be.visible').click();
+
       ui.dialog
         .findByTitle(`Reboot Linode ${linode.label}?`)
         .should('be.visible')

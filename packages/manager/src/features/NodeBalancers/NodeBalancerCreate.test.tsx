@@ -4,8 +4,41 @@ import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import NodeBalancerCreate from './NodeBalancerCreate';
 
+const queryMocks = vi.hoisted(() => ({
+  useNavigate: vi.fn(() => vi.fn()),
+  useFlags: vi.fn().mockReturnValue({}),
+  useParams: vi.fn().mockReturnValue({ id: undefined }),
+}));
+
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    useNavigate: queryMocks.useNavigate,
+    useParams: queryMocks.useParams,
+  };
+});
+
+vi.mock('src/hooks/useFlags', () => {
+  const actual = vi.importActual('src/hooks/useFlags');
+  return {
+    ...actual,
+    useFlags: queryMocks.useFlags,
+  };
+});
+
+vi.mock('src/features/IAM/hooks/usePermissions', () => ({
+  usePermissions: vi.fn(() => ({
+    data: { create_firewall: true },
+  })),
+}));
+
 // Note: see nodeblaancers-create-in-complex-form.spec.ts for an e2e test of this flow
 describe('NodeBalancerCreate', () => {
+  queryMocks.useFlags.mockReturnValue({
+    nodebalancerVpc: true,
+  });
+  queryMocks.useParams.mockReturnValue({ id: undefined });
   it('renders all parts of the NodeBalancerCreate page', () => {
     const { getAllByText, getByLabelText, getByText } = renderWithTheme(
       <NodeBalancerCreate />
@@ -24,6 +57,9 @@ describe('NodeBalancerCreate', () => {
         /Assign an existing Firewall to this NodeBalancer to control inbound network traffic./
       )
     ).toBeVisible();
+
+    // confirm VPC Panel renders
+    expect(getByLabelText('VPC')).toBeVisible();
 
     // confirm default configuration renders - only confirming headers, as we have additional
     // unit tests to check the functionality of the NodeBalancerConfigPanel

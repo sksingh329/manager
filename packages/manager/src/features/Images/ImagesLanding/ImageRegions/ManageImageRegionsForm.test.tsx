@@ -1,9 +1,10 @@
+import { regionFactory } from '@linode/utilities';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
-import { imageFactory, regionFactory } from 'src/factories';
+import { imageFactory } from 'src/factories';
 import { makeResourcePage } from 'src/mocks/serverHandlers';
-import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { ManageImageReplicasForm } from './ManageImageRegionsForm';
@@ -43,7 +44,7 @@ describe('ManageImageRegionsDrawer', () => {
     });
 
     server.use(
-      http.get('*/v4/regions', () => {
+      http.get('*/v4*/regions', () => {
         return HttpResponse.json(makeResourcePage([region1, region2]));
       })
     );
@@ -80,7 +81,7 @@ describe('ManageImageRegionsDrawer', () => {
     });
 
     server.use(
-      http.get('*/v4/regions', () => {
+      http.get('*/v4*/regions', () => {
         return HttpResponse.json(makeResourcePage([region1, region2]));
       })
     );
@@ -129,7 +130,7 @@ describe('ManageImageRegionsDrawer', () => {
     });
 
     server.use(
-      http.get('*/v4/regions', () => {
+      http.get('*/v4*/regions', () => {
         return HttpResponse.json(makeResourcePage([region1, region2]));
       })
     );

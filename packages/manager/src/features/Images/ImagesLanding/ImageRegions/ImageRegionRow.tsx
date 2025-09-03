@@ -1,10 +1,16 @@
-import { Box, IconButton, Stack, Tooltip, Typography } from '@linode/ui';
-import Close from '@mui/icons-material/Close';
+import { useRegionsQuery } from '@linode/queries';
+import {
+  Box,
+  CloseIcon,
+  IconButton,
+  Stack,
+  Tooltip,
+  Typography,
+} from '@linode/ui';
 import React from 'react';
 
 import { Flag } from 'src/components/Flag';
 import { StatusIcon } from 'src/components/StatusIcon/StatusIcon';
-import { useRegionsQuery } from 'src/queries/regions/regions';
 
 import type { ImageRegionStatus, ImageStatus } from '@linode/api-v4';
 import type { Status } from 'src/components/StatusIcon/StatusIcon';
@@ -46,9 +52,9 @@ export const ImageRegionRow = (props: Props) => {
               aria-label={`Remove ${region}`}
               disabled={disableRemoveButton}
               onClick={onRemove}
-              sx={{ p: 0.5 }}
+              sx={{ p: 0.75 }}
             >
-              <Close />
+              <CloseIcon />
             </IconButton>
           </span>
         </Tooltip>

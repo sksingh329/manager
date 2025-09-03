@@ -22,19 +22,35 @@ export const getStateSeederGroups = (
 };
 
 export const emptyStore: MockState = {
+  cloudnats: [],
+  configInterfaces: [],
+  destinations: [],
   domainRecords: [],
   domains: [],
   eventQueue: [],
+  firewallDevices: [],
   firewalls: [],
+  ipAddresses: [],
+  kubernetesClusters: [],
+  kubernetesNodePools: [],
   linodeConfigs: [],
+  linodeInterfaces: [],
+  linodeIps: [],
   linodes: [],
+  nodeBalancerConfigNodes: [],
+  nodeBalancerConfigs: [],
+  nodeBalancers: [],
   notificationQueue: [],
   placementGroups: [],
   regionAvailability: [],
   regions: [],
+  streams: [],
+  subnets: [],
   supportReplies: [],
   supportTickets: [],
   volumes: [],
+  vpcs: [],
+  vpcsIps: [],
 };
 
 /**

@@ -1,6 +1,8 @@
+import { readableBytes } from '@linode/utilities';
 import * as React from 'react';
 
 import { MaskableText } from 'src/components/MaskableText/MaskableText';
+import { Table } from 'src/components/Table';
 import { TableBody } from 'src/components/TableBody';
 import { TableCell } from 'src/components/TableCell';
 import { TableHead } from 'src/components/TableHead';
@@ -12,9 +14,8 @@ import { TableSortCell } from 'src/components/TableSortCell';
 import { formatCPU } from 'src/features/Longview/shared/formatters';
 import { useOrderV2 } from 'src/hooks/useOrderV2';
 import { useWindowDimensions } from 'src/hooks/useWindowDimensions';
-import { readableBytes } from 'src/utilities/unitConversions';
 
-import { StyledDiv, StyledTable } from './ProcessesTable.styles';
+import { StyledDiv } from './ProcessesTable.styles';
 
 import type { Process } from './types';
 import type { APIError } from '@linode/api-v4/lib/types';
@@ -24,7 +25,7 @@ export interface ProcessesTableProps {
   lastUpdatedError?: APIError[];
   processesData: ExtendedProcess[];
   processesLoading: boolean;
-  selectedProcess: Process | null;
+  selectedProcess: null | Process;
   setSelectedProcess: (process: Process) => void;
 }
 
@@ -39,25 +40,21 @@ export const ProcessesTable = React.memo((props: ProcessesTableProps) => {
     setSelectedProcess,
   } = props;
 
-  const {
-    handleOrderChange,
-    order,
-    orderBy,
-    sortedData,
-  } = useOrderV2<ExtendedProcess>({
-    data: processesData,
-    initialRoute: {
-      defaultOrder: {
-        order: 'asc',
-        orderBy: 'name',
+  const { handleOrderChange, order, orderBy, sortedData } =
+    useOrderV2<ExtendedProcess>({
+      data: processesData,
+      initialRoute: {
+        defaultOrder: {
+          order: 'asc',
+          orderBy: 'name',
+        },
+        from: '/longview/clients/$id/processes',
       },
-      from: '/longview/clients/$id/processes',
-    },
-    preferenceKey: 'lv-detail-processes',
-  });
+      preferenceKey: 'lv-detail-processes',
+    });
 
   return (
-    <StyledTable
+    <Table
       // This prop is necessary to show the "ActiveCaret", and we only
       // want it on large viewports.
       noOverflow={width >= 1280}
@@ -130,14 +127,14 @@ export const ProcessesTable = React.memo((props: ProcessesTableProps) => {
           error
         )}
       </TableBody>
-    </StyledTable>
+    </Table>
   );
 });
 
 const renderLoadingErrorData = (
   loading: boolean,
   data: ExtendedProcess[],
-  selectedProcess: Process | null,
+  selectedProcess: null | Process,
   setSelectedProcess: (process: Process) => void,
   error?: string
 ) => {
@@ -183,19 +180,19 @@ export const ProcessesTableRow = React.memo((props: ProcessTableRowProps) => {
 
   return (
     <TableRow
-      onKeyUp={(e: any) =>
-        e.key === 'Enter' && setSelectedProcess({ name, user })
-      }
       data-testid="longview-service-row"
       forceIndex
       onClick={() => setSelectedProcess({ name, user })}
+      onKeyUp={(e: any) =>
+        e.key === 'Enter' && setSelectedProcess({ name, user })
+      }
       selected={isSelected}
     >
       <TableCell data-testid={`name-${name}`}>
         <StyledDiv>{name}</StyledDiv>
       </TableCell>
       <TableCell data-testid={`user-${user}`}>
-        <MaskableText isToggleable text={user} />
+        <MaskableText isToggleable length={10} text={user} />
       </TableCell>
       <TableCell data-testid={`max-count-${Math.round(maxCount)}`}>
         {Math.round(maxCount)}

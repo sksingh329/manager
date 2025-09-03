@@ -1,17 +1,12 @@
-import { Notice } from '@linode/ui';
+import { useResizeVolumeMutation, useVolumeTypesQuery } from '@linode/queries';
+import { ActionsPanel, Drawer, Notice } from '@linode/ui';
 import { ResizeVolumeSchema } from '@linode/validation';
 import { useFormik } from 'formik';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Drawer } from 'src/components/Drawer';
+import { usePermissions } from 'src/features/IAM/hooks/usePermissions';
 import { useEventsPollingActions } from 'src/queries/events/events';
-import { useGrants } from 'src/queries/profile/profile';
-import {
-  useResizeVolumeMutation,
-  useVolumeTypesQuery,
-} from 'src/queries/volumes/volumes';
 import {
   handleFieldErrors,
   handleGeneralErrors,
@@ -21,17 +16,25 @@ import { PRICES_RELOAD_ERROR_NOTICE_TEXT } from 'src/utilities/pricing/constants
 import { PricePanel } from './VolumeDrawer/PricePanel';
 import { SizeField } from './VolumeDrawer/SizeField';
 
-import type { Volume } from '@linode/api-v4';
+import type { APIError, Volume } from '@linode/api-v4';
 
 interface Props {
   isFetching?: boolean;
   onClose: () => void;
   open: boolean;
-  volume: Volume | undefined;
+  volume: undefined | Volume;
+  volumeError?: APIError[] | null;
 }
 
 export const ResizeVolumeDrawer = (props: Props) => {
-  const { isFetching, onClose: _onClose, open, volume } = props;
+  const { isFetching, onClose: _onClose, open, volume, volumeError } = props;
+
+  const { data: permissions } = usePermissions(
+    'volume',
+    ['resize_volume'],
+    volume?.id
+  );
+  const canResizeVolume = permissions?.resize_volume;
 
   const { mutateAsync: resizeVolume } = useResizeVolumeMutation();
 
@@ -41,13 +44,7 @@ export const ResizeVolumeDrawer = (props: Props) => {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const { data: grants } = useGrants();
   const { data: types, isError, isLoading } = useVolumeTypesQuery();
-
-  const isReadOnly =
-    grants !== undefined &&
-    grants.volume.find((grant) => grant.id === volume?.id)?.permissions ===
-      'read_only';
 
   const isInvalidPrice = !types || isError;
 
@@ -96,13 +93,14 @@ export const ResizeVolumeDrawer = (props: Props) => {
 
   return (
     <Drawer
+      error={volumeError}
       isFetching={isFetching}
       onClose={onClose}
       open={open}
       title="Resize Volume"
     >
       <form onSubmit={handleSubmit}>
-        {isReadOnly && (
+        {!canResizeVolume && (
           <Notice
             spacingBottom={0}
             text="You don't have permission to resize this volume."
@@ -111,7 +109,7 @@ export const ResizeVolumeDrawer = (props: Props) => {
         )}
         {error && <Notice text={error} variant="error" />}
         <SizeField
-          disabled={isReadOnly}
+          disabled={!canResizeVolume}
           error={errors.size}
           name="size"
           onBlur={handleBlur}
@@ -127,7 +125,7 @@ export const ResizeVolumeDrawer = (props: Props) => {
         />
         <ActionsPanel
           primaryButtonProps={{
-            disabled: isReadOnly || !dirty || isInvalidPrice,
+            disabled: !canResizeVolume || !dirty || isInvalidPrice,
             label: 'Resize Volume',
             loading: isSubmitting,
             tooltipText:

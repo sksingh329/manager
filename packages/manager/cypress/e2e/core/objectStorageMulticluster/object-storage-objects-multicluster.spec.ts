@@ -1,12 +1,14 @@
+import { createBucket } from '@linode/api-v4';
 import 'cypress-file-upload';
 import { authenticate } from 'support/api/authentication';
-import { cleanUp } from 'support/util/cleanup';
-import { randomLabel } from 'support/util/random';
-import { ui } from 'support/ui';
-import { createObjectStorageBucketFactoryGen1 } from 'src/factories';
-import { interceptUploadBucketObjectS3 } from 'support/intercepts/object-storage';
 import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
-import { createBucket } from '@linode/api-v4';
+import { interceptUploadBucketObjectS3 } from 'support/intercepts/object-storage';
+import { ui } from 'support/ui';
+import { cleanUp } from 'support/util/cleanup';
+import { chooseCluster } from 'support/util/clusters';
+import { randomLabel } from 'support/util/random';
+
+import { createObjectStorageBucketFactoryGen1 } from 'src/factories';
 
 // Message shown on-screen when user navigates to an empty bucket.
 const emptyBucketMessage = 'This bucket is empty.';
@@ -47,14 +49,14 @@ const setUpBucketMulticluster = (
 ) => {
   return createBucket(
     createObjectStorageBucketFactoryGen1.build({
-      label,
-      region: regionId,
+      // to avoid 400 responses from the API.
+      cluster: undefined,
       cors_enabled,
+      label,
 
       // API accepts either `cluster` or `region`, but not both. Our factory
       // populates both fields, so we have to manually set `cluster` to `undefined`
-      // to avoid 400 responses from the API.
-      cluster: undefined,
+      region: regionId,
     })
   );
 };
@@ -73,8 +75,8 @@ const assertStatusForUrlAtAlias = (
     // An alias can resolve to anything. We're assuming the user passed a valid
     // alias which resolves to a string.
     cy.request({
-      url: url as string,
       failOnStatusCode: false,
+      url: url as string,
     }).then((response) => {
       expect(response.status).to.eq(expectedStatus);
     });
@@ -130,14 +132,14 @@ describe('Object Storage Multicluster objects', () => {
    */
   it('can upload, access, and delete objects', () => {
     const bucketLabel = randomLabel();
-    const bucketCluster = 'us-southeast-1';
-    const bucketRegionId = 'us-southeast';
+    const bucketClusterObj = chooseCluster();
+    const bucketRegionId = bucketClusterObj.region;
     const bucketPage = `/object-storage/buckets/${bucketRegionId}/${bucketLabel}/objects`;
     const bucketFolderName = randomLabel();
 
     const bucketFiles = [
-      { path: 'object-storage-files/1.txt', name: '1.txt' },
-      { path: 'object-storage-files/2.jpg', name: '2.jpg' },
+      { name: '1.txt', path: 'object-storage-files/1.txt' },
+      { name: '2.jpg', path: 'object-storage-files/2.jpg' },
     ];
 
     cy.defer(
@@ -146,7 +148,7 @@ describe('Object Storage Multicluster objects', () => {
     ).then(() => {
       interceptUploadBucketObjectS3(
         bucketLabel,
-        bucketCluster,
+        bucketClusterObj.domain,
         bucketFiles[0].name
       ).as('uploadObject');
 
@@ -185,10 +187,8 @@ describe('Object Storage Multicluster objects', () => {
         .findByTitle('Create Folder')
         .should('be.visible')
         .within(() => {
-          cy.findByLabelText('Folder Name')
-            .should('be.visible')
-            .click()
-            .type(bucketFolderName);
+          cy.findByLabelText('Folder Name').should('be.visible').click();
+          cy.focused().type(bucketFolderName);
 
           ui.buttonGroup
             .findButtonByTitle('Create')
@@ -201,7 +201,7 @@ describe('Object Storage Multicluster objects', () => {
       cy.findByText(emptyFolderMessage).should('be.visible');
       interceptUploadBucketObjectS3(
         bucketLabel,
-        bucketCluster,
+        bucketClusterObj.domain,
         `${bucketFolderName}/${bucketFiles[1].name}`
       ).as('uploadObject');
       uploadFile(bucketFiles[1].path, bucketFiles[1].name);
@@ -228,7 +228,8 @@ describe('Object Storage Multicluster objects', () => {
         .findByTitle(`Delete Bucket ${bucketLabel}`)
         .should('be.visible')
         .within(() => {
-          cy.findByText('Bucket Name').click().type(bucketLabel);
+          cy.findByText('Bucket Name').click();
+          cy.focused().type(bucketLabel);
 
           ui.buttonGroup
             .findButtonByTitle('Delete')
@@ -279,8 +280,8 @@ describe('Object Storage Multicluster objects', () => {
             .should('be.visible')
             .should('not.have.value', 'Loading access...')
             .should('have.value', 'Private')
-            .click()
-            .type('Public Read');
+            .click();
+          cy.focused().type('Public Read');
 
           ui.autocompletePopper
             .findByTitle('Public Read')

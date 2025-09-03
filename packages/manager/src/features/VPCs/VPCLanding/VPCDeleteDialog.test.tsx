@@ -1,34 +1,37 @@
-import { fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 
+import { vpcFactory } from 'src/factories';
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { VPCDeleteDialog } from './VPCDeleteDialog';
 
 describe('VPC Delete Dialog', () => {
   const props = {
-    id: 1,
-    label: 'vpc-1',
+    isFetching: false,
     onClose: vi.fn(),
     open: true,
+    vpc: vpcFactory.build({ label: 'vpc-1' }),
+    vpcError: null,
   };
 
-  it('renders a VPC delete dialog correctly', () => {
-    const screen = renderWithTheme(<VPCDeleteDialog {...props} />);
-    const vpcTitle = screen.getByText('Delete VPC vpc-1');
+  it('renders a VPC delete dialog correctly', async () => {
+    const view = renderWithTheme(<VPCDeleteDialog {...props} />);
+    const vpcTitle = view.getByText('Delete VPC vpc-1');
     expect(vpcTitle).toBeVisible();
 
-    const cancelButton = screen.getByText('Cancel');
+    const cancelButton = view.getByText('Cancel');
     expect(cancelButton).toBeVisible();
 
-    const deleteButton = screen.getByText('Delete');
+    const deleteButton = view.getByText('Delete');
     expect(deleteButton).toBeVisible();
   });
-  it('closes the VPC delete dialog as expected', () => {
-    const screen = renderWithTheme(<VPCDeleteDialog {...props} />);
-    const cancelButton = screen.getByText('Cancel');
+
+  it('closes the VPC delete dialog as expected', async () => {
+    const view = renderWithTheme(<VPCDeleteDialog {...props} />);
+    const cancelButton = view.getByText('Cancel');
     expect(cancelButton).toBeVisible();
-    fireEvent.click(cancelButton);
+    await userEvent.click(cancelButton);
     expect(props.onClose).toBeCalled();
   });
 });

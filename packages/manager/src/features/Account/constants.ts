@@ -4,15 +4,17 @@ export const CUSTOMER_SUPPORT = 'customer support';
 
 export const grantTypeMap = {
   account: 'Account',
+  bucket: 'Buckets',
   database: 'Databases',
   domain: 'Domains',
   firewall: 'Firewalls',
   image: 'Images',
   linode: 'Linodes',
-  lkeCluster: 'LKE Clusters', // Note: Not included in the user's grants returned from the API.
+  lkecluster: 'LKE Clusters',
   longview: 'Longview Clients',
   nodebalancer: 'NodeBalancers',
   placementGroups: 'Placement Groups',
+  quotas: 'Quotas',
   stackscript: 'StackScripts',
   volume: 'Volumes',
   vpc: 'VPCs',

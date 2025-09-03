@@ -16,18 +16,38 @@ export const removeSeeds = async (seederId: MockSeeder['id']) => {
     case 'domains:crud':
       await mswDB.deleteAll('domains', mockState, 'seedState');
       break;
+    case 'firewalls:crud':
+      await mswDB.deleteAll('firewalls', mockState, 'seedState');
+      await mswDB.deleteAll('firewallDevices', mockState, 'seedState');
+      break;
+    case 'ip-addresses:crud':
+      await mswDB.deleteAll('ipAddresses', mockState, 'seedState');
+      break;
+    case 'kubernetes:crud':
+      await mswDB.deleteAll('kubernetesClusters', mockState, 'seedState');
+      await mswDB.deleteAll('kubernetesNodePools', mockState, 'seedState');
+      break;
     case 'linodes:crud':
       await mswDB.deleteAll('linodes', mockState, 'seedState');
       await mswDB.deleteAll('linodeConfigs', mockState, 'seedState');
       break;
+    case 'nodebalancers:crud':
+      await mswDB.deleteAll('nodeBalancers', mockState, 'seedState');
+      await mswDB.deleteAll('nodeBalancerConfigs', mockState, 'seedState');
+      await mswDB.deleteAll('nodeBalancerConfigNodes', mockState, 'seedState');
+      break;
     case 'placement-groups:crud':
       await mswDB.deleteAll('placementGroups', mockState, 'seedState');
+      break;
+    case 'support-tickets:crud':
+      await mswDB.deleteAll('supportTickets', mockState, 'seedState');
       break;
     case 'volumes:crud':
       await mswDB.deleteAll('volumes', mockState, 'seedState');
       break;
-    case 'support-tickets:crud':
-      await mswDB.deleteAll('supportTickets', mockState, 'seedState');
+    case 'vpcs:crud':
+      await mswDB.deleteAll('vpcs', mockState, 'seedState');
+      await mswDB.deleteAll('subnets', mockState, 'seedState');
       break;
     default:
       break;

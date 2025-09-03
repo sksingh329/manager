@@ -1,29 +1,19 @@
-import { CloudPulseSelectTypes } from './models';
+import { capabilityServiceTypeMapping } from '@linode/api-v4';
+
+import {
+  INTERFACE_IDS_PLACEHOLDER_TEXT,
+  LINODE_REGION,
+  RESOURCE_ID,
+} from './constants';
+import { CloudPulseAvailableViews, CloudPulseSelectTypes } from './models';
 
 import type { CloudPulseServiceTypeFilterMap } from './models';
 
 const TIME_DURATION = 'Time Range';
-export const DBAAS_CAPABILITY = 'Managed Databases';
-export const LINODE_CAPABILITY = 'Linodes';
 
 export const LINODE_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
-  capability: LINODE_CAPABILITY,
+  capability: capabilityServiceTypeMapping['linode'],
   filters: [
-    {
-      configuration: {
-        filterKey: 'tags',
-        filterType: 'string',
-        isFilterable: false,
-        isMetricsFilter: false,
-        isMultiSelect: true,
-        isOptional: true,
-        name: 'Tags',
-        neededInServicePage: false,
-        placeholder: 'Select Tags',
-        priority: 4,
-      },
-      name: 'Tags',
-    },
     {
       configuration: {
         filterKey: 'region',
@@ -31,22 +21,22 @@ export const LINODE_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
         isFilterable: false,
         isMetricsFilter: false,
         name: 'Region',
-        neededInServicePage: false,
         priority: 1,
+        neededInViews: [CloudPulseAvailableViews.central],
       },
       name: 'Region',
     },
     {
       configuration: {
-        dependency: ['region', 'tags'],
+        dependency: ['region'],
         filterKey: 'resource_id',
         filterType: 'string',
         isFilterable: true,
         isMetricsFilter: true,
         isMultiSelect: true,
-        name: 'Resources',
-        neededInServicePage: false,
-        placeholder: 'Select Resources',
+        name: 'Linode Label(s)',
+        neededInViews: [CloudPulseAvailableViews.central],
+        placeholder: 'Select Linode Label(s)',
         priority: 2,
       },
       name: 'Resources',
@@ -59,7 +49,7 @@ export const LINODE_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
         isMetricsFilter: true,
         isMultiSelect: false,
         name: TIME_DURATION,
-        neededInServicePage: false,
+        neededInViews: [],
         placeholder: 'Select a Duration',
         priority: 3,
       },
@@ -70,7 +60,7 @@ export const LINODE_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
 };
 
 export const DBAAS_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
-  capability: DBAAS_CAPABILITY,
+  capability: capabilityServiceTypeMapping['dbaas'],
   filters: [
     {
       configuration: {
@@ -80,7 +70,7 @@ export const DBAAS_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
         isMetricsFilter: false, // if it is false, it will go as a part of filter params, else global filter
         isMultiSelect: false,
         name: 'Database Engine',
-        neededInServicePage: false,
+        neededInViews: [CloudPulseAvailableViews.central],
         options: [
           {
             id: 'mysql',
@@ -99,13 +89,14 @@ export const DBAAS_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
     },
     {
       configuration: {
+        dependency: ['engine'],
         filterKey: 'region',
         filterType: 'string',
         isFilterable: false,
         isMetricsFilter: false,
         name: 'Region',
-        neededInServicePage: false,
         priority: 1,
+        neededInViews: [CloudPulseAvailableViews.central],
       },
       name: 'Region',
     },
@@ -118,7 +109,7 @@ export const DBAAS_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
         isMetricsFilter: true,
         isMultiSelect: true,
         name: 'Database Clusters',
-        neededInServicePage: false,
+        neededInViews: [CloudPulseAvailableViews.central],
         placeholder: 'Select Database Clusters',
         priority: 3,
       },
@@ -132,7 +123,7 @@ export const DBAAS_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
         isMetricsFilter: true,
         isMultiSelect: false,
         name: TIME_DURATION,
-        neededInServicePage: false, // we will have a static time duration component, no need render from filter builder
+        neededInViews: [], // we will have a static time duration component, no need render from filter builder
         placeholder: 'Select a Duration',
         priority: 4,
       },
@@ -140,26 +131,19 @@ export const DBAAS_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
     },
     {
       configuration: {
+        dependency: [RESOURCE_ID],
         filterKey: 'node_type',
         filterType: 'string',
         isFilterable: true, // isFilterable -- this determines whether you need to pass it metrics api
         isMetricsFilter: false, // if it is false, it will go as a part of filter params, else global filter
         isMultiSelect: false,
         name: 'Node Type',
-        neededInServicePage: true,
-        options: [
-          {
-            id: 'primary',
-            label: 'Primary',
-          },
-          {
-            id: 'secondary',
-            label: 'Secondary',
-          },
+        neededInViews: [
+          CloudPulseAvailableViews.service,
+          CloudPulseAvailableViews.central,
         ],
         placeholder: 'Select a Node Type',
         priority: 5,
-        type: CloudPulseSelectTypes.static,
       },
       name: 'Node Type',
     },
@@ -167,9 +151,175 @@ export const DBAAS_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
   serviceType: 'dbaas',
 };
 
+export const NODEBALANCER_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
+  capability: capabilityServiceTypeMapping['nodebalancer'],
+  filters: [
+    {
+      configuration: {
+        filterKey: 'region',
+        filterType: 'string',
+        isFilterable: false,
+        isMetricsFilter: false,
+        name: 'Region',
+        priority: 1,
+        neededInViews: [CloudPulseAvailableViews.central],
+      },
+      name: 'Region',
+    },
+    {
+      configuration: {
+        dependency: ['region'],
+        filterKey: 'resource_id',
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: true,
+        isMultiSelect: true,
+        name: 'Nodebalancers',
+        neededInViews: [CloudPulseAvailableViews.central],
+        placeholder: 'Select Nodebalancers',
+        priority: 2,
+      },
+      name: 'Nodebalancers',
+    },
+    {
+      configuration: {
+        filterKey: 'port',
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: false,
+        isOptional: true,
+        name: 'Ports',
+        neededInViews: [
+          CloudPulseAvailableViews.central,
+          CloudPulseAvailableViews.service,
+        ],
+        placeholder: 'e.g., 80,443,3000',
+        priority: 4,
+      },
+      name: 'Ports',
+    },
+    {
+      configuration: {
+        filterKey: 'relative_time_duration',
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: true,
+        isMultiSelect: false,
+        name: TIME_DURATION,
+        neededInViews: [], // we will have a static time duration component, no need render from filter builder
+        placeholder: 'Select a Duration',
+        priority: 4,
+      },
+      name: TIME_DURATION,
+    },
+  ],
+  serviceType: 'nodebalancer',
+};
+
+export const FIREWALL_CONFIG: Readonly<CloudPulseServiceTypeFilterMap> = {
+  capability: capabilityServiceTypeMapping['firewall'],
+  filters: [
+    {
+      configuration: {
+        filterKey: 'resource_id',
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: true,
+        isMultiSelect: true,
+        name: 'Firewalls',
+        neededInViews: [CloudPulseAvailableViews.central],
+        placeholder: 'Select Firewalls',
+        priority: 1,
+      },
+      name: 'Firewalls',
+    },
+    {
+      configuration: {
+        dependency: ['resource_id'],
+        filterKey: LINODE_REGION,
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: true,
+        isMultiSelect: false,
+        name: 'Linode Region',
+        neededInViews: [
+          CloudPulseAvailableViews.central,
+          CloudPulseAvailableViews.service,
+        ],
+        placeholder: 'Select a Linode Region',
+        priority: 2,
+      },
+      name: 'Linode Region',
+    },
+    {
+      configuration: {
+        filterKey: 'interface_type',
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: false,
+        isMultiSelect: true,
+        name: 'Interface Types',
+        isOptional: true,
+        neededInViews: [
+          CloudPulseAvailableViews.central,
+          CloudPulseAvailableViews.service,
+        ],
+        options: [
+          {
+            id: 'vpc',
+            label: 'VPC',
+          },
+          {
+            id: 'public',
+            label: 'Public',
+          },
+        ],
+        placeholder: 'Select Interface Types',
+        priority: 3,
+        type: CloudPulseSelectTypes.static,
+      },
+      name: 'Interface Types',
+    },
+    {
+      configuration: {
+        filterKey: 'interface_id',
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: false,
+        isOptional: true,
+        name: 'Interface IDs',
+        neededInViews: [
+          CloudPulseAvailableViews.central,
+          CloudPulseAvailableViews.service,
+        ],
+        placeholder: INTERFACE_IDS_PLACEHOLDER_TEXT,
+        priority: 2,
+      },
+      name: 'Interface IDs',
+    },
+    {
+      configuration: {
+        filterKey: 'relative_time_duration',
+        filterType: 'string',
+        isFilterable: true,
+        isMetricsFilter: true,
+        isMultiSelect: false,
+        name: TIME_DURATION,
+        neededInViews: [], // we will have a static time duration component, no need render from filter builder
+        placeholder: 'Select a Duration',
+        priority: 4,
+      },
+      name: TIME_DURATION,
+    },
+  ],
+  serviceType: 'firewall',
+};
+
 export const FILTER_CONFIG: Readonly<
-  Map<string, CloudPulseServiceTypeFilterMap>
+  Map<number, CloudPulseServiceTypeFilterMap>
 > = new Map([
-  ['dbaas', DBAAS_CONFIG],
-  ['linode', LINODE_CONFIG],
+  [1, DBAAS_CONFIG],
+  [2, LINODE_CONFIG],
+  [3, NODEBALANCER_CONFIG],
+  [4, FIREWALL_CONFIG],
 ]);

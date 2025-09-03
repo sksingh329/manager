@@ -17,7 +17,7 @@ const volumeAction = {
   upgrade: 'upgrade',
 } as const;
 
-export type VolumeAction = typeof volumeAction[keyof typeof volumeAction];
+export type VolumeAction = (typeof volumeAction)[keyof typeof volumeAction];
 
 export interface VolumesSearchParams extends TableSearchParams {
   query?: string;
@@ -29,12 +29,30 @@ const volumesRoute = createRoute({
   path: 'volumes',
 });
 
+const volumeDetailsRoute = createRoute({
+  getParentRoute: () => volumesRoute,
+  parseParams: (params) => ({
+    volumeId: Number(params.volumeId),
+  }),
+  // validateSearch: (search: VolumesSearchParams) => search,
+  path: '$volumeId',
+}).lazy(() =>
+  import('src/features/Volumes/VolumeDetails/volumeLandingLazyRoute').then(
+    (m) => m.volumeDetailsLazyRoute
+  )
+);
+
+const volumeDetailsSummaryRoute = createRoute({
+  getParentRoute: () => volumeDetailsRoute,
+  path: 'summary',
+});
+
 const volumesIndexRoute = createRoute({
   getParentRoute: () => volumesRoute,
   path: '/',
   validateSearch: (search: VolumesSearchParams) => search,
 }).lazy(() =>
-  import('src/routes/volumes/volumesLazyRoutes').then(
+  import('src/features/Volumes/volumesLandingLazyRoute').then(
     (m) => m.volumesLandingLazyRoute
   )
 );
@@ -43,7 +61,9 @@ const volumesCreateRoute = createRoute({
   getParentRoute: () => volumesRoute,
   path: 'create',
 }).lazy(() =>
-  import('./volumesLazyRoutes').then((m) => m.volumeCreateLazyRoute)
+  import('src/features/Volumes/volumesCreateLazyRoute').then(
+    (m) => m.volumeCreateLazyRoute
+  )
 );
 
 type VolumeActionRouteParams<P = number | string> = {
@@ -74,7 +94,7 @@ const volumeActionRoute = createRoute({
   path: '$volumeId/$action',
   validateSearch: (search: VolumesSearchParams) => search,
 }).lazy(() =>
-  import('src/routes/volumes/volumesLazyRoutes').then(
+  import('src/features/Volumes/volumesLandingLazyRoute').then(
     (m) => m.volumesLandingLazyRoute
   )
 );
@@ -94,4 +114,5 @@ export const volumesRouteTree = volumesRoute.addChildren([
   volumesIndexRoute.addChildren([volumeActionRoute]),
   volumesCreateRoute,
   volumesCatchAllRoute,
+  volumeDetailsRoute.addChildren([volumeDetailsSummaryRoute]),
 ]);

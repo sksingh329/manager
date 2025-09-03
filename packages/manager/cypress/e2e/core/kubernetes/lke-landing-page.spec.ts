@@ -1,24 +1,34 @@
-import type { KubernetesCluster } from '@linode/api-v4';
+import { regionFactory } from '@linode/utilities';
+import { mockGetAccount } from 'support/intercepts/account';
+import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
 import {
-  mockGetClusters,
+  mockGetCluster,
   mockGetClusterPools,
+  mockGetClusters,
   mockGetKubeconfig,
   mockGetKubernetesVersions,
   mockGetTieredKubernetesVersions,
   mockRecycleAllNodes,
   mockUpdateCluster,
 } from 'support/intercepts/lke';
+import { mockGetRegions } from 'support/intercepts/regions';
+import { ui } from 'support/ui';
+import { readDownload } from 'support/util/downloads';
+import { getRegionById } from 'support/util/regions';
+
 import {
   accountFactory,
   kubernetesClusterFactory,
   nodePoolFactory,
 } from 'src/factories';
-import { getRegionById } from 'support/util/regions';
-import { readDownload } from 'support/util/downloads';
-import { ui } from 'support/ui';
-import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
-import { mockGetAccount } from 'support/intercepts/account';
 
+import type { KubernetesCluster } from '@linode/api-v4';
+
+const mockRegion = regionFactory.build({
+  id: 'us-central',
+  label: 'Dallas, TX',
+  capabilities: ['Linodes', 'Disk Encryption'],
+});
 describe('LKE landing page', () => {
   it('does not display a Disk Encryption info banner if the LDE feature is disabled', () => {
     // Mock feature flag -- @TODO LDE: Remove feature flag once LDE is fully rolled out
@@ -57,14 +67,17 @@ describe('LKE landing page', () => {
     const mockAccount = accountFactory.build({
       capabilities: ['Linodes', 'Disk Encryption'],
     });
-    const mockClusters = kubernetesClusterFactory.buildList(3);
+    const mockClusters = kubernetesClusterFactory.buildList(3, {
+      region: mockRegion.id,
+    });
 
     mockGetAccount(mockAccount).as('getAccount');
     mockGetClusters(mockClusters).as('getClusters');
+    mockGetRegions([mockRegion]).as('getRegions');
 
     // Intercept request
     cy.visitWithLogin('/kubernetes/clusters');
-    cy.wait(['@getClusters', '@getAccount']);
+    cy.wait(['@getClusters', '@getAccount', '@getRegions']);
 
     // Check if banner is visible
     cy.contains('Disk encryption is now standard on Linodes.').should(
@@ -76,24 +89,27 @@ describe('LKE landing page', () => {
    * - Confirms that LKE clusters are listed on landing page.
    */
   it('lists LKE clusters', () => {
-    const mockClusters = kubernetesClusterFactory.buildList(10);
+    const mockClusters = kubernetesClusterFactory.buildList(10, {
+      region: mockRegion.id,
+    });
     mockGetClusters(mockClusters).as('getClusters');
 
     mockClusters.forEach((cluster: KubernetesCluster) => {
       mockGetClusterPools(cluster.id, nodePoolFactory.buildList(3));
     });
 
+    mockGetRegions([mockRegion]).as('getRegions');
     cy.visitWithLogin('/kubernetes/clusters');
-    cy.wait('@getClusters');
+    cy.wait(['@getClusters', '@getRegions']);
 
     mockClusters.forEach((cluster: KubernetesCluster) => {
       cy.findByText(cluster.label)
         .should('be.visible')
         .closest('tr')
         .within(() => {
-          cy.findByText(getRegionById(cluster.region).label).should(
-            'be.visible'
-          );
+          cy.findByText(
+            getRegionById(cluster.region, [mockRegion]).label
+          ).should('be.visible');
           cy.findByText(cluster.k8s_version).should('be.visible');
 
           ui.button
@@ -231,10 +247,12 @@ describe('LKE landing page', () => {
 
     const cluster = kubernetesClusterFactory.build({
       k8s_version: oldVersion,
+      tier: 'standard',
     });
 
     const updatedCluster = { ...cluster, k8s_version: newVersion };
 
+    mockGetCluster(cluster).as('getCluster');
     mockGetClusters([cluster]).as('getClusters');
     mockGetKubernetesVersions([newVersion, oldVersion]).as('getVersions');
     mockUpdateCluster(cluster.id, updatedCluster).as('updateCluster');
@@ -248,9 +266,11 @@ describe('LKE landing page', () => {
 
     cy.findByText('UPGRADE').should('be.visible').should('be.enabled').click();
 
+    cy.wait(['@getCluster']);
+
     ui.dialog
       .findByTitle(
-        `Step 1: Upgrade ${cluster.label} to Kubernetes ${newVersion}`
+        `Upgrade Kubernetes version to ${newVersion} on ${cluster.label}?`
       )
       .should('be.visible');
 
@@ -264,9 +284,7 @@ describe('LKE landing page', () => {
 
     cy.wait(['@updateCluster', '@getClusters']);
 
-    ui.dialog
-      .findByTitle('Step 2: Recycle All Cluster Nodes')
-      .should('be.visible');
+    ui.dialog.findByTitle('Upgrade complete').should('be.visible');
 
     ui.button
       .findByTitle('Recycle All Nodes')
@@ -303,6 +321,7 @@ describe('LKE landing page', () => {
 
     const updatedCluster = { ...cluster, k8s_version: newVersion };
 
+    mockGetCluster(cluster).as('getCluster');
     mockGetClusters([cluster]).as('getClusters');
     mockGetTieredKubernetesVersions('enterprise', [
       { id: newVersion, tier: 'enterprise' },
@@ -319,9 +338,11 @@ describe('LKE landing page', () => {
 
     cy.findByText('UPGRADE').should('be.visible').should('be.enabled').click();
 
+    cy.wait(['@getCluster']);
+
     ui.dialog
       .findByTitle(
-        `Step 1: Upgrade ${cluster.label} to Kubernetes ${newVersion}`
+        `Upgrade Kubernetes version to ${newVersion} on ${cluster.label}?`
       )
       .should('be.visible');
 
@@ -335,19 +356,8 @@ describe('LKE landing page', () => {
 
     cy.wait(['@updateCluster', '@getClusters']);
 
-    ui.dialog
-      .findByTitle('Step 2: Recycle All Cluster Nodes')
-      .should('be.visible');
-
-    ui.button
-      .findByTitle('Recycle All Nodes')
-      .should('be.visible')
-      .should('be.enabled')
-      .click();
-
-    cy.wait('@recycleAllNodes');
-
-    ui.toast.assertMessage('Recycle started successfully.');
+    // Verify the second step in the banner is not shown for LKE-E.
+    cy.findByText('Upgrade complete').should('not.exist');
 
     cy.findByText(newVersion).should('be.visible');
   });

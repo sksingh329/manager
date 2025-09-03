@@ -1,5 +1,5 @@
+import Grid from '@mui/material/Grid';
 import { styled } from '@mui/material/styles';
-import Grid from '@mui/material/Unstable_Grid2';
 
 import { TableCell } from 'src/components/TableCell';
 
@@ -10,16 +10,9 @@ export const StyledGrid = styled(Grid, { label: 'StyledGrid' })(
       paddingRight: 0,
     },
     '& .domain-btn': {
-      [theme.breakpoints.down('lg')]: {
-        marginRight: theme.spacing(),
-      },
+      marginBottom: theme.spacingFunction(8),
     },
     margin: 0,
-    marginTop: theme.spacing(2),
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
     width: '100%',
   })
 );
@@ -43,10 +36,3 @@ export const StyledTableCell = styled(TableCell, { label: 'StyledTableCell' })(
     width: 'auto',
   })
 );
-
-export const StyledDiv = styled('div', { label: 'StyledDiv' })(({ theme }) => ({
-  [theme.breakpoints.down('md')]: {
-    marginLeft: theme.spacing(),
-    marginRight: theme.spacing(),
-  },
-}));

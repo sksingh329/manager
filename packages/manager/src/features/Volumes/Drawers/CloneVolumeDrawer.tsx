@@ -1,18 +1,21 @@
-import { Box, Checkbox, Notice, TextField, Typography } from '@linode/ui';
+import { useCloneVolumeMutation, useVolumeTypesQuery } from '@linode/queries';
+import {
+  ActionsPanel,
+  Box,
+  Checkbox,
+  Drawer,
+  Notice,
+  TextField,
+  Typography,
+} from '@linode/ui';
 import { CloneVolumeSchema } from '@linode/validation/lib/volumes.schema';
 import { useFormik } from 'formik';
 import * as React from 'react';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Drawer } from 'src/components/Drawer';
 import { BLOCK_STORAGE_CLONING_INHERITANCE_CAVEAT } from 'src/components/Encryption/constants';
 import { useIsBlockStorageEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
+import { usePermissions } from 'src/features/IAM/hooks/usePermissions';
 import { useEventsPollingActions } from 'src/queries/events/events';
-import { useGrants } from 'src/queries/profile/profile';
-import {
-  useCloneVolumeMutation,
-  useVolumeTypesQuery,
-} from 'src/queries/volumes/volumes';
 import {
   handleFieldErrors,
   handleGeneralErrors,
@@ -21,37 +24,40 @@ import { PRICES_RELOAD_ERROR_NOTICE_TEXT } from 'src/utilities/pricing/constants
 
 import { PricePanel } from './VolumeDrawer/PricePanel';
 
-import type { Volume } from '@linode/api-v4';
+import type { APIError, Volume } from '@linode/api-v4';
 
 interface Props {
   isFetching?: boolean;
   onClose: () => void;
   open: boolean;
-  volume: Volume | undefined;
+  volume: undefined | Volume;
+  volumeError?: APIError[] | null;
 }
 
 const initialValues = { label: '' };
 
 export const CloneVolumeDrawer = (props: Props) => {
-  const { isFetching, onClose: _onClose, open, volume } = props;
+  const { isFetching, onClose: _onClose, open, volume, volumeError } = props;
+
+  const { data: accountPermissions } = usePermissions('account', [
+    'create_volume',
+  ]);
+  const { data: volumePermissions } = usePermissions(
+    'volume',
+    ['clone_volume'],
+    volume?.id
+  );
+  const canCloneVolume =
+    volumePermissions?.clone_volume && accountPermissions?.create_volume;
 
   const { mutateAsync: cloneVolume } = useCloneVolumeMutation();
 
   const { checkForNewEvents } = useEventsPollingActions();
 
-  const { data: grants } = useGrants();
   const { data: types, isError, isLoading } = useVolumeTypesQuery();
 
-  const {
-    isBlockStorageEncryptionFeatureEnabled,
-  } = useIsBlockStorageEncryptionFeatureEnabled();
-
-  // Even if a restricted user has the ability to create Volumes, they
-  // can't clone a Volume they only have read only permission on.
-  const isReadOnly =
-    grants !== undefined &&
-    grants.volume.find((grant) => grant.id === volume?.id)?.permissions ===
-      'read_only';
+  const { isBlockStorageEncryptionFeatureEnabled } =
+    useIsBlockStorageEncryptionFeatureEnabled();
 
   const isInvalidPrice = !types || isError;
 
@@ -91,13 +97,14 @@ export const CloneVolumeDrawer = (props: Props) => {
 
   return (
     <Drawer
+      error={volumeError}
       isFetching={isFetching}
       onClose={onClose}
       open={open}
       title="Clone Volume"
     >
       <form onSubmit={handleSubmit}>
-        {isReadOnly && (
+        {!canCloneVolume && (
           <Notice
             spacingBottom={12}
             text="You don't have permission to clone this volume."
@@ -111,7 +118,7 @@ export const CloneVolumeDrawer = (props: Props) => {
           be available in {volume?.region}.
         </Typography>
         <TextField
-          disabled={isReadOnly}
+          disabled={!canCloneVolume}
           errorText={touched.label ? errors.label : undefined}
           label="Label"
           name="label"
@@ -142,7 +149,7 @@ export const CloneVolumeDrawer = (props: Props) => {
         />
         <ActionsPanel
           primaryButtonProps={{
-            disabled: isReadOnly || isInvalidPrice,
+            disabled: !canCloneVolume || isInvalidPrice,
             label: 'Clone Volume',
             loading: isSubmitting,
             tooltipText:

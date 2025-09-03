@@ -1,9 +1,9 @@
-import { action } from '@storybook/addon-actions';
 import * as React from 'react';
+import { action } from 'storybook/actions';
 
 import { DateTimePicker } from './DateTimePicker';
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { DateTime } from 'luxon';
 
 type Story = StoryObj<typeof DateTimePicker>;
@@ -26,10 +26,8 @@ export const ControlledExample: Story = {
   },
   render: (args) => {
     const ControlledDateTimePicker = () => {
-      const [
-        selectedDateTime,
-        setSelectedDateTime,
-      ] = React.useState<DateTime | null>(args.value || null);
+      const [selectedDateTime, setSelectedDateTime] =
+        React.useState<DateTime | null>(args.value || null);
 
       const handleChange = (newDateTime: DateTime | null) => {
         setSelectedDateTime(newDateTime);

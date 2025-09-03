@@ -1,11 +1,11 @@
-import { Paper } from '@linode/ui';
-import { Box, Grid, Stack, Typography, useTheme } from '@mui/material';
+import { useProfile } from '@linode/queries';
+import { Box, Paper, Typography } from '@linode/ui';
+import { GridLegacy, Stack, useTheme } from '@mui/material';
 import { DateTime } from 'luxon';
 import React from 'react';
 
 import { useFlags } from 'src/hooks/useFlags';
 import { useCloudPulseMetricsQuery } from 'src/queries/cloudpulse/metrics';
-import { useProfile } from 'src/queries/profile/profile';
 
 import {
   generateGraphData,
@@ -23,19 +23,21 @@ import { ZoomIcon } from './components/Zoomer';
 
 import type { FilterValueType } from '../Dashboard/CloudPulseDashboardLanding';
 import type { CloudPulseResources } from '../shared/CloudPulseResourcesSelect';
-import type { Widgets } from '@linode/api-v4';
 import type {
+  CloudPulseServiceType,
+  DateTimeWithPreset,
+  Filters,
   MetricDefinition,
-  TimeDuration,
   TimeGranularity,
+  Widgets,
 } from '@linode/api-v4';
-import type { DataSet } from 'src/components/AreaChart/AreaChart';
+import type { Metrics } from '@linode/utilities';
 import type {
   AreaProps,
   ChartVariant,
+  DataSet,
 } from 'src/components/AreaChart/AreaChart';
 import type { MetricsDisplayRow } from 'src/components/LineGraph/MetricsDisplay';
-import type { Metrics } from 'src/utilities/statMetrics';
 
 export interface CloudPulseWidgetProperties {
   /**
@@ -61,7 +63,7 @@ export interface CloudPulseWidgetProperties {
   /**
    * time duration to fetch the metrics data in this widget
    */
-  duration: TimeDuration;
+  duration: DateTimeWithPreset;
 
   /**
    * entity ids selected by user to show metrics for
@@ -79,6 +81,11 @@ export interface CloudPulseWidgetProperties {
   isJweTokenFetching: boolean;
 
   /**
+   * Selected linode region for the widget
+   */
+  linodeRegion?: string;
+
+  /**
    * List of resources available of selected service type
    */
   resources: CloudPulseResources[];
@@ -91,7 +98,7 @@ export interface CloudPulseWidgetProperties {
   /**
    * Service type selected by user
    */
-  serviceType: string;
+  serviceType: CloudPulseServiceType;
 
   /**
    * optional timestamp to pass as react query param to forcefully re-fetch data
@@ -129,7 +136,6 @@ export interface LegendRow {
 export const CloudPulseWidget = (props: CloudPulseWidgetProperties) => {
   const { updateWidgetPreference: updatePreferences } = useAclpPreference();
   const { data: profile } = useProfile();
-  const timezone = profile?.timezone ?? DateTime.local().zoneName;
 
   const [widget, setWidget] = React.useState<Widgets>({ ...props.widget });
 
@@ -149,11 +155,23 @@ export const CloudPulseWidget = (props: CloudPulseWidgetProperties) => {
     timeStamp,
     unit,
     widget: widgetProp,
+    linodeRegion,
   } = props;
+
+  const timezone =
+    duration.timeZone ?? profile?.timezone ?? DateTime.local().zoneName;
+
   const flags = useFlags();
   const scaledWidgetUnit = React.useRef(generateCurrentUnit(unit));
 
   const jweTokenExpiryError = 'Token expired';
+  const filters: Filters[] | undefined =
+    additionalFilters?.length || widget?.filters?.length
+      ? [
+          ...constructAdditionalRequestFilters(additionalFilters ?? []),
+          ...(widget.filters ?? []),
+        ]
+      : undefined;
 
   /**
    *
@@ -233,8 +251,9 @@ export const CloudPulseWidget = (props: CloudPulseWidgetProperties) => {
         entityIds,
         resources,
         widget,
+        linodeRegion,
       }),
-      filters: constructAdditionalRequestFilters(additionalFilters ?? []), // any additional dimension filters will be constructed and passed here
+      filters, // any additional dimension filters will be constructed and passed here
     },
     {
       authToken,
@@ -252,13 +271,13 @@ export const CloudPulseWidget = (props: CloudPulseWidgetProperties) => {
   const variant: ChartVariant = widget.chart_type;
   if (!isLoading && metricsList) {
     const generatedData = generateGraphData({
-      flags,
       label: widget.label,
       metricsList,
       resources,
-      serviceType,
       status,
       unit,
+      serviceType,
+      groupBy: widgetProp.group_by,
     });
 
     data = generatedData.dimensions;
@@ -269,36 +288,51 @@ export const CloudPulseWidget = (props: CloudPulseWidgetProperties) => {
   }
 
   const metricsApiCallError = error?.[0]?.reason;
-
-  const tickFormat =
-    duration.unit === 'min' || duration.unit === 'hr' ? 'hh:mm a' : 'LLL dd';
+  const start = DateTime.fromISO(duration.start, { zone: 'GMT' });
+  const end = DateTime.fromISO(duration.end, { zone: 'GMT' });
+  const hours = end.diff(start, 'hours').hours;
+  const tickFormat = hours <= 24 ? 'hh:mm a' : 'LLL dd';
   return (
-    <Grid container item lg={widget.size} xs={12}>
-      <Stack flexGrow={1} spacing={2}>
+    <GridLegacy container item lg={widget.size} xs={12}>
+      <Stack
+        spacing={2}
+        sx={{
+          flexGrow: 1,
+        }}
+      >
         <Paper
           data-qa-widget={convertStringToCamelCasesWithSpaces(widget.label)}
           sx={{ flexGrow: 1 }}
         >
           <Stack
-            alignItems={'center'}
             direction={{ sm: 'row' }}
-            gap={{ sm: 0, xs: 2 }}
-            justifyContent={{ sm: 'space-between' }}
-            marginBottom={1}
-            padding={1}
+            sx={{
+              alignItems: 'center',
+              gap: { sm: 0, xs: 2 },
+              justifyContent: { sm: 'space-between' },
+              marginBottom: 1,
+              padding: 1,
+            }}
           >
-            <Typography marginLeft={1} variant="h2">
+            <Typography flex={{ sm: 2, xs: 0 }} marginLeft={1} variant="h2">
               {convertStringToCamelCasesWithSpaces(widget.label)} (
               {scaledWidgetUnit.current}
-              {unit.endsWith('ps') ? '/s' : ''})
+              {unit.endsWith('ps') && !scaledWidgetUnit.current.endsWith('ps')
+                ? '/s'
+                : ''}
+              )
             </Typography>
             <Stack
-              alignItems={'center'}
               direction={{ sm: 'row' }}
-              gap={2}
-              maxHeight={`calc(${theme.spacing(10)} + 5px)`}
-              overflow="auto"
-              width={{ sm: 'inherit', xs: '100%' }}
+              sx={{
+                flex: { sm: 3, xs: 0 },
+                justifyContent: 'end',
+                alignItems: 'center',
+                gap: 2,
+                maxHeight: `calc(${theme.spacing(10)} + 5px)`,
+                overflow: 'auto',
+                width: { sm: 'inherit', xs: '100%' },
+              }}
             >
               {availableMetrics?.scrape_interval && (
                 <CloudPulseIntervalSelect
@@ -327,22 +361,22 @@ export const CloudPulseWidget = (props: CloudPulseWidgetProperties) => {
             </Stack>
           </Stack>
           <CloudPulseLineGraph
+            areas={areas}
+            ariaLabel={ariaLabel ? ariaLabel : ''}
+            data={data}
+            dotRadius={1.5}
             error={
               status === 'error' && metricsApiCallError !== jweTokenExpiryError // show the error only if the error is not related to token expiration
-                ? metricsApiCallError ?? 'Error while rendering graph'
+                ? (metricsApiCallError ?? 'Error while rendering graph')
                 : undefined
             }
+            height={424}
+            legendRows={legendRows}
             loading={
               isLoading ||
               metricsApiCallError === jweTokenExpiryError ||
               isJweTokenFetching
             } // keep loading until we are trying to fetch the refresh token
-            areas={areas}
-            ariaLabel={ariaLabel ? ariaLabel : ''}
-            data={data}
-            dotRadius={1.5}
-            height={424}
-            legendRows={legendRows}
             showDot
             showLegend={data.length !== 0}
             timezone={timezone}
@@ -352,6 +386,6 @@ export const CloudPulseWidget = (props: CloudPulseWidgetProperties) => {
           />
         </Paper>
       </Stack>
-    </Grid>
+    </GridLegacy>
   );
 };

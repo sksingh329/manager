@@ -2,10 +2,10 @@ import {
   getActiveLongviewPlan,
   getLongviewSubscriptions,
 } from '@linode/api-v4/lib/longview';
+import { useAccountSettings } from '@linode/queries';
 import { styled } from '@mui/material/styles';
-import { useLocation, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useSnackbar } from 'notistack';
-import { isEmpty } from 'ramda';
 import * as React from 'react';
 
 import { LandingHeader } from 'src/components/LandingHeader';
@@ -19,7 +19,6 @@ import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { useAPIRequest } from 'src/hooks/useAPIRequest';
 import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 import { useTabs } from 'src/hooks/useTabs';
-import { useAccountSettings } from 'src/queries/account/settings';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
 import { SubscriptionDialog } from './SubscriptionDialog';
@@ -29,15 +28,12 @@ import type {
   LongviewSubscription,
 } from '@linode/api-v4/lib/longview/types';
 import type { Props as LongviewProps } from 'src/containers/longview.container';
-import type { LongviewState } from 'src/routes/longview';
 
 const LongviewClients = React.lazy(() => import('./LongviewClients'));
 const LongviewPlans = React.lazy(() => import('./LongviewPlans'));
 
 export const LongviewLanding = (props: LongviewProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const locationState = location.state as LongviewState;
   const { enqueueSnackbar } = useSnackbar();
   const activeSubscriptionRequestHook = useAPIRequest<ActiveLongviewPlan>(
     () => getActiveLongviewPlan().then((response) => response),
@@ -54,13 +50,10 @@ export const LongviewLanding = (props: LongviewProps) => {
 
   const isManaged = Boolean(accountSettings?.managed);
 
-  const [newClientLoading, setNewClientLoading] = React.useState<boolean>(
-    false
-  );
-  const [
-    subscriptionDialogOpen,
-    setSubscriptionDialogOpen,
-  ] = React.useState<boolean>(false);
+  const [newClientLoading, setNewClientLoading] =
+    React.useState<boolean>(false);
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] =
+    React.useState<boolean>(false);
 
   const { handleTabChange, tabIndex, tabs } = useTabs([
     {
@@ -109,8 +102,13 @@ export const LongviewLanding = (props: LongviewProps) => {
   const handleSubmit = () => {
     if (isManaged) {
       navigate({
-        state: (prev) => ({ ...prev, ...locationState }),
-        to: '/support/tickets',
+        state: (prev) => ({
+          ...prev,
+          supportTicketFormFields: {
+            title: 'Request for additional Longview clients',
+          },
+        }),
+        to: '/support/tickets/open',
       });
       return;
     }
@@ -136,6 +134,7 @@ export const LongviewLanding = (props: LongviewProps) => {
         loading={newClientLoading}
         onButtonClick={handleAddClient}
         removeCrumbX={1}
+        spacingBottom={4}
         title="Longview"
       />
       <StyledTabs index={tabIndex} onChange={handleTabChange}>
@@ -161,7 +160,7 @@ export const LongviewLanding = (props: LongviewProps) => {
       </StyledTabs>
       <SubscriptionDialog
         clientLimit={
-          isEmpty(activeSubscriptionRequestHook.data)
+          Object.keys(activeSubscriptionRequestHook.data).length === 0
             ? 10
             : (activeSubscriptionRequestHook.data as LongviewSubscription)
                 .clients_included

@@ -1,31 +1,30 @@
-import { Divider, Notice, Stack } from '@linode/ui';
+import { LinodeSelect } from '@linode/shared';
+import { ActionsPanel, Divider, Drawer, Notice, Stack } from '@linode/ui';
+import { useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useHistory } from 'react-router-dom';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { DescriptionList } from 'src/components/DescriptionList/DescriptionList';
-import { Drawer } from 'src/components/Drawer';
-import { LinodeSelect } from 'src/features/Linodes/LinodeSelect/LinodeSelect';
+import { REBUILD_LINODE_IMAGE_PARAM_NAME } from 'src/features/Linodes/LinodesDetail/LinodeRebuild/utils';
 
-import { REBUILD_LINODE_IMAGE_PARAM_NAME } from '../../Linodes/LinodesDetail/LinodeRebuild/RebuildFromImage';
 import { useImageAndLinodeGrantCheck } from '../utils';
 
-import type { Image } from '@linode/api-v4';
+import type { APIError, Image } from '@linode/api-v4';
 
 interface Props {
   image: Image | undefined;
+  imageError: APIError[] | null;
+  isFetching: boolean;
   onClose: () => void;
   open: boolean;
 }
 
 export const RebuildImageDrawer = (props: Props) => {
-  const { image, onClose, open } = props;
+  const { image, imageError, isFetching, onClose, open } = props;
 
-  const history = useHistory();
-  const {
-    permissionedLinodes: availableLinodes,
-  } = useImageAndLinodeGrantCheck();
+  const navigate = useNavigate();
+  const { permissionedLinodes: availableLinodes } =
+    useImageAndLinodeGrantCheck();
 
   const { control, formState, handleSubmit, reset } = useForm<{
     linodeId: number;
@@ -41,11 +40,13 @@ export const RebuildImageDrawer = (props: Props) => {
 
     handleClose();
 
-    history.push({
-      pathname: `/linodes/${values.linodeId}/rebuild`,
-      search: new URLSearchParams({
+    navigate({
+      to: `/linodes/$linodeId`,
+      params: { linodeId: values.linodeId },
+      search: {
+        rebuild: true,
         [REBUILD_LINODE_IMAGE_PARAM_NAME]: image.id,
-      }).toString(),
+      },
     });
   });
 
@@ -56,6 +57,8 @@ export const RebuildImageDrawer = (props: Props) => {
 
   return (
     <Drawer
+      error={imageError}
+      isFetching={isFetching}
       onClose={handleClose}
       open={open}
       title="Rebuild an Existing Linode from an Image"
@@ -76,17 +79,19 @@ export const RebuildImageDrawer = (props: Props) => {
         <Divider spacingBottom={0} spacingTop={24} />
 
         <Controller
+          control={control}
+          name="linodeId"
           render={({ field, fieldState }) => (
             <LinodeSelect
+              clearable={true}
+              errorText={fieldState.error?.message}
+              onBlur={field.onBlur}
               onSelectionChange={(linode) => {
                 field.onChange(linode?.id);
               }}
               optionsFilter={(linode) =>
                 availableLinodes ? availableLinodes.includes(linode.id) : true
               }
-              clearable={true}
-              errorText={fieldState.error?.message}
-              onBlur={field.onBlur}
               placeholder="Select Linode or Type to Search"
               value={field.value}
             />
@@ -97,8 +102,6 @@ export const RebuildImageDrawer = (props: Props) => {
               value: true,
             },
           }}
-          control={control}
-          name="linodeId"
         />
 
         <ActionsPanel

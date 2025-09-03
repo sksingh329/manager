@@ -1,21 +1,25 @@
 import {
-  Config,
-  Devices,
-  DiskDevice,
-  VolumeDevice,
-} from '@linode/api-v4/lib/linodes';
+  useAllLinodeDisksQuery,
+  useLinodeKernelQuery,
+  useLinodeQuery,
+  useLinodeVolumesQuery,
+} from '@linode/queries';
+import { API_MAX_PAGE_SIZE } from '@linode/utilities';
 import { styled } from '@mui/material/styles';
 import * as React from 'react';
 
 import { TableCell } from 'src/components/TableCell';
 import { TableRow } from 'src/components/TableRow';
-import { API_MAX_PAGE_SIZE } from 'src/constants';
-import { useAllLinodeDisksQuery } from 'src/queries/linodes/disks';
-import { useLinodeKernelQuery } from 'src/queries/linodes/linodes';
-import { useLinodeVolumesQuery } from 'src/queries/volumes/volumes';
 
 import { InterfaceListItem } from './InterfaceListItem';
 import { ConfigActionMenu } from './LinodeConfigActionMenu';
+
+import type {
+  Config,
+  Devices,
+  DiskDevice,
+  VolumeDevice,
+} from '@linode/api-v4/lib/linodes';
 
 interface Props {
   config: Config;
@@ -23,23 +27,24 @@ interface Props {
   onBoot: () => void;
   onDelete: () => void;
   onEdit: () => void;
-  readOnly: boolean;
 }
 
 export const isDiskDevice = (
-  device: VolumeDevice | DiskDevice
+  device: DiskDevice | VolumeDevice
 ): device is DiskDevice => {
   return 'disk_id' in device;
 };
 
 const isVolumeDevice = (
-  device: VolumeDevice | DiskDevice
+  device: DiskDevice | VolumeDevice
 ): device is VolumeDevice => {
   return 'volume_id' in device;
 };
 
 export const ConfigRow = React.memo((props: Props) => {
-  const { config, linodeId, onBoot, onDelete, onEdit, readOnly } = props;
+  const { config, linodeId, onBoot, onDelete, onEdit } = props;
+
+  const { data: linode } = useLinodeQuery(linodeId);
 
   const { data: kernel } = useLinodeKernelQuery(config.kernel);
 
@@ -110,10 +115,12 @@ export const ConfigRow = React.memo((props: Props) => {
         {config.label} – {kernel?.label ?? config.kernel}
       </TableCell>
       <TableCell>{deviceLabels}</TableCell>
-      <TableCell>
-        {interfaces.length > 0 ? InterfaceList : defaultInterfaceLabel}
-      </TableCell>
-      <StyledTableCell>
+      {linode?.interface_generation !== 'linode' && (
+        <TableCell>
+          {interfaces.length > 0 ? InterfaceList : defaultInterfaceLabel}
+        </TableCell>
+      )}
+      <TableCell actionCell>
         <ConfigActionMenu
           config={config}
           label={config.label}
@@ -121,9 +128,8 @@ export const ConfigRow = React.memo((props: Props) => {
           onBoot={onBoot}
           onDelete={onDelete}
           onEdit={onEdit}
-          readOnly={readOnly}
         />
-      </StyledTableCell>
+      </TableCell>
     </TableRow>
   );
 });
@@ -135,10 +141,3 @@ const StyledUl = styled('ul', { label: 'StyledUl' })(({ theme }) => ({
   paddingLeft: 0,
   paddingTop: theme.spacing(),
 }));
-
-const StyledTableCell = styled(TableCell, { label: 'StyledTableCell' })({
-  '&.MuiTableCell-root': {
-    paddingRight: 0,
-  },
-  padding: '0 !important',
-});

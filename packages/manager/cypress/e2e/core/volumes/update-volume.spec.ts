@@ -1,12 +1,13 @@
-import { Volume } from '@linode/api-v4';
-
-import { volumeRequestPayloadFactory } from 'src/factories/volume';
 import { authenticate } from 'support/api/authentication';
+import { createActiveVolume } from 'support/api/volumes';
+import { ui } from 'support/ui';
+import { cleanUp } from 'support/util/cleanup';
 import { randomLabel } from 'support/util/random';
 import { chooseRegion } from 'support/util/regions';
-import { cleanUp } from 'support/util/cleanup';
-import { ui } from 'support/ui';
-import { createActiveVolume } from 'support/api/volumes';
+
+import { volumeRequestPayloadFactory } from 'src/factories/volume';
+
+import type { Volume } from '@linode/api-v4';
 
 authenticate();
 describe('volume update flow', () => {
@@ -44,7 +45,7 @@ describe('volume update flow', () => {
           .should('be.visible')
           .closest('tr')
           .within(() => {
-            cy.findByText('active').should('be.visible');
+            cy.findByText('Active').should('be.visible');
           });
         ui.actionMenu
           .findByTitle(`Action menu for Volume ${volume.label}`)
@@ -55,10 +56,8 @@ describe('volume update flow', () => {
         // Enter new label, click "Save Changes".
         cy.get('[data-qa-drawer="true"]').within(() => {
           cy.findByText('Edit Volume').should('be.visible');
-          cy.findByDisplayValue(volume.label)
-            .should('be.visible')
-            .click()
-            .type(`{selectall}{backspace}${newLabel}`);
+          cy.findByDisplayValue(volume.label).should('be.visible').click();
+          cy.focused().type(`{selectall}{backspace}${newLabel}`);
 
           cy.findByText('Save Changes').should('be.visible').click();
         });
@@ -107,7 +106,7 @@ describe('volume update flow', () => {
           .should('be.visible')
           .closest('tr')
           .within(() => {
-            cy.findByText('active').should('be.visible');
+            cy.findByText('Active').should('be.visible');
           });
 
         ui.actionMenu
@@ -123,8 +122,8 @@ describe('volume update flow', () => {
 
           cy.findByPlaceholderText('Type to choose or create a tag.')
             .should('be.visible')
-            .click()
-            .type(`${newTags.join('{enter}')}{enter}`);
+            .click();
+          cy.focused().type(`${newTags.join('{enter}')}{enter}`);
 
           cy.findByText('Save Changes').should('be.visible').click();
         });

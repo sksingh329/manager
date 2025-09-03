@@ -1,5 +1,5 @@
 import { Divider } from '@linode/ui';
-import { Grid } from '@mui/material';
+import { GridLegacy } from '@mui/material';
 import React from 'react';
 
 import NullComponent from 'src/components/NullComponent';
@@ -10,8 +10,12 @@ import {
   metricOperatorTypeMap,
 } from '../constants';
 import { DisplayAlertDetailChips } from './DisplayAlertDetailChips';
+import { transformCommaSeperatedDimensionValues } from './utils';
 
-import type { AlertDefinitionMetricCriteria } from '@linode/api-v4';
+import type {
+  AlertDefinitionMetricCriteria,
+  CloudPulseServiceType,
+} from '@linode/api-v4';
 
 interface AlertMetricAndDimensionsProp {
   /*
@@ -20,11 +24,16 @@ interface AlertMetricAndDimensionsProp {
   ruleCriteria: {
     rules: AlertDefinitionMetricCriteria[];
   };
+  /**
+   * The service type of the alert for which the criteria needs to be displayed
+   */
+  serviceType: CloudPulseServiceType;
 }
 
+const transformationAllowedOperators = ['eq', 'neq', 'in'];
 export const RenderAlertMetricsAndDimensions = React.memo(
   (props: AlertMetricAndDimensionsProp) => {
-    const { ruleCriteria } = props;
+    const { ruleCriteria, serviceType } = props;
 
     if (!ruleCriteria.rules?.length) {
       return <NullComponent />;
@@ -33,7 +42,7 @@ export const RenderAlertMetricsAndDimensions = React.memo(
     return ruleCriteria.rules.map(
       (
         {
-          aggregation_type: aggregationType,
+          aggregate_function: aggregationType,
           dimension_filters: dimensionFilters,
           label,
           operator,
@@ -43,8 +52,10 @@ export const RenderAlertMetricsAndDimensions = React.memo(
         index
       ) => (
         <React.Fragment key={`${label}_${index}`}>
-          <Grid item xs={12}>
+          <GridLegacy item xs={12}>
             <DisplayAlertDetailChips // build the metric threshold chip like aggregation|label|metric_operator|threshold|unit
+              label="Metric Threshold"
+              mergeChips
               values={[
                 aggregationTypeMap[aggregationType],
                 label,
@@ -52,33 +63,38 @@ export const RenderAlertMetricsAndDimensions = React.memo(
                 String(threshold),
                 unit,
               ]}
-              label="Metric Threshold"
-              mergeChips
             />
-          </Grid>
+          </GridLegacy>
 
           {dimensionFilters && dimensionFilters.length > 0 && (
-            <Grid item xs={12}>
+            <GridLegacy item xs={12}>
               <DisplayAlertDetailChips // build the dimensions associated with metric threshold like label|dimension_operator|value
+                label="Dimension Filter"
+                mergeChips
                 values={dimensionFilters.map(
                   ({
                     label: dimensionLabel,
+                    dimension_label: dimensionFilterKey,
                     operator: dimensionOperator,
                     value,
                   }) => [
                     dimensionLabel,
                     dimensionOperatorTypeMap[dimensionOperator],
-                    value,
+                    transformationAllowedOperators.includes(dimensionOperator)
+                      ? transformCommaSeperatedDimensionValues(
+                          value,
+                          serviceType,
+                          dimensionFilterKey
+                        )
+                      : value,
                   ]
                 )}
-                label="Dimension Filter"
-                mergeChips
               />
-            </Grid>
+            </GridLegacy>
           )}
-          <Grid item xs={12}>
+          <GridLegacy item xs={12}>
             <Divider />
-          </Grid>
+          </GridLegacy>
         </React.Fragment>
       )
     );

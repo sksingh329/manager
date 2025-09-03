@@ -1,4 +1,5 @@
-import { fireEvent } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import { dashboardFactory, serviceTypesFactory } from 'src/factories';
@@ -76,28 +77,27 @@ describe('CloudPulseDashboardWithFilters component tests', () => {
       isLoading: false,
     });
 
-    const screen = renderWithTheme(
+    renderWithTheme(
       <CloudPulseDashboardWithFilters dashboardId={1} resource={1} />
     );
 
-    expect(
-      screen.getByText('Error while loading Dashboard with Id - 1')
-    ).toBeDefined();
+    const error = screen.getByText('Error while loading Dashboard with Id - 1');
+    expect(error).toBeDefined();
   });
 
   it('renders a CloudPulseDashboardWithFilters component successfully without error placeholders', () => {
     queryMocks.useCloudPulseDashboardByIdQuery.mockReturnValue({
-      data: mockDashboard,
       error: false,
       isError: false,
       isLoading: false,
     });
 
-    const screen = renderWithTheme(
+    renderWithTheme(
       <CloudPulseDashboardWithFilters dashboardId={1} resource={1} />
     );
 
-    expect(screen.getByTestId(circleProgress)).toBeDefined(); // the dashboards started to render
+    const circle = screen.getByTestId(circleProgress);
+    expect(circle).toBeDefined(); // the dashboards started to render
   });
 
   it('renders a CloudPulseDashboardWithFilters component successfully for dbaas', () => {
@@ -108,14 +108,17 @@ describe('CloudPulseDashboardWithFilters component tests', () => {
       isLoading: false,
     });
 
-    const screen = renderWithTheme(
+    renderWithTheme(
       <CloudPulseDashboardWithFilters dashboardId={1} resource={1} />
     );
 
-    expect(screen.getByTestId(circleProgress)).toBeDefined(); // the dashboards started to render
+    const startDate = screen.getByText('Start Date');
+    const nodeTypeSelect = screen.getByTestId('node-type-select');
+    expect(startDate).toBeInTheDocument();
+    expect(nodeTypeSelect).toBeInTheDocument();
   });
 
-  it('renders a CloudPulseDashboardWithFilters component with mandatory filter error for dbaas', () => {
+  it('renders a CloudPulseDashboardWithFilters component with mandatory filter error for dbaas', async () => {
     queryMocks.useCloudPulseDashboardByIdQuery.mockReturnValue({
       data: { ...mockDashboard, service_type: 'dbaas' },
       error: false,
@@ -123,30 +126,33 @@ describe('CloudPulseDashboardWithFilters component tests', () => {
       isLoading: false,
     });
 
-    const screen = renderWithTheme(
+    renderWithTheme(
       <CloudPulseDashboardWithFilters dashboardId={1} resource={1} />
     );
+    const closeIcon = screen.getByTestId('CloseIcon');
+    expect(closeIcon).toBeDefined();
 
-    expect(screen.getByTestId('CloseIcon')).toBeDefined();
+    await userEvent.click(screen.getByTitle('Clear')); // clear the value
 
-    fireEvent.click(screen.getByTitle('Clear')); // clear the value
-    expect(screen.getByText(mandatoryFiltersError)).toBeDefined();
+    const error = screen.getByText(mandatoryFiltersError);
+    expect(error).toBeDefined();
   });
 
   it('renders a CloudPulseDashboardWithFilters component with no filters configured error', () => {
     queryMocks.useCloudPulseDashboardByIdQuery.mockReturnValue({
-      data: { ...mockDashboard, service_type: 'xyz' },
+      data: { ...mockDashboard, id: -1, service_type: 'xyz' },
       error: false,
       isError: false,
       isLoading: false,
     });
 
-    const screen = renderWithTheme(
-      <CloudPulseDashboardWithFilters dashboardId={1} resource={1} />
+    renderWithTheme(
+      <CloudPulseDashboardWithFilters dashboardId={-1} resource={1} />
     );
 
-    expect(
-      screen.getByText('No Filters Configured for Service Type - xyz')
-    ).toBeDefined();
+    const noFilterText = screen.getByText(
+      'No Filters Configured for Service Type - xyz'
+    );
+    expect(noFilterText).toBeDefined();
   });
 });

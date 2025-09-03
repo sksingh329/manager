@@ -1,14 +1,14 @@
-import { Typography, useTheme } from '@mui/material';
+import { usePreferences, useProfile } from '@linode/queries';
+import { Typography } from '@linode/ui';
+import { useTheme } from '@mui/material';
 import { default as _Avatar } from '@mui/material/Avatar';
 import * as React from 'react';
 
 import AkamaiWave from 'src/assets/logo/akamai-wave.svg';
-import { usePreferences } from 'src/queries/profile/preferences';
-import { useProfile } from 'src/queries/profile/profile';
 
 import type { SxProps, Theme } from '@mui/material';
 
-export const DEFAULT_AVATAR_SIZE = 28;
+const DEFAULT_AVATAR_SIZE = 28;
 
 export interface AvatarProps {
   /**
@@ -59,15 +59,18 @@ export const Avatar = (props: AvatarProps) => {
   const isAkamai =
     _username === 'Akamai' || _username.startsWith('lke-service-account');
 
-  const savedAvatarColor =
-    isAkamai || !avatarColorPreference
-      ? theme.palette.primary.dark
+  const savedAvatarColor = isAkamai
+    ? theme.palette.primary.dark
+    : !avatarColorPreference
+      ? theme.tokens.color.Neutrals[30]
       : avatarColorPreference;
 
   const avatarLetter = _username[0]?.toUpperCase() ?? '';
 
   return (
     <_Avatar
+      alt={`Avatar for user ${username ?? profile?.email ?? ''}`}
+      data-testid="avatar"
       sx={{
         '& svg': {
           height: width / 2,
@@ -78,18 +81,16 @@ export const Avatar = (props: AvatarProps) => {
         width,
         ...sx,
       }}
-      alt={`Avatar for user ${username ?? profile?.email ?? ''}`}
-      data-testid="avatar"
     >
       {isAkamai ? (
         <AkamaiWave />
       ) : (
         <Typography
+          data-testid="avatar-letter"
           sx={{
             color: theme.palette.getContrastText(color ?? savedAvatarColor),
             fontSize: width / 2,
           }}
-          data-testid="avatar-letter"
         >
           {avatarLetter}
         </Typography>

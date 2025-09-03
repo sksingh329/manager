@@ -1,10 +1,6 @@
+import { useMutatePreferences, usePreferences } from '@linode/queries';
 import { FormControlLabel, Paper, Toggle, Typography } from '@linode/ui';
 import React from 'react';
-
-import {
-  useMutatePreferences,
-  usePreferences,
-} from 'src/queries/profile/preferences';
 
 export const MaskSensitiveData = () => {
   const { data: isSensitiveDataMasked, isLoading } = usePreferences(
@@ -24,16 +20,16 @@ export const MaskSensitiveData = () => {
       <FormControlLabel
         control={
           <Toggle
+            checked={Boolean(isSensitiveDataMasked)}
             onChange={(_, checked) =>
               updatePreferences({ maskSensitiveData: checked })
             }
-            checked={Boolean(isSensitiveDataMasked)}
           />
         }
+        disabled={isLoading}
         label={`Sensitive data is ${
           isSensitiveDataMasked ? 'masked' : 'visible'
         }`}
-        disabled={isLoading}
       />
     </Paper>
   );

@@ -1,43 +1,48 @@
-import { Box, Checkbox, Notice, TextField } from '@linode/ui';
+import { useUpdateVolumeMutation } from '@linode/queries';
+import {
+  ActionsPanel,
+  Box,
+  Checkbox,
+  Drawer,
+  Notice,
+  TextField,
+} from '@linode/ui';
 import { UpdateVolumeSchema } from '@linode/validation';
 import { useFormik } from 'formik';
 import React from 'react';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Drawer } from 'src/components/Drawer';
 import { BLOCK_STORAGE_ENCRYPTION_SETTING_IMMUTABLE_COPY } from 'src/components/Encryption/constants';
 import { useIsBlockStorageEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
-import { useGrants } from 'src/queries/profile/profile';
-import { useUpdateVolumeMutation } from 'src/queries/volumes/volumes';
+import { usePermissions } from 'src/features/IAM/hooks/usePermissions';
 import {
   handleFieldErrors,
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
 
-import type { Volume } from '@linode/api-v4';
+import type { APIError, Volume } from '@linode/api-v4';
 
 interface Props {
   isFetching?: boolean;
   onClose: () => void;
   open: boolean;
-  volume: Volume | undefined;
+  volume: undefined | Volume;
+  volumeError?: APIError[] | null;
 }
 
 export const EditVolumeDrawer = (props: Props) => {
-  const { isFetching, onClose: _onClose, open, volume } = props;
+  const { isFetching, onClose: _onClose, open, volume, volumeError } = props;
 
-  const { data: grants } = useGrants();
+  const { data: permissions } = usePermissions(
+    'volume',
+    ['update_volume'],
+    volume?.id
+  );
+  const canUpdateVolume = permissions?.update_volume;
 
   const { mutateAsync: updateVolume } = useUpdateVolumeMutation();
 
-  const {
-    isBlockStorageEncryptionFeatureEnabled,
-  } = useIsBlockStorageEncryptionFeatureEnabled();
-
-  const isReadOnly =
-    grants !== undefined &&
-    grants.volume.find((grant) => grant.id === volume?.id)?.permissions ===
-      'read_only';
+  const { isBlockStorageEncryptionFeatureEnabled } =
+    useIsBlockStorageEncryptionFeatureEnabled();
 
   const {
     dirty,
@@ -80,13 +85,14 @@ export const EditVolumeDrawer = (props: Props) => {
 
   return (
     <Drawer
+      error={volumeError}
       isFetching={isFetching}
       onClose={onClose}
       open={open}
       title="Edit Volume"
     >
       <form onSubmit={handleSubmit}>
-        {isReadOnly && (
+        {!canUpdateVolume && (
           <Notice
             spacingBottom={0}
             text="You don't have permission to edit this volume."
@@ -96,7 +102,7 @@ export const EditVolumeDrawer = (props: Props) => {
         {error && <Notice text={error} variant="error" />}
 
         <TextField
-          disabled={isReadOnly}
+          disabled={!canUpdateVolume}
           errorText={errors.label}
           label="Label"
           name="label"
@@ -124,7 +130,7 @@ export const EditVolumeDrawer = (props: Props) => {
 
         <ActionsPanel
           primaryButtonProps={{
-            disabled: isReadOnly || !dirty,
+            disabled: !canUpdateVolume || !dirty,
             label: 'Save Changes',
             loading: isSubmitting,
             type: 'submit',

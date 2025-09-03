@@ -4,11 +4,8 @@ import * as React from 'react';
 
 import { notificationFactory, volumeFactory } from 'src/factories';
 import { makeResourcePage } from 'src/mocks/serverHandlers';
-import { HttpResponse, http, server } from 'src/mocks/testServer';
-import {
-  renderWithThemeAndRouter,
-  wrapWithTableBody,
-} from 'src/utilities/testHelpers';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
+import { renderWithTheme, wrapWithTableBody } from 'src/utilities/testHelpers';
 
 import { VolumeTableRow } from './VolumeTableRow';
 
@@ -37,13 +34,32 @@ const handlers: ActionHandlers = {
   handleUpgrade: vi.fn(),
 };
 
+const queryMocks = vi.hoisted(() => ({
+  usePermissions: vi.fn(),
+}));
+
+vi.mock('src/features/IAM/hooks/usePermissions', async () => {
+  const actual = await vi.importActual('src/features/IAM/hooks/usePermissions');
+  return {
+    ...actual,
+    usePermissions: queryMocks.usePermissions,
+  };
+});
+
 describe('Volume table row', () => {
+  beforeEach(() => {
+    queryMocks.usePermissions.mockReturnValue({
+      update_volume: true,
+      attach_volume: true,
+      create_volume: true,
+      delete_volume: true,
+      resize_volume: true,
+      clone_volume: true,
+    });
+  });
+
   it("should show the attached Linode's label if present", async () => {
-    const {
-      getByLabelText,
-      getByTestId,
-      getByText,
-    } = await renderWithThemeAndRouter(
+    const { getByLabelText, getByTestId, getByText } = renderWithTheme(
       wrapWithTableBody(
         <VolumeTableRow handlers={handlers} volume={attachedVolume} />
       )
@@ -62,7 +78,7 @@ describe('Volume table row', () => {
   });
 
   it('should show Unattached if the Volume is not attached to a Linode', async () => {
-    const { getByLabelText, getByText } = await renderWithThemeAndRouter(
+    const { getByLabelText, getByText } = renderWithTheme(
       wrapWithTableBody(
         <VolumeTableRow handlers={handlers} volume={unattachedVolume} />
       )
@@ -88,7 +104,7 @@ describe('Volume table row', () => {
       })
     );
 
-    const { findByText } = await renderWithThemeAndRouter(
+    const { findByText } = renderWithTheme(
       wrapWithTableBody(<VolumeTableRow handlers={handlers} volume={volume} />)
     );
 
@@ -108,7 +124,7 @@ describe('Volume table row', () => {
       })
     );
 
-    const { findByText } = await renderWithThemeAndRouter(
+    const { findByText } = renderWithTheme(
       wrapWithTableBody(<VolumeTableRow handlers={handlers} volume={volume} />)
     );
 
@@ -119,7 +135,7 @@ describe('Volume table row', () => {
   it('should render the encryption status if isBlockStorageEncryptionFeatureEnabled is true', async () => {
     const volume = volumeFactory.build();
 
-    const { findByText } = await renderWithThemeAndRouter(
+    const { findByText } = renderWithTheme(
       wrapWithTableBody(
         <VolumeTableRow
           handlers={handlers}
@@ -135,7 +151,7 @@ describe('Volume table row', () => {
   it('should not render the encryption status if isBlockStorageEncryptionFeatureEnabled is false', async () => {
     const volume = volumeFactory.build();
 
-    const { queryByText } = await renderWithThemeAndRouter(
+    const { queryByText } = renderWithTheme(
       wrapWithTableBody(<VolumeTableRow handlers={handlers} volume={volume} />)
     );
 
@@ -145,20 +161,16 @@ describe('Volume table row', () => {
 
 describe('Volume table row - for linodes detail page', () => {
   it("should show the attached Linode's label if present", async () => {
-    const {
-      getByLabelText,
-      getByText,
-      queryByTestId,
-      queryByText,
-    } = await renderWithThemeAndRouter(
-      wrapWithTableBody(
-        <VolumeTableRow
-          handlers={handlers}
-          isDetailsPageRow
-          volume={attachedVolume}
-        />
-      )
-    );
+    const { getByLabelText, getByText, queryByTestId, queryByText } =
+      renderWithTheme(
+        wrapWithTableBody(
+          <VolumeTableRow
+            handlers={handlers}
+            isDetailsPageRow
+            volume={attachedVolume}
+          />
+        )
+      );
 
     // Check row for basic values
     expect(getByText(attachedVolume.label));
@@ -178,7 +190,7 @@ describe('Volume table row - for linodes detail page', () => {
   });
 
   it('should show a high performance icon tooltip if Linode has the capability', async () => {
-    const { getByLabelText, getByText } = await renderWithThemeAndRouter(
+    const { getByLabelText, getByText } = renderWithTheme(
       wrapWithTableBody(
         <VolumeTableRow
           handlers={handlers}

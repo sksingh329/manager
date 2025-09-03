@@ -3,26 +3,29 @@
  */
 
 import { createBucket } from '@linode/api-v4/lib/object-storage';
-import {
-  accountFactory,
-  createObjectStorageBucketFactoryLegacy,
-} from 'src/factories';
 import { authenticate } from 'support/api/authentication';
 import {
   interceptGetNetworkUtilization,
   mockGetAccount,
 } from 'support/intercepts/account';
+import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
 import {
   interceptCreateBucket,
   interceptDeleteBucket,
-  interceptGetBuckets,
   interceptGetBucketAccess,
+  interceptGetBuckets,
   interceptUpdateBucketAccess,
 } from 'support/intercepts/object-storage';
 import { ui } from 'support/ui';
-import { randomLabel } from 'support/util/random';
 import { cleanUp } from 'support/util/cleanup';
-import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
+import { chooseCluster } from 'support/util/clusters';
+import { randomLabel } from 'support/util/random';
+import { getRegionById } from 'support/util/regions';
+
+import {
+  accountFactory,
+  createObjectStorageBucketFactoryLegacy,
+} from 'src/factories';
 
 /**
  * Create a bucket with the given label and cluster.
@@ -43,9 +46,9 @@ const setUpBucket = (
 ) => {
   return createBucket(
     createObjectStorageBucketFactoryLegacy.build({
-      label,
       cluster,
       cors_enabled,
+      label,
 
       // API accepts either `cluster` or `region`, but not both. Our factory
       // populates both fields, so we have to manually set `region` to `undefined`
@@ -73,12 +76,11 @@ describe('object storage end-to-end tests', () => {
    */
   it('can create and delete object storage buckets', () => {
     cy.tag('purpose:syntheticTesting');
-
     const bucketLabel = randomLabel();
-    const bucketRegion = 'US, Atlanta, GA';
-    const bucketCluster = 'us-southeast-1';
-    const bucketHostname = `${bucketLabel}.${bucketCluster}.linodeobjects.com`;
-
+    const bucketClusterObj = chooseCluster();
+    const bucketCluster = bucketClusterObj.id;
+    const bucketRegion = getRegionById(bucketClusterObj.region).label;
+    const bucketHostname = `${bucketLabel}.${bucketClusterObj.domain}`;
     interceptGetBuckets().as('getBuckets');
     interceptCreateBucket().as('createBucket');
     interceptDeleteBucket(bucketLabel, bucketCluster).as('deleteBucket');
@@ -95,20 +97,20 @@ describe('object storage end-to-end tests', () => {
 
     // Wait for loader to disappear, indicating that all buckets have been loaded.
     // Mitigates test failures stemming from M3-7833.
-    cy.findByLabelText('Buckets').within(() => {
+    cy.findByTestId('Buckets').within(() => {
       cy.findByLabelText('Content is loading').should('not.exist');
     });
 
-    ui.entityHeader.find().within(() => {
-      ui.button.findByTitle('Create Bucket').should('be.visible').click();
-    });
+    ui.button.findByTitle('Create Bucket').should('be.visible').click();
 
     ui.drawer
       .findByTitle('Create Bucket')
       .should('be.visible')
       .within(() => {
-        cy.findByText('Label').click().type(bucketLabel);
-        ui.regionSelect.find().click().type(`${bucketRegion}{enter}`);
+        cy.findByLabelText('Bucket Name (required)').click();
+        cy.focused().type(bucketLabel);
+        ui.regionSelect.find().click();
+        cy.focused().type(`${bucketRegion}{enter}`);
 
         ui.buttonGroup
           .findButtonByTitle('Create Bucket')
@@ -133,7 +135,8 @@ describe('object storage end-to-end tests', () => {
       .findByTitle(`Delete Bucket ${bucketLabel}`)
       .should('be.visible')
       .within(() => {
-        cy.findByLabelText('Bucket Name').click().type(bucketLabel);
+        cy.findByLabelText('Bucket Name').click();
+        cy.focused().type(bucketLabel);
         ui.buttonGroup
           .findButtonByTitle('Delete')
           .should('be.visible')
@@ -153,7 +156,8 @@ describe('object storage end-to-end tests', () => {
    */
   it('can update bucket access', () => {
     const bucketLabel = randomLabel();
-    const bucketCluster = 'us-southeast-1';
+    const bucketClusterObj = chooseCluster();
+    const bucketCluster = bucketClusterObj.id;
     const bucketAccessPage = `/object-storage/buckets/${bucketCluster}/${bucketLabel}/access`;
 
     cy.defer(
@@ -166,31 +170,31 @@ describe('object storage end-to-end tests', () => {
       interceptUpdateBucketAccess(bucketLabel, bucketCluster).as(
         'updateBucketAccess'
       );
+
+      // Navigate to new bucket page, upload and delete an object.
+      cy.visitWithLogin(bucketAccessPage);
+
+      cy.wait('@getBucketAccess');
+
+      // Make object public, confirm it can be accessed.
+      cy.findByLabelText('Access Control List (ACL)')
+        .should('be.visible')
+        .should('not.have.value', 'Loading access...')
+        .should('have.value', 'Private')
+        .click();
+      cy.focused().type('Public Read');
+
+      ui.autocompletePopper
+        .findByTitle('Public Read')
+        .should('be.visible')
+        .click();
+
+      ui.button.findByTitle('Save').should('be.visible').click();
+
+      // TODO Confirm that outgoing API request contains expected values.
+      cy.wait('@updateBucketAccess');
+
+      cy.findByText('Bucket access updated successfully.');
     });
-
-    // Navigate to new bucket page, upload and delete an object.
-    cy.visitWithLogin(bucketAccessPage);
-
-    cy.wait('@getBucketAccess');
-
-    // Make object public, confirm it can be accessed.
-    cy.findByLabelText('Access Control List (ACL)')
-      .should('be.visible')
-      .should('not.have.value', 'Loading access...')
-      .should('have.value', 'Private')
-      .click()
-      .type('Public Read');
-
-    ui.autocompletePopper
-      .findByTitle('Public Read')
-      .should('be.visible')
-      .click();
-
-    ui.button.findByTitle('Save').should('be.visible').click();
-
-    // TODO Confirm that outgoing API request contains expected values.
-    cy.wait('@updateBucketAccess');
-
-    cy.findByText('Bucket access updated successfully.');
   });
 });

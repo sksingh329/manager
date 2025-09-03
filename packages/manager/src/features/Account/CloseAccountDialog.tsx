@@ -1,15 +1,15 @@
 import { cancelAccount } from '@linode/api-v4/lib/account';
+import { useProfile } from '@linode/queries';
 import { Notice, TextField, Typography } from '@linode/ui';
 import { styled } from '@mui/material/styles';
+import { useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
-import { useHistory } from 'react-router-dom';
 
 import { TypeToConfirmDialog } from 'src/components/TypeToConfirmDialog/TypeToConfirmDialog';
 import {
   CANCELLATION_DATA_LOSS_WARNING,
   CANCELLATION_DIALOG_TITLE,
 } from 'src/features/Account/constants';
-import { useProfile } from 'src/queries/profile/profile';
 
 import type { APIError } from '@linode/api-v4/lib/types';
 
@@ -19,12 +19,11 @@ interface Props {
 }
 
 const CloseAccountDialog = ({ closeDialog, open }: Props) => {
-  const [isClosingAccount, setIsClosingAccount] = React.useState<boolean>(
-    false
-  );
+  const [isClosingAccount, setIsClosingAccount] =
+    React.useState<boolean>(false);
   const [errors, setErrors] = React.useState<APIError[] | undefined>(undefined);
   const [comments, setComments] = React.useState<string>('');
-  const history = useHistory();
+  const navigate = useNavigate();
   const { data: profile } = useProfile();
 
   React.useEffect(() => {
@@ -61,7 +60,10 @@ const CloseAccountDialog = ({ closeDialog, open }: Props) => {
       .then((response) => {
         setIsClosingAccount(false);
         /** shoot the user off to survey monkey to answer some questions */
-        history.push('/cancel', { survey_link: response.survey_link });
+        navigate({
+          to: '/cancel',
+          search: { survey_link: response.survey_link },
+        });
       })
       .catch((e: APIError[]) => {
         setIsClosingAccount(false);
@@ -81,13 +83,6 @@ const CloseAccountDialog = ({ closeDialog, open }: Props) => {
         subType: 'CloseAccount',
         type: 'AccountSetting',
       }}
-      typographyStyleSx={(theme) => ({
-        borderTop: `1px solid ${theme.tokens.border.Normal}`,
-        marginBottom: theme.tokens.spacing[40],
-        marginTop: theme.tokens.spacing[60],
-        paddingTop: theme.tokens.spacing[60],
-        width: '100%',
-      })}
       expand
       inputRef={inputRef}
       label={`Enter your email address (${profile.email})`}
@@ -97,17 +92,23 @@ const CloseAccountDialog = ({ closeDialog, open }: Props) => {
       open={open}
       reversePrimaryButtonPosition
       title={CANCELLATION_DIALOG_TITLE}
+      typographyStyleSx={(theme) => ({
+        borderTop: `1px solid ${theme.tokens.alias.Border.Normal}`,
+        marginBottom: theme.tokens.spacing.S8,
+        marginTop: theme.tokens.spacing.S16,
+        paddingTop: theme.tokens.spacing.S16,
+        width: '100%',
+      })}
     >
       {errors ? (
         <Notice text={errors ? errors[0].reason : ''} variant="error" />
       ) : null}
       <StyledNoticeWrapper>
         <Notice
-          sx={(theme) => ({
-            border: `1px solid ${theme.tokens.action.Negative.Default}`,
-          })}
-          important
           spacingBottom={12}
+          sx={(theme) => ({
+            border: `1px solid ${theme.tokens.alias.Action.Negative.Default}`,
+          })}
           variant="error"
         >
           <Typography sx={{ fontSize: '0.875rem' }}>
@@ -117,7 +118,7 @@ const CloseAccountDialog = ({ closeDialog, open }: Props) => {
       </StyledNoticeWrapper>
       <Typography
         sx={(theme) => ({
-          marginTop: theme.tokens.spacing[60],
+          marginTop: theme.tokens.spacing.S16,
           order: 1,
         })}
       >

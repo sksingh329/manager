@@ -1,10 +1,16 @@
-import { Box, Notice, TextField, Typography } from '@linode/ui';
+import {
+  useCreateVolumeMutation,
+  useRegionsQuery,
+  useVolumeTypesQuery,
+} from '@linode/queries';
+import { ActionsPanel, Box, Notice, TextField, Typography } from '@linode/ui';
+import { doesRegionSupportFeature } from '@linode/utilities';
+import { maybeCastToNumber } from '@linode/utilities';
 import { CreateVolumeSchema } from '@linode/validation/lib/volumes.schema';
 import { useFormik } from 'formik';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import {
   BLOCK_STORAGE_ENCRYPTION_GENERAL_DESCRIPTION,
   BLOCK_STORAGE_ENCRYPTION_OVERHEAD_CAVEAT,
@@ -17,19 +23,12 @@ import { TagsInput } from 'src/components/TagsInput/TagsInput';
 import { MAX_VOLUME_SIZE } from 'src/constants';
 import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 import { useEventsPollingActions } from 'src/queries/events/events';
-import { useRegionsQuery } from 'src/queries/regions/regions';
-import {
-  useCreateVolumeMutation,
-  useVolumeTypesQuery,
-} from 'src/queries/volumes/volumes';
 import { sendCreateVolumeEvent } from 'src/utilities/analytics/customEventAnalytics';
-import { doesRegionSupportFeature } from 'src/utilities/doesRegionSupportFeature';
 import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
 import {
   handleFieldErrors,
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
-import { maybeCastToNumber } from 'src/utilities/maybeCastToNumber';
 import { PRICES_RELOAD_ERROR_NOTICE_TEXT } from 'src/utilities/pricing/constants';
 
 import { ConfigSelect } from './ConfigSelect';
@@ -53,7 +52,7 @@ interface Props {
 
 interface FormState {
   config_id: number;
-  encryption: VolumeEncryption | undefined;
+  encryption: undefined | VolumeEncryption;
   label: string;
   linode_id: number;
   region: string;
@@ -91,14 +90,27 @@ export const LinodeVolumeCreateForm = (props: Props) => {
     globalGrantType: 'add_volumes',
   });
 
-  const {
-    isBlockStorageEncryptionFeatureEnabled,
-  } = useIsBlockStorageEncryptionFeatureEnabled();
+  const { isBlockStorageEncryptionFeatureEnabled } =
+    useIsBlockStorageEncryptionFeatureEnabled();
 
   const { data: regions } = useRegionsQuery();
 
+  const regionSupportsBlockStorageEncryption = doesRegionSupportFeature(
+    linode.region,
+    regions ?? [],
+    'Block Storage Encryption'
+  );
+
+  if (
+    isBlockStorageEncryptionFeatureEnabled &&
+    regionSupportsBlockStorageEncryption
+  ) {
+    initialValues.encryption = 'enabled';
+    setClientLibraryCopyVisible(true);
+  }
+
   const toggleVolumeEncryptionEnabled = (
-    encryption: VolumeEncryption | undefined
+    encryption: undefined | VolumeEncryption
   ) => {
     if (encryption === 'enabled') {
       setFieldValue('encryption', 'disabled');
@@ -169,12 +181,6 @@ export const LinodeVolumeCreateForm = (props: Props) => {
     validationSchema: CreateVolumeSchema,
   });
 
-  const regionSupportsBlockStorageEncryption = doesRegionSupportFeature(
-    linode.region,
-    regions ?? [],
-    'Block Storage Encryption'
-  );
-
   return (
     <form onSubmit={handleSubmit}>
       {isVolumesGrantReadOnly && (
@@ -187,20 +193,20 @@ export const LinodeVolumeCreateForm = (props: Props) => {
       )}
       {error && <Notice text={error} variant="error" />}
       <Typography
+        data-qa-volume-attach-help
+        style={{ marginTop: 24 }}
         sx={(theme) => ({
           marginBottom: theme.spacing(1.25),
         })}
-        data-qa-volume-attach-help
-        style={{ marginTop: 24 }}
         variant="body1"
       >
         {`This volume will be immediately scheduled for attachment to ${linode.label} and available to other Linodes in the ${linode.region} data-center.`}
       </Typography>
       <Typography
+        data-qa-volume-size-help
         sx={(theme) => ({
           marginBottom: theme.spacing(1.25),
         })}
-        data-qa-volume-size-help
         variant="body1"
       >
         <span>
@@ -240,6 +246,9 @@ export const LinodeVolumeCreateForm = (props: Props) => {
         value={values.config_id}
       />
       <TagsInput
+        disabled={isVolumesGrantReadOnly}
+        label="Tags"
+        name="tags"
         onChange={(items) =>
           setFieldValue(
             'tags',
@@ -250,23 +259,24 @@ export const LinodeVolumeCreateForm = (props: Props) => {
           touched.tags
             ? errors.tags
               ? getErrorStringOrDefault(
-                  (errors.tags as unknown) as APIError[],
+                  errors.tags as unknown as APIError[],
                   'Unable to tag volume.'
                 )
               : undefined
             : undefined
         }
-        disabled={isVolumesGrantReadOnly}
-        label="Tags"
-        name="tags"
         value={values.tags.map((tag) => ({ label: tag, value: tag }))}
       />
       {isBlockStorageEncryptionFeatureEnabled && (
         <Box paddingTop={2}>
           <Encryption
+            descriptionCopy={BLOCK_STORAGE_ENCRYPTION_GENERAL_DESCRIPTION}
+            disabled={!regionSupportsBlockStorageEncryption}
             disabledReason={
               BLOCK_STORAGE_ENCRYPTION_UNAVAILABLE_IN_LINODE_REGION_COPY
             }
+            entityType="Volume"
+            isEncryptEntityChecked={values.encryption === 'enabled'}
             notices={
               values.encryption === 'enabled'
                 ? [
@@ -275,11 +285,8 @@ export const LinodeVolumeCreateForm = (props: Props) => {
                   ]
                 : []
             }
-            descriptionCopy={BLOCK_STORAGE_ENCRYPTION_GENERAL_DESCRIPTION}
-            disabled={!regionSupportsBlockStorageEncryption}
-            entityType="Volume"
-            isEncryptEntityChecked={values.encryption === 'enabled'}
             onChange={() => toggleVolumeEncryptionEnabled(values.encryption)}
+            sxCheckbox={{ paddingLeft: '0px' }}
           />
         </Box>
       )}

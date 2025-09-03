@@ -1,18 +1,21 @@
 import React from 'react';
+import { useStyles } from 'tss-react/mui';
 
 import {
   CheckIcon,
-  AlertIcon as ErrorIcon,
+  ErrorIcon,
+  InfoIcon,
+  LightBulbIcon,
   WarningIcon,
 } from '../../assets/icons';
 import { Box } from '../Box';
 import { Typography } from '../Typography';
-import { useStyles } from './Notice.styles';
+import { StyledIconBox, StyledNoticeBox } from './Notice.styles';
 
 import type { BoxProps } from '../Box';
 import type { TypographyProps } from '../Typography';
 
-export type NoticeVariant = 'error' | 'info' | 'success' | 'warning';
+export type NoticeVariant = 'error' | 'info' | 'success' | 'tip' | 'warning';
 
 export interface NoticeProps extends BoxProps {
   /**
@@ -30,9 +33,13 @@ export interface NoticeProps extends BoxProps {
    */
   errorGroup?: string;
   /**
-   * If true, an icon will be displayed to the left of the error, reflecting the variant of the error.
+   * If true, the width of the notice will only span the content instead of the container.
    */
-  important?: boolean;
+  fitContentWidth?: boolean;
+  /**
+   * If true, the important icon will be vertically centered with the text no matter the height of the text.
+   */
+  forceImportantIconVerticalCenter?: boolean;
   /**
    * The amount of spacing to apply to the bottom of the error.
    */
@@ -77,11 +84,12 @@ export interface NoticeProps extends BoxProps {
 export const Notice = (props: NoticeProps) => {
   const {
     bypassValidation = false,
+    fitContentWidth = false,
     children,
     className,
     dataTestId,
     errorGroup,
-    important,
+    forceImportantIconVerticalCenter = false,
     spacingBottom,
     spacingLeft,
     spacingTop,
@@ -92,84 +100,67 @@ export const Notice = (props: NoticeProps) => {
     ...rest
   } = props;
 
-  const { classes, cx } = useStyles();
-
-  const variantMap = {
-    error: variant === 'error',
-    info: variant === 'info',
-    success: variant === 'success',
-    warning: variant === 'warning',
-  };
+  const { cx } = useStyles();
 
   const errorScrollClassName = bypassValidation
     ? ''
     : errorGroup
-    ? `error-for-scroll-${errorGroup}`
-    : `error-for-scroll`;
+      ? `error-for-scroll-${errorGroup}`
+      : `error-for-scroll`;
 
-  const dataAttributes = !variantMap.error
-    ? {
-        'data-qa-notice': true,
-      }
-    : {
-        'data-qa-error': true,
-        'data-qa-notice': true,
-      };
+  const dataAttributes =
+    variant !== 'error'
+      ? {
+          'data-qa-notice': true,
+        }
+      : {
+          'data-qa-error': true,
+          'data-qa-notice': true,
+        };
 
   return (
-    <Box
+    <StyledNoticeBox
       className={cx(
-        classes.root,
-        {
-          [classes.error]: variantMap.error,
-          [classes.info]: variantMap.info,
-          [classes.success]: variantMap.success,
-          [classes.warning]: variantMap.warning,
-          // The order we apply styles matters, therefore we:
-          // eslint-disable-next-line perfectionist/sort-objects
-          [classes.important]: important,
-          [errorScrollClassName]: variantMap.error,
-        },
         'notice',
-        className
+        { [errorScrollClassName]: variant === 'error' },
+        className,
       )}
-      data-testid={
-        dataTestId ??
-        `notice${variant ? `-${variant}` : ''}${important ? '-important' : ''}`
-      }
+      data-testid={dataTestId ?? `notice${variant ? `-${variant}` : ''}`}
+      role="alert"
       sx={[
         (theme) => ({
           marginBottom:
             spacingBottom !== undefined
               ? `${spacingBottom}px`
-              : theme.spacing(3),
+              : theme.spacingFunction(16),
           marginLeft: spacingLeft !== undefined ? `${spacingLeft}px` : 0,
           marginTop: spacingTop !== undefined ? `${spacingTop}px` : 0,
+          width: fitContentWidth ? 'fit-content' : '100%',
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
-      role="alert"
+      variant={variant ?? 'info'}
       {...dataAttributes}
       {...rest}
     >
-      {important && variantMap.error && <ErrorIcon className={classes.icon} />}
-      {important && variantMap.info && <WarningIcon className={classes.icon} />}
-      {important && variantMap.success && (
-        <CheckIcon className={classes.icon} />
-      )}
-      {important && variantMap.warning && (
-        <WarningIcon className={cx(classes.icon, classes.warningIcon)} />
-      )}
-      {text || typeof children === 'string' ? (
-        <Typography
-          className={cx(classes.noticeText, 'noticeText')}
-          {...typeProps}
-        >
-          {text ?? children}
-        </Typography>
-      ) : (
-        children
-      )}
-    </Box>
+      <StyledIconBox
+        sx={{
+          alignSelf: forceImportantIconVerticalCenter ? 'center' : 'flex-start',
+        }}
+      >
+        {variant === 'error' && <ErrorIcon />}
+        {variant === 'info' && <InfoIcon />}
+        {variant === 'success' && <CheckIcon />}
+        {variant === 'tip' && <LightBulbIcon />}
+        {variant === 'warning' && <WarningIcon />}
+      </StyledIconBox>
+      <Box sx={{ width: '100%' }}>
+        {text || typeof children === 'string' ? (
+          <Typography {...typeProps}>{text ?? children}</Typography>
+        ) : (
+          children
+        )}
+      </Box>
+    </StyledNoticeBox>
   );
 };

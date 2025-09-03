@@ -1,19 +1,18 @@
+import { ActionsPanel, InputAdornment, TextField } from '@linode/ui';
 import { Divider } from '@linode/ui';
-import { InputAdornment, TextField } from '@linode/ui';
 import { Box } from '@linode/ui';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import { Grid, Popover } from '@mui/material';
+import { GridLegacy, Popover } from '@mui/material';
 import { AdapterLuxon } from '@mui/x-date-pickers/AdapterLuxon';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import React, { useEffect, useState } from 'react';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { timezones } from 'src/assets/timezones/timezones';
 
 import { TimeZoneSelect } from './TimeZoneSelect';
 
-import type { TextFieldProps } from '@linode/ui';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { DateCalendarProps } from '@mui/x-date-pickers/DateCalendar';
 import type { DateTime } from 'luxon';
@@ -21,12 +20,15 @@ import type { DateTime } from 'luxon';
 export interface DateTimePickerProps {
   /** Additional props for the DateCalendar */
   dateCalendarProps?: Partial<DateCalendarProps<DateTime>>;
+  disabledTimeZone?: boolean;
   /** Error text for the date picker field */
   errorText?: string;
   /** Format for displaying the date-time */
   format?: string;
   /** Label for the input field */
   label?: string;
+  /** Minimum date-time before which all date-time will be disabled */
+  minDate?: DateTime;
   /** Callback when the "Apply" button is clicked */
   onApply?: () => void;
   /** Callback when the "Cancel" button is clicked */
@@ -61,9 +63,11 @@ export interface DateTimePickerProps {
 
 export const DateTimePicker = ({
   dateCalendarProps = {},
+  disabledTimeZone = false,
   errorText = '',
   format = 'yyyy-MM-dd HH:mm',
   label = 'Select Date and Time',
+  minDate,
   onApply,
   onCancel,
   onChange,
@@ -92,11 +96,6 @@ export const DateTimePicker = ({
     timeZoneSelectProps.value || null
   );
 
-  const TimePickerFieldProps: TextFieldProps = {
-    label: timeSelectProps?.label ?? 'Select Time',
-    noMarginTop: true,
-  };
-
   const handleDateChange = (newDate: DateTime | null) => {
     setSelectedDateTime((prev) =>
       newDate
@@ -109,7 +108,7 @@ export const DateTimePicker = ({
   };
 
   const handleTimeChange = (newTime: DateTime | null) => {
-    if (newTime) {
+    if (newTime && !newTime.invalidReason) {
       setSelectedDateTime((prev) =>
         prev ? prev.set({ hour: newTime.hour, minute: newTime.minute }) : prev
       );
@@ -154,6 +153,7 @@ export const DateTimePicker = ({
     <LocalizationProvider dateAdapter={AdapterLuxon}>
       <Box sx={{ minWidth: '300px', ...sx }}>
         <TextField
+          errorText={errorText}
           InputProps={{
             readOnly: true,
             startAdornment: (
@@ -170,18 +170,17 @@ export const DateTimePicker = ({
             ),
             sx: { paddingLeft: '32px' },
           }}
-          value={
-            selectedDateTime
-              ? `${selectedDateTime.toFormat(format)}${
-                  selectedTimeZone ? ` (${selectedTimeZone})` : ''
-                }`
-              : ''
-          }
-          errorText={errorText}
           label={label}
           noMarginTop
           onClick={(event) => setAnchorEl(event.currentTarget)}
           placeholder={placeholder}
+          value={
+            selectedDateTime
+              ? `${selectedDateTime.toFormat(format)}${generateTimeZone(
+                  selectedTimeZone
+                )}`
+              : ''
+          }
         />
       </Box>
       <Popover
@@ -193,6 +192,7 @@ export const DateTimePicker = ({
       >
         <Box padding={2}>
           <DateCalendar
+            minDate={minDate}
             onChange={handleDateChange}
             value={selectedDateTime || null}
             {...dateCalendarProps}
@@ -205,7 +205,7 @@ export const DateTimePicker = ({
                 fontSize: '0.875rem',
               },
               '& .MuiPickersCalendarHeader-label': {
-                fontFamily: theme.font.bold,
+                font: theme.font.bold,
               },
               '& .MuiPickersCalendarHeader-root': {
                 borderBottom: `1px solid ${theme.borderColors.divider}`,
@@ -220,14 +220,22 @@ export const DateTimePicker = ({
               borderWidth: '0px',
             })}
           />
-          <Grid
+          <GridLegacy
             container
             spacing={2}
             sx={{ display: 'flex', justifyContent: 'space-between' }}
           >
             {showTime && (
-              <Grid item xs={4}>
+              <GridLegacy item xs={4}>
                 <TimePicker
+                  data-qa-time="time-picker"
+                  label={timeSelectProps?.label || 'Select Time'}
+                  minTime={
+                    minDate?.toISODate() === selectedDateTime?.toISODate()
+                      ? minDate
+                      : undefined
+                  }
+                  onChange={handleTimeChange}
                   slotProps={{
                     actionBar: {
                       sx: (theme: Theme) => ({
@@ -237,6 +245,7 @@ export const DateTimePicker = ({
                         padding: 0,
                       }),
                     },
+
                     layout: {
                       sx: (theme: Theme) => ({
                         '& .MuiPickersLayout-contentWrapper': {
@@ -255,29 +264,31 @@ export const DateTimePicker = ({
                         },
                       }),
                     },
-                    textField: TimePickerFieldProps,
                   }}
-                  onChange={handleTimeChange}
-                  slots={{ textField: TextField }}
+                  sx={{
+                    marginTop: 0,
+                  }}
                   value={selectedDateTime || null}
                 />
-              </Grid>
+              </GridLegacy>
             )}
             {showTimeZone && (
-              <Grid item xs={7}>
+              <GridLegacy item xs={7}>
                 <TimeZoneSelect
+                  disabled={disabledTimeZone}
                   label={timeZoneSelectProps?.label || 'Timezone'}
                   noMarginTop
                   onChange={handleTimeZoneChange}
                   value={selectedTimeZone}
                 />
-              </Grid>
+              </GridLegacy>
             )}
-          </Grid>
+          </GridLegacy>
         </Box>
         <Divider />
         <Box display="flex" justifyContent="flex-end">
           <ActionsPanel
+            primaryButtonProps={{ label: 'Apply', onClick: handleApply }}
             secondaryButtonProps={{
               buttonType: 'outlined',
               label: 'Cancel',
@@ -287,10 +298,26 @@ export const DateTimePicker = ({
               marginBottom: theme.spacing(1),
               marginRight: theme.spacing(2),
             })}
-            primaryButtonProps={{ label: 'Apply', onClick: handleApply }}
           />
         </Box>
       </Popover>
     </LocalizationProvider>
   );
+};
+
+const generateTimeZone = (selectedTimezone: null | string): string => {
+  const offset = timezones.find(
+    (zone) => zone.name === selectedTimezone
+  )?.offset;
+  if (!offset) {
+    return '';
+  }
+  const minutes = (Math.abs(offset * 60) % 60).toLocaleString(undefined, {
+    minimumIntegerDigits: 2,
+    useGrouping: false,
+  });
+  const hours = Math.floor(Math.abs(offset));
+  const isPositive = Math.abs(offset) === offset ? '+' : '-';
+
+  return ` (GMT${isPositive}${hours}:${minutes})`;
 };

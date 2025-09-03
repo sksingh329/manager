@@ -2,7 +2,7 @@ import { userEvent } from '@testing-library/user-event';
 import * as React from 'react';
 
 import { volumeFactory } from 'src/factories';
-import { renderWithThemeAndRouter } from 'src/utilities/testHelpers';
+import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { VolumesActionMenu } from './VolumesActionMenu';
 
@@ -26,9 +26,32 @@ const props: Props = {
   volume,
 };
 
+const queryMocks = vi.hoisted(() => ({
+  usePermissions: vi.fn(),
+}));
+
+vi.mock('src/features/IAM/hooks/usePermissions', async () => {
+  const actual = await vi.importActual('src/features/IAM/hooks/usePermissions');
+  return {
+    ...actual,
+    usePermissions: queryMocks.usePermissions,
+  };
+});
+
 describe('Volume action menu', () => {
+  beforeEach(() => {
+    queryMocks.usePermissions.mockReturnValue({
+      update_volume: true,
+      attach_volume: true,
+      create_volume: true,
+      delete_volume: true,
+      resize_volume: true,
+      clone_volume: true,
+    });
+  });
+
   it('should include basic Volume actions', async () => {
-    const { getByLabelText, getByText } = await renderWithThemeAndRouter(
+    const { getByLabelText, getByText } = renderWithTheme(
       <VolumesActionMenu {...props} />
     );
 
@@ -44,11 +67,7 @@ describe('Volume action menu', () => {
   });
 
   it('should include Attach if the Volume is not attached', async () => {
-    const {
-      getByLabelText,
-      getByText,
-      queryByText,
-    } = await renderWithThemeAndRouter(
+    const { getByLabelText, getByText, queryByText } = renderWithTheme(
       <VolumesActionMenu {...props} isVolumesLanding={true} />
     );
 
@@ -68,11 +87,7 @@ describe('Volume action menu', () => {
       linode_label: 'linode-2',
     });
 
-    const {
-      getByLabelText,
-      getByText,
-      queryByText,
-    } = await renderWithThemeAndRouter(
+    const { getByLabelText, getByText, queryByText } = renderWithTheme(
       <VolumesActionMenu {...props} volume={attachedVolune} />
     );
 
@@ -87,7 +102,7 @@ describe('Volume action menu', () => {
   });
 
   it('should include Delete', async () => {
-    const { getByLabelText, getByText } = await renderWithThemeAndRouter(
+    const { getByLabelText, getByText } = renderWithTheme(
       <VolumesActionMenu {...props} />
     );
 

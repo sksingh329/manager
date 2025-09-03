@@ -17,7 +17,6 @@ describe('CloudPulseDashboardFilterBuilder component tests', () => {
         isServiceAnalyticsIntegration={false}
       />
     );
-    expect(getByTestId('tags-select')).toBeDefined();
     expect(getByTestId('resource-select')).toBeDefined();
     expect(getByTestId('region-select')).toBeDefined();
   });
@@ -27,14 +26,18 @@ describe('CloudPulseDashboardFilterBuilder component tests', () => {
       <CloudPulseDashboardFilterBuilder
         dashboard={dashboardFactory.build({
           service_type: 'dbaas',
+          id: 1,
         })}
         emitFilterChange={vi.fn()}
         handleToggleAppliedFilter={vi.fn()}
         isServiceAnalyticsIntegration={false}
+        resource_ids={[1, 2]}
       />
     );
 
     expect(getByPlaceholderText('Select a Database Engine')).toBeDefined();
     expect(getByPlaceholderText('Select a Region')).toBeDefined();
+    expect(getByPlaceholderText('Select Database Clusters')).toBeDefined();
+    expect(getByPlaceholderText('Select a Node Type')).toBeDefined();
   });
 });

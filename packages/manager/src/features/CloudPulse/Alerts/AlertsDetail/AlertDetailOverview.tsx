@@ -1,7 +1,9 @@
+import { useProfile } from '@linode/queries';
 import { CircleProgress, Typography } from '@linode/ui';
 import { Grid } from '@mui/material';
 import React from 'react';
 
+import { useFlags } from 'src/hooks/useFlags';
 import { useCloudPulseServiceTypes } from 'src/queries/cloudpulse/services';
 import { formatDate } from 'src/utilities/formatDate';
 
@@ -20,8 +22,9 @@ interface OverviewProps {
 }
 export const AlertDetailOverview = React.memo((props: OverviewProps) => {
   const { alertDetails } = props;
-
+  const { data: profile } = useProfile();
   const {
+    created,
     created_by: createdBy,
     description,
     label,
@@ -30,9 +33,11 @@ export const AlertDetailOverview = React.memo((props: OverviewProps) => {
     status,
     type,
     updated,
+    updated_by: updatedBy,
   } = alertDetails;
 
   const { data: serviceTypeList, isFetching } = useCloudPulseServiceTypes(true);
+  const { aclpServices } = useFlags();
 
   if (isFetching) {
     return <CircleProgress />;
@@ -43,7 +48,13 @@ export const AlertDetailOverview = React.memo((props: OverviewProps) => {
       <Typography marginBottom={2} variant="h2">
         Overview
       </Typography>
-      <Grid alignItems="center" container spacing={2}>
+      <Grid
+        container
+        spacing={2}
+        sx={{
+          alignItems: 'center',
+        }}
+      >
         <AlertDetailRow label="Name" value={label} />
         <AlertDetailRow label="Description" value={description} />
         <AlertDetailRow
@@ -54,19 +65,29 @@ export const AlertDetailOverview = React.memo((props: OverviewProps) => {
         <AlertDetailRow label="Severity" value={severityMap[severity]} />
         <AlertDetailRow
           label="Service"
+          showBetaChip={aclpServices?.[serviceType]?.alerts?.beta}
           value={getServiceTypeLabel(serviceType, serviceTypeList)}
         />
         <AlertDetailRow
           label="Type"
           value={convertStringToCamelCasesWithSpaces(type)}
         />
+        <AlertDetailRow
+          label="Created"
+          value={formatDate(created, {
+            format: 'MMM dd, yyyy, h:mm a',
+            timezone: profile?.timezone,
+          })}
+        />
         <AlertDetailRow label="Created By" value={createdBy} />
         <AlertDetailRow
+          label="Last Modified"
           value={formatDate(updated, {
             format: 'MMM dd, yyyy, h:mm a',
+            timezone: profile?.timezone,
           })}
-          label="Last Modified"
         />
+        <AlertDetailRow label="Last Modified By" value={updatedBy} />
       </Grid>
     </>
   );

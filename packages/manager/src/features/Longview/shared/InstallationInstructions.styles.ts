@@ -1,5 +1,5 @@
+import Grid from '@mui/material/Grid';
 import { styled } from '@mui/material/styles';
-import Grid from '@mui/material/Unstable_Grid2';
 
 export const StyledInstructionGrid = styled(Grid, {
   label: 'StyledInstructionGrid',
@@ -16,7 +16,7 @@ export const StyledInstructionGrid = styled(Grid, {
         content: "'|'",
         left: `calc(-${theme.spacing(1)} + 2px)`,
         position: 'absolute',
-        top: `calc(${theme.spacing(1)} - 3px)`,
+        top: `calc(${theme.spacing(1)} - 8px)`,
       },
       marginLeft: theme.spacing(2),
       paddingLeft: theme.spacing(2),

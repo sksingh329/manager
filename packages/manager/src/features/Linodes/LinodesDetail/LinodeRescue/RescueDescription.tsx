@@ -1,10 +1,10 @@
+import { useLinodeFirewallsQuery } from '@linode/queries';
 import { Notice, StyledLinkButton, Typography } from '@linode/ui';
 import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
 import { Link } from 'src/components/Link';
 import { lishLaunch } from 'src/features/Lish/lishUtils';
-import { useLinodeFirewallsQuery } from 'src/queries/linodes/firewalls';
 
 const rescueDescription = {
   firewallWarning:

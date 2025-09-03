@@ -1,9 +1,10 @@
+import { linodeFactory } from '@linode/utilities';
 import { waitFor } from '@testing-library/react';
 import * as React from 'react';
 
-import { accountFactory, linodeFactory } from 'src/factories';
-import { HttpResponse, http, server } from 'src/mocks/testServer';
-import { renderWithThemeAndRouter } from 'src/utilities/testHelpers';
+import { accountFactory } from 'src/factories';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
+import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { LinodeVolumeAddDrawer } from './LinodeVolumeAddDrawer';
 
@@ -24,7 +25,7 @@ describe('LinodeVolumeAddDrawer', () => {
       })
     );
 
-    const { getByLabelText } = await renderWithThemeAndRouter(
+    const { getByLabelText } = renderWithTheme(
       <LinodeVolumeAddDrawer
         linode={linode}
         onClose={vi.fn}

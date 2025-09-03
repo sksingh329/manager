@@ -1,8 +1,14 @@
-import { filter, isNil } from 'ramda';
+import { isNullOrUndefined } from '@linode/utilities';
+import { filter } from 'ramda';
 
+import { useFlags } from 'src/hooks/useFlags';
 import { getErrorMap } from 'src/utilities/errorUtils';
 
-import { SESSION_STICKINESS_DEFAULTS } from './constants';
+import {
+  ALGORITHM_OPTIONS,
+  SESSION_STICKINESS_DEFAULTS,
+  STICKINESS_OPTIONS,
+} from './constants';
 
 import type {
   NodeBalancerConfigFields,
@@ -11,20 +17,19 @@ import type {
 } from './types';
 import type {
   APIError,
-  Algorithm,
   NodeBalancerConfigNode,
   Protocol,
-  Stickiness,
 } from '@linode/api-v4';
 
-export const createNewNodeBalancerConfigNode = (): NodeBalancerConfigNodeFields => ({
-  address: '',
-  label: '',
-  mode: 'accept',
-  modifyStatus: 'new',
-  port: 80,
-  weight: 100,
-});
+export const createNewNodeBalancerConfigNode =
+  (): NodeBalancerConfigNodeFields => ({
+    address: '',
+    label: '',
+    mode: 'accept',
+    modifyStatus: 'new',
+    port: '80',
+    weight: 100,
+  });
 
 export const createNewNodeBalancerConfig = (
   withDefaultPort?: boolean
@@ -60,6 +65,7 @@ export const getNodeForRequest = (
    */
   mode: config.protocol !== 'udp' ? node.mode : undefined,
   port: node.port,
+  subnet_id: node?.subnet_id,
   weight: +node.weight!,
 });
 
@@ -69,12 +75,15 @@ export const formatAddress = (node: NodeBalancerConfigNodeFields) => ({
 });
 
 export const parseAddress = (node: NodeBalancerConfigNode) => {
-  const match = /^(192\.168\.\d{1,3}\.\d{1,3}):(\d{1,5})$/.exec(node.address);
+  const match =
+    /^((10.\d{1,3}|192\.168|172\.(1[6-9]|2\d|3[0-1]))\.\d{1,3}\.\d{1,3}):(\d{1,5})$/.exec(
+      node.address
+    );
   if (match) {
     return {
       ...node,
       address: match![1],
-      port: match![2],
+      port: match![4],
     };
   }
   return node;
@@ -90,28 +99,27 @@ export const transformConfigsForRequest = (
   configs: NodeBalancerConfigFields[]
 ): NodeBalancerConfigFields[] => {
   return configs.map((config: NodeBalancerConfigFields) => {
-    return (filter(
+    return filter(
       /* remove the (key: value) pairs that we set to undefined */
       (el) => el !== undefined,
       {
         algorithm: config.algorithm || undefined,
         check: config.check || undefined,
-        check_attempts: !isNil(config.check_attempts)
+        check_attempts: !isNullOrUndefined(config.check_attempts)
           ? +config.check_attempts
           : undefined,
         check_body: shouldIncludeCheckBody(config)
           ? config.check_body
           : undefined,
-        check_interval: !isNil(config.check_interval)
+        check_interval: !isNullOrUndefined(config.check_interval)
           ? +config.check_interval
           : undefined,
-        check_passive: shouldIncludePassiveCheck(config)
-          ? config.check_passive
-          : undefined,
+        // Passive checks must be false for UDP
+        check_passive: config.protocol === 'udp' ? false : config.check_passive,
         check_path: shouldIncludeCheckPath(config)
           ? config.check_path
           : undefined,
-        check_timeout: !isNil(config.check_timeout)
+        check_timeout: !isNullOrUndefined(config.check_timeout)
           ? +config.check_timeout
           : undefined,
         cipher_suite: shouldIncludeCipherSuite(config)
@@ -146,8 +154,9 @@ export const transformConfigsForRequest = (
             ? undefined
             : config.ssl_key || undefined,
         stickiness: config.stickiness || undefined,
+        udp_check_port: config.udp_check_port,
       }
-    ) as unknown) as NodeBalancerConfigFields;
+    ) as unknown as NodeBalancerConfigFields;
   });
 };
 
@@ -160,11 +169,6 @@ export const shouldIncludeCheckPath = (config: NodeBalancerConfigFields) => {
     (config.check === 'http' || config.check === 'http_body') &&
     config.check_path
   );
-};
-
-const shouldIncludePassiveCheck = (config: NodeBalancerConfigFields) => {
-  // UDP does not support passive checks
-  return config.protocol !== 'udp';
 };
 
 export const shouldIncludeCheckBody = (config: NodeBalancerConfigFields) => {
@@ -198,48 +202,51 @@ export const setErrorMap = (errors: APIError[]) =>
       'ssl_key',
       'stickiness',
       'nodes',
+      'udp_check_port',
     ],
     filteredErrors(errors)
   );
 
-interface AlgorithmOption {
-  label: string;
-  value: Algorithm;
-}
-
-export const getAlgorithmOptions = (protocol: Protocol): AlgorithmOption[] => {
-  if (protocol === 'udp') {
-    return [
-      { label: 'Round Robin', value: 'roundrobin' },
-      { label: 'Least Connections', value: 'leastconn' },
-      { label: 'Ring Hash', value: 'ring_hash' },
-    ];
-  }
-  return [
-    { label: 'Round Robin', value: 'roundrobin' },
-    { label: 'Least Connections', value: 'leastconn' },
-    { label: 'Source', value: 'source' },
-  ];
+export const getAlgorithmOptions = (protocol: Protocol) => {
+  return ALGORITHM_OPTIONS.filter((option) =>
+    option.supportedProtocols.includes(protocol)
+  );
 };
 
-interface StickinessOption {
-  label: string;
-  value: Stickiness;
-}
+export const getStickinessOptions = (protocol: Protocol) => {
+  return STICKINESS_OPTIONS.filter((option) =>
+    option.supportedProtocols.includes(protocol)
+  );
+};
 
-export const getStickinessOptions = (
-  protocol: Protocol
-): StickinessOption[] => {
-  if (protocol === 'udp') {
-    return [
-      { label: 'None', value: 'none' },
-      { label: 'Session', value: 'session' },
-      { label: 'Source IP', value: 'source_ip' },
-    ];
-  }
-  return [
-    { label: 'None', value: 'none' },
-    { label: 'Table', value: 'table' },
-    { label: 'HTTP Cookie', value: 'http_cookie' },
-  ];
+/**
+ * Returns whether or not features related to the NB-VPC project
+ * should be enabled.
+ *
+ * Currently, this just uses the `nodebalancerVpc` feature flag as a source of truth,
+ * but will eventually also look at account capabilities.
+ */
+
+export const useIsNodebalancerVPCEnabled = () => {
+  const flags = useFlags();
+
+  // @TODO NB-VPC: check for customer tag/account capability when it exists
+
+  return { isNodebalancerVPCEnabled: flags.nodebalancerVpc ?? false };
+};
+
+/**
+ * Returns whether or not features related to the NodeBalancer Dual Stack project
+ * should be enabled.
+ *
+ * Currently, this just uses the `nodebalancerIPv6` feature flag as a source of truth,
+ * but will eventually also look at account capabilities.
+ */
+
+export const useIsNodebalancerIpv6Enabled = () => {
+  const flags = useFlags();
+
+  // @TODO NB-IPv6: check for customer tag/account capability when it exists
+
+  return { isNodebalancerIpv6Enabled: flags.nodebalancerIpv6 ?? false };
 };

@@ -2,8 +2,8 @@ import { waitFor } from '@testing-library/react';
 import * as React from 'react';
 
 import { accountFactory, volumeFactory } from 'src/factories';
-import { HttpResponse, http, server } from 'src/mocks/testServer';
-import { renderWithThemeAndRouter } from 'src/utilities/testHelpers';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
+import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { AttachVolumeDrawer } from './AttachVolumeDrawer';
 
@@ -24,7 +24,7 @@ describe('AttachVolumeDrawer', () => {
       })
     );
 
-    const { getByLabelText } = await renderWithThemeAndRouter(
+    const { getByLabelText } = renderWithTheme(
       <AttachVolumeDrawer onClose={vi.fn} open volume={volume} />,
       {
         flags: { blockStorageEncryption: true },
@@ -48,7 +48,7 @@ describe('AttachVolumeDrawer', () => {
       })
     );
 
-    const { queryByRole } = await renderWithThemeAndRouter(
+    const { queryByRole } = renderWithTheme(
       <AttachVolumeDrawer onClose={vi.fn} open volume={volume} />,
       {
         flags: { blockStorageEncryption: false },
@@ -69,7 +69,7 @@ describe('AttachVolumeDrawer', () => {
       })
     );
 
-    const { queryByRole } = await renderWithThemeAndRouter(
+    const { queryByRole } = renderWithTheme(
       <AttachVolumeDrawer onClose={vi.fn} open volume={volume} />,
       {
         flags: { blockStorageEncryption: true },

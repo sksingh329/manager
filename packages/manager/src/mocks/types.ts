@@ -1,17 +1,33 @@
 import type {
+  CloudNAT,
   Config,
+  Destination,
   Domain,
   DomainRecord,
   Event,
   Firewall,
+  FirewallDevice,
+  Interface,
+  IPAddress,
+  KubeNodePoolResponse,
+  KubernetesCluster,
   Linode,
+  LinodeInterface,
+  LinodeIPsResponse,
+  NodeBalancer,
+  NodeBalancerConfig,
+  NodeBalancerConfigNode,
   Notification,
   PlacementGroup,
   Region,
   RegionAvailability,
+  Stream,
+  Subnet,
   SupportReply,
   SupportTicket,
   Volume,
+  VPC,
+  VPCIP,
 } from '@linode/api-v4';
 import type { HttpHandler } from 'msw';
 
@@ -30,7 +46,7 @@ export type MockPresetBase = {
  * Mock Preset Baseline
  */
 export type MockPresetBaselineGroup = {
-  id: 'API State' | 'Account State' | 'General';
+  id: 'Account State' | 'API State' | 'General';
 };
 export type MockPresetBaselineId =
   | 'baseline:account-activation'
@@ -49,27 +65,49 @@ export interface MockPresetBaseline extends MockPresetBase {
  * Mock Preset Extra
  */
 export type MockPresetExtraGroup = {
-  id:
-    | 'API'
-    | 'Account'
-    | 'Capabilities'
-    | 'Limits'
-    | 'Managed'
-    | 'Profile'
-    | 'Regions';
-  type: 'account' | 'checkbox' | 'profile' | 'select';
+  id: MockPresetExtraGroupId;
+  type: MockPresetExtraGroupType;
 };
+
+export type MockPresetExtraGroupId =
+  | 'Account'
+  | 'API'
+  | 'Capabilities'
+  | 'Events'
+  | 'Limits'
+  | 'Maintenance'
+  | 'Managed'
+  | 'Notifications'
+  | 'Profile & Grants'
+  | 'Regions'
+  | 'User Permissions';
+
+export type MockPresetExtraGroupType =
+  | 'account'
+  | 'checkbox'
+  | 'events'
+  | 'maintenance'
+  | 'notifications'
+  | 'profile & grants'
+  | 'select'
+  | 'userPermissions';
+
 export type MockPresetExtraId =
   | 'account:custom'
   | 'account:managed-disabled'
   | 'account:managed-enabled'
   | 'api:response-time'
+  | 'events:custom'
   | 'limits:linode-limits'
   | 'limits:lke-limits'
-  | 'profile:custom'
+  | 'maintenance:custom'
+  | 'notifications:custom'
+  | 'profile-grants:custom'
   | 'regions:core-and-distributed'
   | 'regions:core-only'
-  | 'regions:legacy';
+  | 'regions:legacy'
+  | 'userAccountPermissions:custom'
+  | 'userEntityPermissions:custom';
 
 export interface MockPresetExtra extends MockPresetBase {
   canUpdateCount?: boolean;
@@ -82,18 +120,34 @@ export interface MockPresetExtra extends MockPresetBase {
  */
 export type MockPresetCrudGroup = {
   id:
+    | 'CloudNATs'
+    | 'DataStream'
     | 'Domains'
+    | 'Firewalls'
+    | 'IP Addresses'
+    | 'Kubernetes'
     | 'Linodes'
+    | 'NodeBalancers'
     | 'Placement Groups'
+    | 'Quotas'
     | 'Support Tickets'
-    | 'Volumes';
+    | 'Volumes'
+    | 'VPCs';
 };
 export type MockPresetCrudId =
+  | 'cloudnats:crud'
+  | 'datastream:crud'
   | 'domains:crud'
+  | 'firewalls:crud'
+  | 'ip-addresses:crud'
+  | 'kubernetes:crud'
   | 'linodes:crud'
+  | 'nodebalancers:crud'
   | 'placement-groups:crud'
+  | 'quotas:crud'
   | 'support-tickets:crud'
-  | 'volumes:crud';
+  | 'volumes:crud'
+  | 'vpcs:crud';
 export interface MockPresetCrud extends MockPresetBase {
   canUpdateCount?: boolean;
   group: MockPresetCrudGroup;
@@ -106,19 +160,35 @@ export type MockHandler = (mockState: MockState) => HttpHandler[];
  * Stateful data shared among mocks.
  */
 export interface MockState {
+  cloudnats: CloudNAT[];
+  configInterfaces: [number, Interface][]; // number is Config ID
+  destinations: Destination[];
   domainRecords: DomainRecord[];
   domains: Domain[];
   eventQueue: Event[];
+  firewallDevices: [number, FirewallDevice][]; // number is Firewall ID
   firewalls: Firewall[];
-  linodeConfigs: [number, Config][];
+  ipAddresses: IPAddress[];
+  kubernetesClusters: KubernetesCluster[];
+  kubernetesNodePools: KubeNodePoolResponse[];
+  linodeConfigs: [number, Config][]; // number is Linode ID
+  linodeInterfaces: [number, LinodeInterface][]; // number is Linode ID
+  linodeIps: [number, LinodeIPsResponse][]; // number is Linode ID
   linodes: Linode[];
+  nodeBalancerConfigNodes: NodeBalancerConfigNode[];
+  nodeBalancerConfigs: NodeBalancerConfig[];
+  nodeBalancers: NodeBalancer[];
   notificationQueue: Notification[];
   placementGroups: PlacementGroup[];
   regionAvailability: RegionAvailability[];
   regions: Region[];
+  streams: Stream[];
+  subnets: [number, Subnet][]; // number is VPC ID
   supportReplies: SupportReply[];
   supportTickets: SupportTicket[];
   volumes: Volume[];
+  vpcs: VPC[];
+  vpcsIps: VPCIP[];
 }
 
 export interface MockSeeder extends Omit<MockPresetCrud, 'handlers'> {

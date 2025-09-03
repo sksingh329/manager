@@ -1,23 +1,23 @@
-import { Notice, Typography } from '@linode/ui';
+import { useDetachVolumeMutation, useLinodeQuery } from '@linode/queries';
+import { Typography } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import { TypeToConfirmDialog } from 'src/components/TypeToConfirmDialog/TypeToConfirmDialog';
 import { useEventsPollingActions } from 'src/queries/events/events';
-import { useLinodeQuery } from 'src/queries/linodes/linodes';
-import { useDetachVolumeMutation } from 'src/queries/volumes/volumes';
 
-import type { Volume } from '@linode/api-v4';
+import type { APIError, Volume } from '@linode/api-v4';
 
 interface Props {
   isFetching?: boolean;
   onClose: () => void;
   open: boolean;
-  volume: Volume | undefined;
+  volume: undefined | Volume;
+  volumeError?: APIError[] | null;
 }
 
 export const DetachVolumeDialog = (props: Props) => {
-  const { isFetching, onClose, open, volume } = props;
+  const { isFetching, onClose, open, volume, volumeError } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -53,7 +53,9 @@ export const DetachVolumeDialog = (props: Props) => {
         name: volume?.label,
         primaryBtnText: 'Detach',
         type: 'Volume',
+        error: volumeError,
       }}
+      errors={error}
       expand
       isFetching={isFetching}
       label="Volume Label"
@@ -61,10 +63,9 @@ export const DetachVolumeDialog = (props: Props) => {
       onClick={onDetach}
       onClose={onClose}
       open={open}
-      title={`Detach Volume ${volume?.label}?`}
+      title={`Detach Volume ${volume?.label ?? 'Unknown'}?`}
       typographyStyle={{ marginTop: '10px' }}
     >
-      {error && <Notice text={error?.[0].reason} variant="error" />}
       {!poweredOff && linode !== undefined && (
         <Typography
           sx={(theme) => ({

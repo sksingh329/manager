@@ -1,13 +1,13 @@
+import { usePreferences } from '@linode/queries';
+import { ActionsPanel } from '@linode/ui';
 import { FormLabel } from '@mui/material';
 import * as React from 'react';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import { TypeToConfirm } from 'src/components/TypeToConfirm/TypeToConfirm';
-import { usePreferences } from 'src/queries/profile/preferences';
 
 import type { APIError } from '@linode/api-v4/lib/types';
-import type { ActionButtonsProps } from 'src/components/ActionsPanel/ActionsPanel';
+import type { ActionButtonsProps } from '@linode/ui';
 import type { ConfirmationDialogProps } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import type { TypeToConfirmProps } from 'src/components/TypeToConfirm/TypeToConfirm';
 
@@ -18,21 +18,28 @@ interface EntityInfo {
     | 'detachment'
     | 'resizing'
     | 'restoration';
+  error?: APIError[] | null | string | undefined;
   name?: string | undefined;
   primaryBtnText: string;
   subType?: 'CloseAccount' | 'Cluster' | 'ObjectStorage';
   type:
     | 'AccountSetting'
+    | 'Alert'
     | 'Bucket'
     | 'Database'
+    | 'Domain'
+    | 'Image'
     | 'Kubernetes'
     | 'Linode'
     | 'Load Balancer'
+    | 'Managed Contact'
+    | 'Managed Credential'
+    | 'Managed Service Monitor'
     | 'NodeBalancer'
     | 'Placement Group'
     | 'Subnet'
-    | 'VPC'
-    | 'Volume';
+    | 'Volume'
+    | 'VPC';
 }
 
 interface TypeToConfirmDialogProps {
@@ -81,7 +88,7 @@ interface TypeToConfirmDialogProps {
    */
   reversePrimaryButtonPosition?: boolean;
   /** Props for the secondary button */
-  secondaryButtonProps?: Omit<ActionButtonsProps, 'label'>;
+  secondaryButtonProps?: ActionButtonsProps;
 }
 
 type CombinedProps = TypeToConfirmDialogProps &
@@ -157,19 +164,23 @@ export const TypeToConfirmDialog = (props: CombinedProps) => {
   const getButtonProps = () => {
     const confirmProps: ActionButtonsProps = {
       ...primaryButtonProps,
+      ...((entity.action === 'deletion' ||
+        entity.action === 'cancellation' ||
+        isCloseAccount) && {
+        color: 'error',
+      }),
       'data-testid': 'confirm',
       disabled: isPrimaryButtonDisabled,
       label: entity.primaryBtnText,
       loading,
       onClick,
-      ...(reversePrimaryButtonPosition && { color: 'error' }),
     };
 
     const cancelProps: ActionButtonsProps = {
-      ...secondaryButtonProps,
       'data-testid': 'cancel',
       label: 'Cancel',
       onClick: () => onClose?.({}, 'escapeKeyDown'),
+      ...secondaryButtonProps,
     };
 
     return {
@@ -197,7 +208,7 @@ export const TypeToConfirmDialog = (props: CombinedProps) => {
     }
 
     const typeInstructions =
-      entity.action === 'cancellation'
+      entity.action === 'cancellation' && entity.type === 'AccountSetting'
         ? 'type your Username '
         : `type the name of the ${entity.type} ${entity.subType || ''} `;
 
@@ -222,6 +233,7 @@ export const TypeToConfirmDialog = (props: CombinedProps) => {
           style={{ padding: 0 }}
         />
       }
+      entityError={entity.error}
       error={errors ? errors[0].reason : undefined}
       isFetching={isFetching}
       onClose={onClose}
@@ -231,12 +243,6 @@ export const TypeToConfirmDialog = (props: CombinedProps) => {
       {children}
       <TypeToConfirm
         {...getTypeToConfirmProps()}
-        onChange={(input) => {
-          setConfirmationValues({
-            ...confirmationValues,
-            confirmText: input,
-          });
-        }}
         data-testid={'dialog-confirm-text-input'}
         disabled={disableTypeToConfirmInput}
         expand={expand}
@@ -244,6 +250,12 @@ export const TypeToConfirmDialog = (props: CombinedProps) => {
         inputProps={inputProps}
         isCloseAccount={isCloseAccount}
         label={label}
+        onChange={(input) => {
+          setConfirmationValues({
+            ...confirmationValues,
+            confirmText: input,
+          });
+        }}
         textFieldStyle={textFieldStyle}
         typographyStyle={typographyStyle}
         typographyStyleSx={typographyStyleSx}

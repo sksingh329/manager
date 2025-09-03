@@ -1,4 +1,5 @@
 import {
+  NODE_TYPE,
   REGION,
   RELATIVE_TIME_DURATION,
   RESOURCE_ID,
@@ -6,10 +7,14 @@ import {
   TAGS,
 } from './constants';
 import { FILTER_CONFIG } from './FilterConfig';
-import { CloudPulseSelectTypes } from './models';
+import { CloudPulseAvailableViews, CloudPulseSelectTypes } from './models';
 
-import type { FilterValueType } from '../Dashboard/CloudPulseDashboardLanding';
+import type {
+  CloudPulseMetricsFilter,
+  FilterValueType,
+} from '../Dashboard/CloudPulseDashboardLanding';
 import type { CloudPulseCustomSelectProps } from '../shared/CloudPulseCustomSelect';
+import type { CloudPulseNodeTypeFilterProps } from '../shared/CloudPulseNodeTypeFilter';
 import type { CloudPulseRegionSelectProps } from '../shared/CloudPulseRegionSelect';
 import type {
   CloudPulseResources,
@@ -19,13 +24,14 @@ import type {
   CloudPulseTags,
   CloudPulseTagsSelectProps,
 } from '../shared/CloudPulseTagsFilter';
+import type { CloudPulseTextFilterProps } from '../shared/CloudPulseTextFilter';
 import type { CloudPulseTimeRangeSelectProps } from '../shared/CloudPulseTimeRangeSelect';
 import type { CloudPulseMetricsAdditionalFilters } from '../Widget/CloudPulseWidget';
 import type { CloudPulseServiceTypeFilters } from './models';
 import type {
   AclpConfig,
   Dashboard,
-  Filter,
+  DateTimeWithPreset,
   Filters,
   TimeDuration,
 } from '@linode/api-v4';
@@ -33,26 +39,26 @@ import type {
 interface CloudPulseFilterProperties {
   config: CloudPulseServiceTypeFilters;
   dashboard: Dashboard;
-  dependentFilters?: {
-    [key: string]: FilterValueType;
-  };
+  dependentFilters?: CloudPulseMetricsFilter;
   isServiceAnalyticsIntegration: boolean;
   preferences?: AclpConfig;
+  resource_ids?: number[] | undefined;
+  shouldDisable?: boolean;
 }
 
 interface CloudPulseMandatoryFilterCheckProps {
   dashboard: Dashboard;
-  filterValue: {
-    [key: string]: FilterValueType;
-  };
-  timeDuration: TimeDuration | undefined;
+  filterValue: CloudPulseMetricsFilter;
+  timeDuration: DateTimeWithPreset | undefined;
 }
+
 /**
  * This function helps in building the properties needed for tags selection component
  *
  * @param config - accepts a CloudPulseServiceTypeFilters of tag key
  * @param handleTagsChange - the callback when we select new tag
  * @param dashboard - the selected dashboard's service type
+ * @param dependentFilters - tags are dependent on region filter, we need this for disabling the tags selection component
  * @param isServiceAnalyticsIntegration - only if this is false, we need to save preferences , else no need
  * @returns CloudPulseTagSelectProps
  */
@@ -60,14 +66,26 @@ export const getTagsProperties = (
   props: CloudPulseFilterProperties,
   handleTagsChange: (tags: CloudPulseTags[], savePref?: boolean) => void
 ): CloudPulseTagsSelectProps => {
-  const { name: label, placeholder } = props.config.configuration;
-  const { dashboard, isServiceAnalyticsIntegration, preferences } = props;
+  const { filterKey, name: label, placeholder } = props.config.configuration;
+  const {
+    dashboard,
+    dependentFilters,
+    isServiceAnalyticsIntegration,
+    preferences,
+  } = props;
   return {
     defaultValue: preferences?.[TAGS],
+    disabled: shouldDisableFilterByFilterKey(
+      filterKey,
+      dependentFilters ?? {},
+      dashboard,
+      preferences
+    ),
     handleTagsChange,
-    optional: props.config.configuration.isOptional,
     label,
+    optional: props.config.configuration.isOptional,
     placeholder,
+    region: dependentFilters?.[REGION],
     resourceType: dashboard.service_type,
     savePreferences: !isServiceAnalyticsIntegration,
   };
@@ -85,20 +103,38 @@ export const getTagsProperties = (
 export const getRegionProperties = (
   props: CloudPulseFilterProperties,
   handleRegionChange: (
+    filterKey: string,
     region: string | undefined,
-    labels: [],
+    labels: string[],
     savePref?: boolean
   ) => void
 ): CloudPulseRegionSelectProps => {
-  const { name: label, placeholder } = props.config.configuration;
-  const { dashboard, isServiceAnalyticsIntegration, preferences } = props;
+  const { name: label, placeholder, filterKey } = props.config.configuration;
+  const {
+    dashboard,
+    isServiceAnalyticsIntegration,
+    preferences,
+    dependentFilters,
+    config,
+    shouldDisable,
+  } = props;
   return {
-    defaultValue: preferences?.[REGION],
+    defaultValue: preferences?.[filterKey],
     handleRegionChange,
+    filterKey,
     label,
     placeholder,
     savePreferences: !isServiceAnalyticsIntegration,
     selectedDashboard: dashboard,
+    disabled:
+      shouldDisable ||
+      shouldDisableFilterByFilterKey(
+        filterKey,
+        dependentFilters ?? {},
+        dashboard
+      ),
+    xFilter: filterBasedOnConfig(config, dependentFilters ?? {}),
+    selectedEntities: (dependentFilters?.[RESOURCE_ID] ?? []) as string[],
   };
 };
 
@@ -126,20 +162,58 @@ export const getResourcesProperties = (
     dependentFilters,
     isServiceAnalyticsIntegration,
     preferences,
+    shouldDisable,
   } = props;
   return {
     defaultValue: preferences?.[RESOURCES],
-    disabled: checkIfWeNeedToDisableFilterByFilterKey(
-      filterKey,
-      dependentFilters ?? {},
-      dashboard
-    ),
+    disabled:
+      shouldDisable ||
+      shouldDisableFilterByFilterKey(
+        filterKey,
+        dependentFilters ?? {},
+        dashboard,
+        preferences
+      ),
     handleResourcesSelection: handleResourceChange,
     label,
     placeholder,
     resourceType: dashboard.service_type,
     savePreferences: !isServiceAnalyticsIntegration,
-    xFilter: buildXFilter(config, dependentFilters ?? {}),
+    xFilter: filterBasedOnConfig(config, dependentFilters ?? {}),
+  };
+};
+
+export const getNodeTypeProperties = (
+  props: CloudPulseFilterProperties,
+  handleNodeTypeChange: (
+    nodeType: string | undefined,
+    label: string[],
+    savePref?: boolean
+  ) => void
+): CloudPulseNodeTypeFilterProps => {
+  const { filterKey, name: label, placeholder } = props.config.configuration;
+  const {
+    dashboard,
+    dependentFilters,
+    isServiceAnalyticsIntegration,
+    preferences,
+    resource_ids,
+    shouldDisable,
+  } = props;
+  return {
+    database_ids: resource_ids,
+    defaultValue: preferences?.[NODE_TYPE],
+    disabled:
+      shouldDisable ||
+      shouldDisableFilterByFilterKey(
+        filterKey,
+        dependentFilters ?? {},
+        dashboard
+      ),
+    handleNodeTypeChange,
+    label,
+    placeholder,
+    savePreferences: !isServiceAnalyticsIntegration,
   };
 };
 
@@ -169,12 +243,14 @@ export const getCustomSelectProperties = (
     name: label,
     options,
     placeholder,
+    isOptional,
   } = props.config.configuration;
   const {
     dashboard,
     dependentFilters,
     isServiceAnalyticsIntegration,
     preferences,
+    shouldDisable,
   } = props;
   return {
     apiResponseIdField: apiIdField,
@@ -185,13 +261,16 @@ export const getCustomSelectProperties = (
       dashboard
     ),
     defaultValue: preferences?.[filterKey],
-    disabled: checkIfWeNeedToDisableFilterByFilterKey(
-      filterKey,
-      dependentFilters ?? {},
-      dashboard
-    ),
+    disabled:
+      shouldDisable ||
+      shouldDisableFilterByFilterKey(
+        filterKey,
+        dependentFilters ?? {},
+        dashboard
+      ),
     filterKey,
     filterType,
+    isOptional,
     handleSelectionChange: handleCustomSelectChange,
     isMultiSelect,
     label,
@@ -236,36 +315,78 @@ export const getTimeDurationProperties = (
 };
 
 /**
+ * This function helps in building the properties needed for port or interface_id selection component
+ *
+ * @param config - accepts a CloudPulseServiceTypeFilters that has config of port or interface_id key
+ * @param handleTextFilterChange - the callback when we select new value
+ * @param dashboard - the actual selected dashboard
+ * @param isServiceAnalyticsIntegration - only if this is false, we need to save preferences, else no need
+ * @returns CloudPulseTextFilterProps
+ */
+export const getTextFilterProperties = (
+  props: CloudPulseFilterProperties,
+  handleTextFilterChange: (
+    port: string,
+    label: string[],
+    filterKey: string,
+    savePref?: boolean
+  ) => void
+): CloudPulseTextFilterProps => {
+  const { name: label, placeholder, isOptional } = props.config.configuration;
+  const {
+    dashboard,
+    isServiceAnalyticsIntegration,
+    preferences,
+    dependentFilters,
+    shouldDisable,
+  } = props;
+
+  return {
+    disabled:
+      shouldDisable ||
+      shouldDisableFilterByFilterKey(
+        props.config.configuration.filterKey,
+        dependentFilters ?? {},
+        dashboard
+      ),
+    defaultValue: preferences?.[props.config.configuration.filterKey],
+    handleTextFilterChange,
+    label,
+    placeholder,
+    optional: isOptional,
+    savePreferences: !isServiceAnalyticsIntegration,
+    filterKey: props.config.configuration.filterKey,
+  };
+};
+
+/**
  * This function helps in builder the xFilter needed to passed in a apiV4 call
  *
  * @param config - any cloudpulse service type filter config
  * @param dependentFilters - the filters that are selected so far
- * @returns - a xFilter type of apiV4
+ * @returns - filtered dependencies based on the provided config
  */
-export const buildXFilter = (
-  config: CloudPulseServiceTypeFilters,
-  dependentFilters: {
-    [key: string]: FilterValueType | TimeDuration;
+export const filterBasedOnConfig = (
+  config: CloudPulseServiceTypeFilters | undefined,
+  dependentFilters: CloudPulseMetricsFilter
+): CloudPulseMetricsFilter => {
+  if (!config) {
+    return {};
   }
-): Filter => {
-  const filters: Filter[] = [];
-  let orCondition: Filter[] = [];
 
   const { dependency } = config.configuration;
+  const filtered: CloudPulseMetricsFilter = {};
   if (dependency) {
     dependency.forEach((key) => {
       const value = dependentFilters[key];
       if (value !== undefined) {
-        if (Array.isArray(value)) {
-          orCondition = value.map((val) => ({ [key]: val }));
-        } else {
-          filters.push({ [key]: value });
-        }
+        filtered[key === 'engine' ? 'engineType' : key] = value;
       }
     });
+    return filtered;
   }
 
-  return { '+and': filters, '+or': orCondition };
+  return {};
 };
 
 /**
@@ -276,15 +397,16 @@ export const buildXFilter = (
  * @param dashboard - the actual selected dashboard
  * @returns boolean | undefined
  */
-export const checkIfWeNeedToDisableFilterByFilterKey = (
+export const shouldDisableFilterByFilterKey = (
   filterKey: string,
   dependentFilters: {
     [key: string]: FilterValueType | TimeDuration;
   },
-  dashboard: Dashboard
+  dashboard: Dashboard,
+  preferences?: AclpConfig
 ): boolean | undefined => {
   if (dashboard?.service_type) {
-    const serviceTypeConfig = FILTER_CONFIG.get(dashboard.service_type);
+    const serviceTypeConfig = FILTER_CONFIG.get(dashboard.id);
     const filters = serviceTypeConfig?.filters ?? [];
 
     const filter = filters.find(
@@ -302,6 +424,15 @@ export const checkIfWeNeedToDisableFilterByFilterKey = (
     if (filter) {
       return filter.configuration.dependency?.some((dependent) => {
         const dependentFilter = dependentFilters[dependent];
+
+        if (
+          preferences &&
+          preferences[dependent] &&
+          (!dependentFilter ||
+            (Array.isArray(dependentFilter) && dependentFilter.length === 0))
+        ) {
+          return true; // Since filters are set one by one, disabled will be true until the values that are defined inside the preferences are populated in the dependent filters as well
+        }
 
         return (
           !optionalFilters.has(dependent) &&
@@ -325,7 +456,7 @@ export const checkIfAllMandatoryFiltersAreSelected = (
   mandatoryFilterObj: CloudPulseMandatoryFilterCheckProps
 ): boolean => {
   const { dashboard, filterValue, timeDuration } = mandatoryFilterObj;
-  const serviceTypeConfig = FILTER_CONFIG?.get(dashboard.service_type);
+  const serviceTypeConfig = FILTER_CONFIG?.get(dashboard.id);
 
   if (!serviceTypeConfig) {
     return false;
@@ -349,17 +480,15 @@ export const checkIfAllMandatoryFiltersAreSelected = (
 
 /**
  * @param selectedFilters The selected filters from the global filters view from custom select component
- * @param serviceType The serviceType assosicated with the dashboard like linode, dbaas etc.,
+ * @param dashboardId The ID of the dashboard
  * @returns Constructs and returns the metrics call filters based on selected filters and service type
  */
 export const getMetricsCallCustomFilters = (
-  selectedFilters: {
-    [key: string]: FilterValueType;
-  },
-  serviceType?: string
+  selectedFilters: CloudPulseMetricsFilter,
+  dashboardId?: number
 ): CloudPulseMetricsAdditionalFilters[] => {
-  const serviceTypeConfig = serviceType
-    ? FILTER_CONFIG.get(serviceType)
+  const serviceTypeConfig = dashboardId
+    ? FILTER_CONFIG.get(dashboardId)
     : undefined;
 
   // If configuration exists, filter and map it to the desired CloudPulseMetricsAdditionalFilters format
@@ -387,13 +516,17 @@ export const constructAdditionalRequestFilters = (
 ): Filters[] => {
   const filters: Filters[] = [];
   for (const filter of additionalFilters) {
-    if (filter) {
+    if (
+      filter &&
+      filter.filterValue &&
+      (!Array.isArray(filter.filterValue) || filter.filterValue.length > 0) // Check for empty array
+    ) {
       // push to the filters
       filters.push({
-        key: filter.filterKey,
+        dimension_label: filter.filterKey,
         operator: Array.isArray(filter.filterValue) ? 'in' : 'eq',
         value: Array.isArray(filter.filterValue)
-          ? Array.of(filter.filterValue).join(',')
+          ? filter.filterValue.join(',')
           : String(filter.filterValue),
       });
     }
@@ -411,7 +544,7 @@ const getDependentFiltersByFilterKey = (
   filterKey: string,
   dashboard: Dashboard
 ): string[] => {
-  const serviceTypeConfig = FILTER_CONFIG.get(dashboard.service_type);
+  const serviceTypeConfig = FILTER_CONFIG.get(dashboard.id);
 
   if (!serviceTypeConfig) {
     return [];
@@ -478,7 +611,7 @@ export const deepEqual = <T>(obj1: T, obj2: T): boolean => {
  * @param arr2 Array for comparison
  * @returns True if, both the arrays are equal, else false
  */
-const compareArrays = <T>(arr1: T[], arr2: T[]): boolean => {
+export const compareArrays = <T>(arr1: T[], arr2: T[]): boolean => {
   if (arr1.length !== arr2.length) {
     return false;
   }
@@ -502,9 +635,41 @@ export const getFilters = (
   dashboard: Dashboard,
   isServiceAnalyticsIntegration: boolean
 ): CloudPulseServiceTypeFilters[] | undefined => {
-  return FILTER_CONFIG.get(dashboard.service_type)?.filters.filter((config) =>
+  return FILTER_CONFIG.get(dashboard.id)?.filters.filter((config) =>
     isServiceAnalyticsIntegration
-      ? config.configuration.neededInServicePage
-      : config.configuration.filterKey !== RELATIVE_TIME_DURATION
+      ? config.configuration.neededInViews.includes(
+          CloudPulseAvailableViews.service
+        )
+      : config.configuration.neededInViews.includes(
+          CloudPulseAvailableViews.central
+        )
   );
+};
+
+/**
+ * @param data The resources for which the filter needs to be applied
+ * @param dependentFilters The selected dependent filters that will be used to filter the resources
+ * @returns The filtered resources
+ */
+export const filterUsingDependentFilters = (
+  data?: CloudPulseResources[],
+  dependentFilters?: CloudPulseMetricsFilter
+): CloudPulseResources[] | undefined => {
+  if (!dependentFilters || !data) {
+    return data;
+  }
+
+  return data.filter((resource) => {
+    return Object.entries(dependentFilters).every(([key, filterValue]) => {
+      const resourceValue = resource[key as keyof CloudPulseResources];
+
+      if (Array.isArray(resourceValue) && Array.isArray(filterValue)) {
+        return filterValue.some((val) => resourceValue.includes(String(val)));
+      } else if (Array.isArray(resourceValue)) {
+        return resourceValue.includes(String(filterValue));
+      } else {
+        return resourceValue === filterValue;
+      }
+    });
+  });
 };

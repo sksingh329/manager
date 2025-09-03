@@ -1,13 +1,9 @@
+import { useMutatePreferences, usePreferences } from '@linode/queries';
 import { DateTime } from 'luxon';
 import md5 from 'md5';
 import { useState } from 'react';
 
-import {
-  useMutatePreferences,
-  usePreferences,
-} from 'src/queries/profile/preferences';
-
-import type { DismissedNotification } from 'src/types/ManagerPreferences';
+import type { DismissedNotification } from '@linode/utilities';
 
 /**
  * Handlers for dismissing notifications and checking if a notification has been dismissed.
@@ -38,11 +34,11 @@ export interface DismissibleNotificationOptions {
   prefix?: string;
 }
 export interface DismissibleNotificationsHook {
+  dismissedNotifications: Record<string, DismissedNotification>;
   dismissNotifications: (
     notifications: unknown[],
     options?: DismissibleNotificationOptions
   ) => void;
-  dismissedNotifications: Record<string, DismissedNotification>;
   hasDismissedNotifications: (
     notifications: unknown[],
     prefix?: string

@@ -6,7 +6,7 @@ import { renderWithThemeAndHookFormContext } from 'src/utilities/testHelpers';
 
 import { DimensionFilters } from './DimensionFilter';
 
-import type { CreateAlertDefinitionForm } from '../types';
+import type { CreateAlertDefinitionForm, DimensionFilterForm } from '../types';
 import type { MetricDefinition } from '@linode/api-v4';
 
 const mockData: MetricDefinition[] = [
@@ -38,6 +38,7 @@ const mockData: MetricDefinition[] = [
         values: [],
       },
     ],
+    is_alertable: true,
     label: 'CPU utilization',
     metric: 'system_cpu_utilization_percent',
     metric_type: 'gauge',
@@ -50,8 +51,8 @@ describe('DimensionFilterField', () => {
   const user = userEvent.setup();
 
   it('render the fields properly', async () => {
-    const container = renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>(
-      {
+    const container =
+      renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
         component: (
           <DimensionFilters
             dataFieldDisabled={true}
@@ -67,8 +68,7 @@ describe('DimensionFilterField', () => {
             serviceType: 'linode',
           },
         },
-      }
-    );
+      });
     expect(screen.getByText('Dimension Filter')).toBeVisible();
     expect(screen.getByText('(optional)')).toBeVisible();
     await user.click(
@@ -80,8 +80,8 @@ describe('DimensionFilterField', () => {
   });
 
   it('does not render the dimension filed directly with Metric component', async () => {
-    const container = renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>(
-      {
+    const container =
+      renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
         component: (
           <DimensionFilters
             dataFieldDisabled={true}
@@ -97,15 +97,14 @@ describe('DimensionFilterField', () => {
             serviceType: 'linode',
           },
         },
-      }
-    );
+      });
     const dimensionFilterID = 'rule_criteria.rules.0.dimension_filters.0-id';
     expect(container.queryByTestId(dimensionFilterID)).not.toBeInTheDocument();
   });
 
   it('adds and removes dimension filter fields dynamically', async () => {
-    const container = renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>(
-      {
+    const container =
+      renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
         component: (
           <DimensionFilters
             dataFieldDisabled={true}
@@ -121,8 +120,7 @@ describe('DimensionFilterField', () => {
             serviceType: 'linode',
           },
         },
-      }
-    );
+      });
 
     const dimensionFilterID = 'rule_criteria.rules.0.dimension_filters.1-id';
     await user.click(
@@ -138,5 +136,41 @@ describe('DimensionFilterField', () => {
     await waitFor(() =>
       expect(container.queryByTestId(dimensionFilterID)).not.toBeInTheDocument()
     );
+  });
+  it('should show tooltip when the max limit of dimension filters is reached', async () => {
+    const dimensionFilterValue: DimensionFilterForm = {
+      dimension_label: 'state',
+      operator: 'eq',
+      value: 'free',
+    };
+    const { findByText } =
+      renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
+        component: (
+          <DimensionFilters
+            dataFieldDisabled={true}
+            dimensionOptions={mockData[0].dimensions}
+            name={`rule_criteria.rules.${0}.dimension_filters`}
+          />
+        ),
+        useFormOptions: {
+          defaultValues: {
+            rule_criteria: {
+              rules: [
+                {
+                  ...mockData[0],
+                  dimension_filters: Array(5).fill(dimensionFilterValue),
+                },
+              ],
+            },
+            serviceType: 'linode',
+          },
+        },
+      });
+    const addButton = screen.getByRole('button', {
+      name: dimensionFilterButton,
+    });
+    expect(addButton).toBeDisabled();
+    await userEvent.hover(addButton);
+    await findByText('You can add up to 5 dimension filters.');
   });
 });

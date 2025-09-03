@@ -1,9 +1,40 @@
+import { useAccountRoles } from '@linode/queries';
+import { CircleProgress, Notice, Paper, Typography } from '@linode/ui';
 import React from 'react';
 
+import { RolesTable } from 'src/features/IAM/Roles/RolesTable/RolesTable';
+import { mapAccountPermissionsToRoles } from 'src/features/IAM/Shared/utilities';
+
+import { usePermissions } from '../hooks/usePermissions';
+
 export const RolesLanding = () => {
+  const { data: permissions } = usePermissions('account', ['is_account_admin']);
+  const { data: accountRoles, isLoading } = useAccountRoles(
+    permissions?.is_account_admin
+  );
+
+  const { roles } = React.useMemo(() => {
+    if (!accountRoles) {
+      return { roles: [] };
+    }
+    const roles = mapAccountPermissionsToRoles(accountRoles);
+    return { roles };
+  }, [accountRoles]);
+
+  if (isLoading) {
+    return <CircleProgress />;
+  }
+
+  if (!permissions?.is_account_admin) {
+    return (
+      <Notice variant="error">You do not have permission to view roles.</Notice>
+    );
+  }
+
   return (
-    <>
-      <p>Roles Table - UIE-8142 </p>
-    </>
+    <Paper sx={(theme) => ({ marginTop: theme.tokens.spacing.S16 })}>
+      <Typography variant="h2">Roles</Typography>
+      <RolesTable roles={roles} />
+    </Paper>
   );
 };

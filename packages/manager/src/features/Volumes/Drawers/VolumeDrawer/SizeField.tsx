@@ -1,3 +1,4 @@
+import { useVolumeTypesQuery } from '@linode/queries';
 import {
   Box,
   CircleProgress,
@@ -10,14 +11,12 @@ import * as React from 'react';
 import { makeStyles } from 'tss-react/mui';
 
 import { MAX_VOLUME_SIZE } from 'src/constants';
-import { useVolumeTypesQuery } from 'src/queries/volumes/volumes';
 import { UNKNOWN_PRICE } from 'src/utilities/pricing/constants';
 import { getDCSpecificPriceByType } from 'src/utilities/pricing/dynamicPricing';
 
 import { SIZE_FIELD_WIDTH } from '../../constants';
 
 import type { Theme } from '@mui/material/styles';
-
 interface Props {
   disabled?: boolean;
   error?: string;
@@ -102,13 +101,21 @@ export const SizeField = (props: Props) => {
   return (
     <>
       <TextField
-        InputProps={{
-          endAdornment: <InputAdornment position="end"> GB </InputAdornment>,
-        }}
         className={textFieldStyles}
         data-qa-size
         errorText={error}
         helperText={helperText}
+        inputProps={{
+          min: 0,
+        }}
+        InputProps={{
+          endAdornment: <InputAdornment position="end"> GB </InputAdornment>,
+          onKeyDown: (e) => {
+            if (['+', '-', '.', 'E', 'e'].includes(e.key)) {
+              e.preventDefault();
+            }
+          },
+        }}
         label="Size"
         name={name}
         onBlur={onBlur}

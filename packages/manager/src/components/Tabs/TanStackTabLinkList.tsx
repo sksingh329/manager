@@ -1,13 +1,13 @@
-import { Link as TanstackLink } from '@tanstack/react-router';
 import * as React from 'react';
 
+import { Link as TanstackLink } from 'src/components/Link';
 import { Tab } from 'src/components/Tabs/Tab';
 import { TabList } from 'src/components/Tabs/TabList';
 
 import type { Tab as TanstackTab } from 'src/hooks/useTabs';
 
 export interface Tab {
-  chip?: React.JSX.Element | null;
+  chip?: null | React.JSX.Element;
   routeName: string;
   title: string;
 }
@@ -25,6 +25,7 @@ export const TanStackTabLinkList = ({ noLink, tabs }: TabLinkListProps) => {
           <Tab
             // @ts-expect-error - Tab accepts 'as' prop at runtime but it's not in the types
             as={noLink ? undefined : TanstackLink}
+            data-testid={tab.title}
             key={`tab-${_index}`}
             preload={noLink ? undefined : 'intent'}
             to={noLink ? undefined : tab.to}

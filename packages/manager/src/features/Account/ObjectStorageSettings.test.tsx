@@ -1,22 +1,30 @@
+import { profileFactory } from '@linode/utilities';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 
-import { accountSettingsFactory, profileFactory } from 'src/factories';
-import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { accountSettingsFactory } from 'src/factories';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { ObjectStorageSettings } from './ObjectStorageSettings';
 
-import type { ManagerPreferences } from 'src/types/ManagerPreferences';
+import type { ManagerPreferences } from '@linode/utilities';
 
 const preference: ManagerPreferences['type_to_confirm'] = true;
 
 const queryMocks = vi.hoisted(() => ({
   usePreferences: vi.fn().mockReturnValue({}),
+  userPermissions: vi.fn(() => ({
+    data: { update_account_settings: true },
+  })),
 }));
 
-vi.mock('src/queries/profile/preferences', async () => {
-  const actual = await vi.importActual('src/queries/profile/preferences');
+vi.mock('src/features/IAM/hooks/usePermissions', () => ({
+  usePermissions: queryMocks.userPermissions,
+}));
+
+vi.mock('@linode/queries', async () => {
+  const actual = await vi.importActual('@linode/queries');
   return {
     ...actual,
     usePreferences: queryMocks.usePreferences,
@@ -83,7 +91,7 @@ describe('ObjectStorageSettings', () => {
     });
 
     server.use(
-      http.get('*/v4/account/settings', () => {
+      http.get('*/v4*/account/settings', () => {
         return HttpResponse.json(
           accountSettingsFactory.build({ object_storage: 'active' })
         );
@@ -136,5 +144,25 @@ describe('ObjectStorageSettings', () => {
     });
 
     expect(copy).toBeVisible();
+  });
+
+  it('should disable "Cancel Object Storage" button if the user does not have "update_account_settings" permission', async () => {
+    queryMocks.userPermissions.mockReturnValue({
+      data: { update_account_settings: false },
+    });
+    server.use(
+      http.get('*/account/settings', () => {
+        return HttpResponse.json(
+          accountSettingsFactory.build({ object_storage: 'active' })
+        );
+      })
+    );
+
+    const { findByText } = renderWithTheme(<ObjectStorageSettings />);
+
+    const cancelButton = (await findByText('Cancel Object Storage')).closest(
+      'button'
+    );
+    expect(cancelButton).toBeDisabled();
   });
 });

@@ -29,8 +29,24 @@ export const DELETE_CLUSTER_TEXT =
 export const DELETE_CLUSTER_TEXT_LEGACY =
   'Deleting a database cluster is permanent and cannot be undone.';
 
+export const ADVANCED_CONFIG_INFO =
+  'There is no way to reset advanced configuration options to default. Options that you add cannot be removed. Changing or adding some options causes the service to restart.';
+
+export const RESIZE_DISABLED_PREMIUM_PLAN_TAB_TEXT =
+  'Resizing to a Premium CPU plan is not available for database clusters on a Shared CPU or a Dedicated CPU plan.';
+
+export const RESIZE_DISABLED_DEDICATED_SHARED_PLAN_TABS_TEXT =
+  'Resizing to a Shared CPU or a Dedicated CPU plan is not available for database clusters on a Premium CPU plan.';
+
+export const RESIZE_DISABLED_SHARED_PLAN_TAB_LEGACY_TEXT =
+  'Resizing a 2-node cluster is only allowed with Dedicated plans.';
+
 // Links
 export const LEARN_MORE_LINK_LEGACY =
   'https://techdocs.akamai.com/cloud-computing/docs/manage-access-controls';
 export const LEARN_MORE_LINK =
   'https://techdocs.akamai.com/cloud-computing/docs/aiven-manage-database#ipv6-support';
+export const ADVANCED_CONFIG_LEARN_MORE_LINK =
+  'https://techdocs.akamai.com/cloud-computing/docs/advanced-configuration-parameters';
+export const MANAGE_NETWORKING_LEARN_MORE_LINK =
+  'https://techdocs.akamai.com/cloud-computing/docs/aiven-manage-database#manage-networking';

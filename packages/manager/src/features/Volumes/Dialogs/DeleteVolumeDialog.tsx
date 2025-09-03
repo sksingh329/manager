@@ -1,21 +1,21 @@
-import { Notice } from '@linode/ui';
+import { useDeleteVolumeMutation } from '@linode/queries';
 import * as React from 'react';
 
 import { TypeToConfirmDialog } from 'src/components/TypeToConfirmDialog/TypeToConfirmDialog';
 import { useEventsPollingActions } from 'src/queries/events/events';
-import { useDeleteVolumeMutation } from 'src/queries/volumes/volumes';
 
-import type { Volume } from '@linode/api-v4';
+import type { APIError, Volume } from '@linode/api-v4';
 
 interface Props {
   isFetching?: boolean;
   onClose: () => void;
   open: boolean;
-  volume: Volume | undefined;
+  volume: undefined | Volume;
+  volumeError?: APIError[] | null;
 }
 
 export const DeleteVolumeDialog = (props: Props) => {
-  const { isFetching, onClose, open, volume } = props;
+  const { isFetching, onClose, open, volume, volumeError } = props;
 
   const {
     error,
@@ -39,7 +39,9 @@ export const DeleteVolumeDialog = (props: Props) => {
         name: volume?.label,
         primaryBtnText: 'Delete',
         type: 'Volume',
+        error: volumeError,
       }}
+      errors={error}
       expand
       isFetching={isFetching}
       label="Volume Label"
@@ -47,10 +49,8 @@ export const DeleteVolumeDialog = (props: Props) => {
       onClick={onDelete}
       onClose={onClose}
       open={open}
-      title={`Delete Volume ${volume?.label}?`}
+      title={`Delete Volume${volume ? ` ${volume.label}` : ''}?`}
       typographyStyle={{ marginTop: '10px' }}
-    >
-      {error && <Notice text={error?.[0]?.reason} variant="error" />}
-    </TypeToConfirmDialog>
+    />
   );
 };

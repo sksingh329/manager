@@ -1,10 +1,11 @@
+import { capitalize } from '@linode/utilities';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import { renderWithThemeAndHookFormContext } from 'src/utilities/testHelpers';
 
-import { DimensionOperatorOptions } from '../../constants';
+import { dimensionOperatorOptions } from '../../constants';
 import { DimensionFilterField } from './DimensionFilterField';
 
 import type { CreateAlertDefinitionForm } from '../types';
@@ -39,6 +40,7 @@ const mockData: MetricDefinition[] = [
         values: [],
       },
     ],
+    is_alertable: true,
     label: 'CPU utilization',
     metric: 'system_cpu_utilization_percent',
     metric_type: 'gauge',
@@ -47,6 +49,7 @@ const mockData: MetricDefinition[] = [
   },
 ];
 
+const dataFieldId = 'data-field';
 const dimensionFieldMockData = mockData[0].dimensions;
 describe('Dimension filter field component', () => {
   const user = userEvent.setup();
@@ -75,8 +78,8 @@ describe('Dimension filter field component', () => {
   });
 
   it('should render the Data Field component with options happy path and select an option', async () => {
-    const container = renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>(
-      {
+    const container =
+      renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
         component: (
           <DimensionFilterField
             dataFieldDisabled={false}
@@ -93,9 +96,8 @@ describe('Dimension filter field component', () => {
             serviceType: 'linode',
           },
         },
-      }
-    );
-    const dataFieldContainer = container.getByTestId('data-field');
+      });
+    const dataFieldContainer = container.getByTestId(dataFieldId);
     const dataFieldInput = within(dataFieldContainer).getByRole('button', {
       name: 'Open',
     });
@@ -120,8 +122,8 @@ describe('Dimension filter field component', () => {
   });
 
   it('should render the Operator component', async () => {
-    const container = renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>(
-      {
+    const container =
+      renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
         component: (
           <DimensionFilterField
             dataFieldDisabled={false}
@@ -138,8 +140,16 @@ describe('Dimension filter field component', () => {
             serviceType: 'linode',
           },
         },
-      }
-    );
+      });
+    const dataFieldContainer = container.getByTestId('data-field');
+    const dataFieldInput = within(dataFieldContainer).getByRole('button', {
+      name: 'Open',
+    });
+    await user.click(dataFieldInput);
+    const option = await container.findByRole('option', {
+      name: dimensionFieldMockData[1].label,
+    });
+    await user.click(option);
     const operatorContainer = container.getByTestId('operator');
     const operatorInput = within(operatorContainer).getByRole('button', {
       name: 'Open',
@@ -149,80 +159,156 @@ describe('Dimension filter field component', () => {
 
     expect(
       await container.findByRole('option', {
-        name: DimensionOperatorOptions[1].label,
+        name: dimensionOperatorOptions[1].label,
       })
     );
 
     await user.click(
       await container.findByRole('option', {
-        name: DimensionOperatorOptions[0].label,
+        name: dimensionOperatorOptions[0].label,
       })
     );
 
     expect(within(operatorContainer).getByRole('combobox')).toHaveAttribute(
       'value',
-      DimensionOperatorOptions[0].label
+      dimensionOperatorOptions[0].label
     );
   });
 
   it('should render the Value component with options happy path and select an option', async () => {
-    const container = renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>(
-      {
-        component: (
-          <DimensionFilterField
-            dataFieldDisabled={false}
-            dimensionOptions={mockData[0].dimensions}
-            name={`rule_criteria.rules.${0}.dimension_filters.${0}`}
-            onFilterDelete={vi.fn()}
-          />
-        ),
-        useFormOptions: {
-          defaultValues: {
-            rule_criteria: {
-              rules: [mockData[0]],
-            },
-            serviceType: 'linode',
+    renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
+      component: (
+        <DimensionFilterField
+          dataFieldDisabled={false}
+          dimensionOptions={mockData[0].dimensions}
+          name={`rule_criteria.rules.${0}.dimension_filters.${0}`}
+          onFilterDelete={vi.fn()}
+        />
+      ),
+      useFormOptions: {
+        defaultValues: {
+          rule_criteria: {
+            rules: [mockData[0]],
           },
+          serviceType: 'linode',
         },
-      }
-    );
-    const dataFieldContainer = container.getByTestId('data-field');
+      },
+    });
+    // selecting data field
+    const dataFieldContainer = screen.getByTestId(dataFieldId);
     const dataFieldInput = within(dataFieldContainer).getByRole('button', {
       name: 'Open',
     });
     await user.click(dataFieldInput);
     await user.click(
-      await container.findByRole('option', {
+      await screen.findByRole('option', {
         name: dimensionFieldMockData[1].label,
       })
     );
-    const valueContainer = container.getByTestId('value');
-    const valueInput = within(valueContainer).getByRole('button', {
-      name: 'Open',
-    });
-
-    user.click(valueInput);
-    expect(
-      await container.findByRole('option', {
-        name: dimensionFieldMockData[1].values[0],
-      })
-    );
-
-    expect(
-      await container.findByRole('option', {
-        name: dimensionFieldMockData[1].values[1],
-      })
-    );
-
+    // selecting operator
+    const operatorContainer = screen.getByTestId('operator');
     await user.click(
-      container.getByRole('option', {
-        name: dimensionFieldMockData[1].values[0],
+      within(operatorContainer).getByRole('button', {
+        name: 'Open',
+      })
+    );
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'Equal',
+      })
+    );
+
+    // selecting value
+    const valueLabel = capitalize(dimensionFieldMockData[1].values[0]);
+    const valueContainer = screen.getByTestId('value');
+    await user.click(
+      within(valueContainer).getByRole('button', {
+        name: 'Open',
+      })
+    );
+    await user.click(
+      await screen.findByRole('option', {
+        name: valueLabel,
       })
     );
 
     expect(within(valueContainer).getByRole('combobox')).toHaveAttribute(
       'value',
-      dimensionFieldMockData[1].values[0]
+      valueLabel
     );
+  });
+
+  it('should allow multiple value selection for "in" operator and store as comma-separated string', async () => {
+    const mockOnFilterDelete = vi.fn();
+
+    renderWithThemeAndHookFormContext<CreateAlertDefinitionForm>({
+      component: (
+        <DimensionFilterField
+          dataFieldDisabled={false}
+          dimensionOptions={mockData[0].dimensions}
+          name={`rule_criteria.rules.${0}.dimension_filters.${0}`}
+          onFilterDelete={mockOnFilterDelete}
+        />
+      ),
+      useFormOptions: {
+        defaultValues: {
+          rule_criteria: {
+            rules: [mockData[0]],
+          },
+          serviceType: 'linode',
+        },
+      },
+    });
+
+    const dataFieldContainer = screen.getByTestId(dataFieldId);
+    const dataFieldInput = within(dataFieldContainer).getByRole('button', {
+      name: 'Open',
+    });
+    await user.click(dataFieldInput);
+
+    await user.click(
+      await screen.findByRole('option', {
+        name: dimensionFieldMockData[1].label,
+      })
+    );
+
+    const operatorContainer = screen.getByTestId('operator');
+    const operatorInput = within(operatorContainer).getByRole('button', {
+      name: 'Open',
+    });
+    await user.click(operatorInput);
+
+    const inOperatorLabel = dimensionOperatorOptions.find(
+      (op) => op.value === 'in'
+    )?.label;
+
+    await user.click(
+      await screen.findByRole('option', {
+        name: inOperatorLabel,
+      })
+    );
+
+    const valueContainer = screen.getByTestId('value');
+    const valueInput = within(valueContainer).getByRole('button', {
+      name: 'Open',
+    });
+    await user.click(valueInput);
+
+    const userLabel = capitalize('user');
+    const idleLabel = capitalize('idle');
+
+    await user.click(
+      await screen.findByRole('option', {
+        name: userLabel,
+      })
+    );
+    await user.click(
+      await screen.findByRole('option', {
+        name: idleLabel,
+      })
+    );
+
+    expect(within(valueContainer).getByText(userLabel)).toBeInTheDocument();
+    expect(within(valueContainer).getByText(idleLabel)).toBeInTheDocument();
   });
 });

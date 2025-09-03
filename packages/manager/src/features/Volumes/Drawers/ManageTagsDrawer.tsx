@@ -1,12 +1,10 @@
-import { Notice } from '@linode/ui';
+import { useUpdateVolumeMutation } from '@linode/queries';
+import { ActionsPanel, Drawer, Notice } from '@linode/ui';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Drawer } from 'src/components/Drawer';
 import { TagsInput } from 'src/components/TagsInput/TagsInput';
-import { useGrants } from 'src/queries/profile/profile';
-import { useUpdateVolumeMutation } from 'src/queries/volumes/volumes';
+import { usePermissions } from 'src/features/IAM/hooks/usePermissions';
 
 import type { APIError, Volume } from '@linode/api-v4';
 
@@ -14,20 +12,21 @@ interface Props {
   isFetching?: boolean;
   onClose: () => void;
   open: boolean;
-  volume: Volume | undefined;
+  volume: undefined | Volume;
+  volumeError?: APIError[] | null;
 }
 
 export const ManageTagsDrawer = (props: Props) => {
-  const { isFetching, onClose: _onClose, open, volume } = props;
+  const { isFetching, onClose: _onClose, open, volume, volumeError } = props;
 
-  const { data: grants } = useGrants();
+  const { data: permissions } = usePermissions(
+    'volume',
+    ['update_volume'],
+    volume?.id
+  );
+  const canUpdateVolume = permissions?.update_volume;
 
   const { mutateAsync: updateVolume } = useUpdateVolumeMutation();
-
-  const isReadOnly =
-    grants !== undefined &&
-    grants.volume.find((grant) => grant.id === volume?.id)?.permissions ===
-      'read_only';
 
   const {
     control,
@@ -71,13 +70,14 @@ export const ManageTagsDrawer = (props: Props) => {
 
   return (
     <Drawer
+      error={volumeError}
       isFetching={isFetching}
       onClose={onClose}
       open={open}
       title="Manage Volume Tags"
     >
       <form onSubmit={onSubmit}>
-        {isReadOnly && (
+        {!canUpdateVolume && (
           <Notice
             spacingBottom={0}
             text="You don't have permission to edit this volume."
@@ -87,25 +87,25 @@ export const ManageTagsDrawer = (props: Props) => {
         {errors?.root && <Notice text={errors.root.message} variant="error" />}
 
         <Controller
+          control={control}
+          name="tags"
           render={({ field, fieldState }) => (
             <TagsInput
+              disabled={!canUpdateVolume}
+              label="Tags"
+              name="tags"
               onChange={(selected) =>
                 field.onChange(selected.map((item) => item.value))
               }
-              disabled={isReadOnly}
-              label="Tags"
-              name="tags"
               tagError={fieldState.error?.message}
               value={field.value.map((t) => ({ label: t, value: t })) ?? []}
             />
           )}
-          control={control}
-          name="tags"
         />
 
         <ActionsPanel
           primaryButtonProps={{
-            disabled: isReadOnly || !isDirty,
+            disabled: !canUpdateVolume || !isDirty,
             label: 'Save Changes',
             loading: isSubmitting,
             type: 'submit',

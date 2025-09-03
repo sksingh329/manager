@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/react';
 import React from 'react';
 
 import { preferencesFactory } from 'src/factories';
-import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { MaskSensitiveData } from './MaskSensitiveData';
@@ -25,9 +25,9 @@ describe('MaskSensitiveData', () => {
 
     await waitFor(() => {
       expect(getByRole('checkbox')).toBeEnabled();
+      expect(getByRole('checkbox')).toBeChecked();
     });
 
-    expect(getByRole('checkbox')).toBeChecked();
     expect(getByText('Sensitive data is masked')).toBeVisible();
   });
 

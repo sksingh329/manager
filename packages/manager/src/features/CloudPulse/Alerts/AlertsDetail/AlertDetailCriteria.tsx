@@ -1,5 +1,5 @@
 import { Typography } from '@linode/ui';
-import { Grid, useTheme } from '@mui/material';
+import { GridLegacy, useTheme } from '@mui/material';
 import React from 'react';
 
 import { convertSecondsToMinutes } from '../Utils/utils';
@@ -7,17 +7,21 @@ import { StyledAlertChip, StyledAlertTypography } from './AlertDetail';
 import { DisplayAlertDetailChips } from './DisplayAlertDetailChips';
 import { RenderAlertMetricsAndDimensions } from './RenderAlertsMetricsAndDimensions';
 
-import type { Alert } from '@linode/api-v4';
+import type { Alert, CloudPulseServiceType } from '@linode/api-v4';
 
 interface CriteriaProps {
   /**
    * The alert detail object for which the criteria needs to be displayed
    */
   alertDetails: Alert;
+  /**
+   * The service type of the alert for which the criteria needs to be displayed
+   */
+  serviceType: CloudPulseServiceType;
 }
 
 export const AlertDetailCriteria = React.memo((props: CriteriaProps) => {
-  const { alertDetails } = props;
+  const { alertDetails, serviceType } = props;
   const {
     evaluation_period_seconds: evaluationPeriod,
     polling_interval_seconds: pollingIntervalSeconds,
@@ -30,29 +34,45 @@ export const AlertDetailCriteria = React.memo((props: CriteriaProps) => {
   const renderTriggerCriteria = React.useMemo(
     () => (
       <>
-        <Grid item sm={4} xs={12}>
-          <StyledAlertTypography fontFamily={theme.font.bold}>
+        <GridLegacy item sm={4} xs={12}>
+          <StyledAlertTypography
+            data-qa-item="Trigger Alert When"
+            sx={{ font: theme.font.bold }}
+          >
             Trigger Alert When:
           </StyledAlertTypography>
-        </Grid>
-        <Grid alignItems="center" container item md={8} xs={12}>
+        </GridLegacy>
+        <GridLegacy
+          container
+          item
+          md={8}
+          sx={{
+            alignItems: 'center',
+          }}
+          xs={12}
+        >
           <StyledAlertChip
             borderRadius={theme.spacing(0.3)}
+            data-qa-chip="All"
             label="All"
             variant="outlined"
           />
-          <StyledAlertTypography marginRight={0.5}>
+          <StyledAlertTypography
+            data-qa-item="criteria are met for"
+            marginRight={0.5}
+          >
             criteria are met for
           </StyledAlertTypography>
           <StyledAlertChip
             borderRadius={theme.spacing(0.3)}
+            data-qa-chip={triggerOccurrences}
             label={triggerOccurrences}
             variant="outlined"
           />
-          <StyledAlertTypography>
+          <StyledAlertTypography data-qa-item="consecutive occurrences">
             consecutive occurrences.
           </StyledAlertTypography>
-        </Grid>
+        </GridLegacy>
       </>
     ),
     [theme, triggerOccurrences]
@@ -62,8 +82,17 @@ export const AlertDetailCriteria = React.memo((props: CriteriaProps) => {
       <Typography marginBottom={2} variant="h2">
         Criteria
       </Typography>
-      <Grid alignItems="center" container spacing={1}>
-        <RenderAlertMetricsAndDimensions ruleCriteria={ruleCriteria} />
+      <GridLegacy
+        container
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+        }}
+      >
+        <RenderAlertMetricsAndDimensions
+          ruleCriteria={ruleCriteria}
+          serviceType={serviceType}
+        />
         <DisplayAlertDetailChips // label chip for polling interval
           label="Polling Interval"
           mergeChips
@@ -75,7 +104,7 @@ export const AlertDetailCriteria = React.memo((props: CriteriaProps) => {
           values={[convertSecondsToMinutes(evaluationPeriod)]}
         />
         {renderTriggerCriteria} {/** Render the trigger criteria */}
-      </Grid>
+      </GridLegacy>
     </>
   );
 });

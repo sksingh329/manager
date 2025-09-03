@@ -1,5 +1,16 @@
 import {
+  useAccountAgreements,
+  useMutateAccountAgreements,
+  useNodebalancerCreateBetaMutation,
+  useNodebalancerCreateMutation,
+  useNodeBalancerTypesQuery,
+  useProfile,
+  useRegionsQuery,
+} from '@linode/queries';
+import { useIsGeckoEnabled } from '@linode/shared';
+import {
   Accordion,
+  ActionsPanel,
   Box,
   Button,
   Notice,
@@ -8,22 +19,13 @@ import {
   TextField,
   Typography,
 } from '@linode/ui';
+import { scrollErrorIntoViewV2 } from '@linode/utilities';
 import { useTheme } from '@mui/material';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { createLazyRoute } from '@tanstack/react-router';
-import {
-  append,
-  clone,
-  compose,
-  defaultTo,
-  lensPath,
-  over,
-  pathOr,
-} from 'ramda';
+import { useNavigate } from '@tanstack/react-router';
+import { append, clone, compose, defaultTo, lensPath, over } from 'ramda';
 import * as React from 'react';
-import { useHistory } from 'react-router-dom';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { CheckoutSummary } from 'src/components/CheckoutSummary/CheckoutSummary';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import { DocsLink } from 'src/components/DocsLink/DocsLink';
@@ -37,29 +39,21 @@ import { RegionHelperText } from 'src/components/SelectRegionPanel/RegionHelperT
 import { TagsInput } from 'src/components/TagsInput/TagsInput';
 import { FIREWALL_GET_STARTED_LINK } from 'src/constants';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { useFlags } from 'src/hooks/useFlags';
 import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
-import {
-  reportAgreementSigningError,
-  useAccountAgreements,
-  useMutateAccountAgreements,
-} from 'src/queries/account/agreements';
-import {
-  useNodeBalancerTypesQuery,
-  useNodebalancerCreateMutation,
-} from 'src/queries/nodebalancers';
-import { useProfile } from 'src/queries/profile/profile';
-import { useRegionsQuery } from 'src/queries/regions/regions';
 import { sendCreateNodeBalancerEvent } from 'src/utilities/analytics/customEventAnalytics';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import { getGDPRDetails } from 'src/utilities/formatRegion';
 import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
-import { DOCS_LINK_LABEL_DC_PRICING } from 'src/utilities/pricing/constants';
-import { PRICE_ERROR_TOOLTIP_TEXT } from 'src/utilities/pricing/constants';
+import {
+  DOCS_LINK_LABEL_DC_PRICING,
+  PRICE_ERROR_TOOLTIP_TEXT,
+} from 'src/utilities/pricing/constants';
 import {
   getDCSpecificPriceByType,
   renderMonthlyPriceToCorrectDecimalPlace,
 } from 'src/utilities/pricing/dynamicPricing';
-import { scrollErrorIntoView } from 'src/utilities/scrollErrorIntoView';
+import { reportAgreementSigningError } from 'src/utilities/reportAgreementSigningError';
 
 import { EUAgreementCheckbox } from '../Account/Agreements/EUAgreementCheckbox';
 import { NodeBalancerConfigPanel } from './NodeBalancerConfigPanel';
@@ -67,12 +61,14 @@ import {
   createNewNodeBalancerConfig,
   createNewNodeBalancerConfigNode,
   transformConfigsForRequest,
+  useIsNodebalancerVPCEnabled,
 } from './utils';
+import { VPCPanel } from './VPCPanel';
 
 import type { NodeBalancerConfigFieldsWithStatus } from './types';
-import type { APIError } from '@linode/api-v4/lib/types';
+import type { APIError, NodeBalancerVpcPayload, VPC } from '@linode/api-v4';
 import type { Theme } from '@mui/material/styles';
-import type { Tag } from 'src/components/TagsInput/TagsInput';
+import type { TagOption } from 'src/components/TagsInput/TagsInput';
 
 interface NodeBalancerConfigFieldsWithStatusAndErrors
   extends NodeBalancerConfigFieldsWithStatus {
@@ -85,6 +81,7 @@ interface NodeBalancerFieldsState {
   label?: string;
   region?: string;
   tags?: string[];
+  vpcs?: NodeBalancerVpcPayload[];
 }
 
 const errorResources = {
@@ -106,37 +103,55 @@ const defaultFieldsStates = {
 };
 
 const NodeBalancerCreate = () => {
+  const flags = useFlags();
+  const { isGeckoLAEnabled } = useIsGeckoEnabled(
+    flags.gecko2?.enabled,
+    flags.gecko2?.la
+  );
+  const { isNodebalancerVPCEnabled } = useIsNodebalancerVPCEnabled();
+  const navigate = useNavigate();
   const { data: agreements } = useAccountAgreements();
   const { data: profile } = useProfile();
   const { data: regions } = useRegionsQuery();
   const { data: types } = useNodeBalancerTypesQuery();
 
   const {
-    error,
-    isPending,
+    error: createNodeBalancerBetaError,
+    isPending: createNodeBalancerBetaIsPending,
+    mutateAsync: createNodeBalancerBeta,
+  } = useNodebalancerCreateBetaMutation();
+
+  const {
+    error: createNodebalancerError,
+    isPending: createNodeBalancerIsPending,
     mutateAsync: createNodeBalancer,
   } = useNodebalancerCreateMutation();
 
-  const history = useHistory();
-
-  const [
-    nodeBalancerFields,
-    setNodeBalancerFields,
-  ] = React.useState<NodeBalancerFieldsState>(defaultFieldsStates);
-
-  const [hasSignedAgreement, setHasSignedAgreement] = React.useState<boolean>(
-    false
+  const error = React.useMemo(
+    () =>
+      isNodebalancerVPCEnabled
+        ? createNodeBalancerBetaError
+        : createNodebalancerError,
+    [
+      isNodebalancerVPCEnabled,
+      createNodebalancerError,
+      createNodeBalancerBetaError,
+    ]
   );
 
-  const [
-    deleteConfigConfirmDialog,
-    setDeleteConfigConfirmDialog,
-  ] = React.useState<{
-    errors?: APIError[];
-    idxToDelete?: number;
-    open: boolean;
-    submitting: boolean;
-  }>(defaultDeleteConfigConfirmDialogState);
+  const [nodeBalancerFields, setNodeBalancerFields] =
+    React.useState<NodeBalancerFieldsState>(defaultFieldsStates);
+
+  const [hasSignedAgreement, setHasSignedAgreement] =
+    React.useState<boolean>(false);
+
+  const [deleteConfigConfirmDialog, setDeleteConfigConfirmDialog] =
+    React.useState<{
+      errors?: APIError[];
+      idxToDelete?: number;
+      open: boolean;
+      submitting: boolean;
+    }>(defaultDeleteConfigConfirmDialogState);
 
   const { mutateAsync: updateAgreements } = useMutateAccountAgreements();
 
@@ -146,6 +161,14 @@ const NodeBalancerCreate = () => {
   const isRestricted = useRestrictedGlobalGrantCheck({
     globalGrantType: 'add_nodebalancers',
   });
+
+  const [vpcSelected, setVPCSelected] = React.useState<null | VPC>(null);
+  const [vpcErrors, setVPCErrors] = React.useState<APIError[]>([]);
+  const formContainerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setVPCErrors([]);
+  }, [vpcSelected]);
 
   const addNodeBalancer = () => {
     if (isRestricted) {
@@ -167,16 +190,15 @@ const NodeBalancerCreate = () => {
       return { ...prev, configs: newConfigs };
     });
 
-  const removeNodeBalancerConfigNode = (configIdx: number) => (
-    nodeIdx: number
-  ) =>
-    setNodeBalancerFields((prev) => {
-      const newConfigs = [...prev.configs];
-      newConfigs[configIdx].nodes = newConfigs[configIdx].nodes.filter(
-        (_, idx) => idx !== nodeIdx
-      );
-      return { ...prev, configs: newConfigs };
-    });
+  const removeNodeBalancerConfigNode =
+    (configIdx: number) => (nodeIdx: number) =>
+      setNodeBalancerFields((prev) => {
+        const newConfigs = [...prev.configs];
+        newConfigs[configIdx].nodes = newConfigs[configIdx].nodes.filter(
+          (_, idx) => idx !== nodeIdx
+        );
+        return { ...prev, configs: newConfigs };
+      });
 
   const setNodeValue = (
     cidx: number,
@@ -207,9 +229,13 @@ const NodeBalancerCreate = () => {
   const onNodeAddressChange = (
     configIdx: number,
     nodeIdx: number,
-    value: string
+    value: string,
+    subnetId?: number
   ) => {
     setNodeValue(configIdx, nodeIdx, 'address', value);
+    if (subnetId && isNodebalancerVPCEnabled) {
+      setNodeValue(configIdx, nodeIdx, 'subnet_id', subnetId);
+    }
   };
 
   const onNodePortChange = (
@@ -255,18 +281,6 @@ const NodeBalancerCreate = () => {
     });
   };
 
-  const clearNodeErrors = () => {
-    setNodeBalancerFields((prev) => {
-      const newConfigs = [...prev.configs].map((config) => ({
-        ...config,
-        errors: [],
-        nodes: config.nodes.map((node) => ({ ...node, errors: [] })),
-      }));
-
-      return { ...prev, configs: newConfigs };
-    });
-  };
-
   const setNodeErrors = (errors: APIError[]) => {
     /* Map the objects with this shape
         {
@@ -290,18 +304,57 @@ const NodeBalancerCreate = () => {
 
     // Apply the error updater functions with a compose
     setNodeBalancerFields((compose as any)(...setFns));
-    scrollErrorIntoView();
+  };
+
+  const clearErrors = () => {
+    setNodeBalancerFields((prev) => {
+      const newConfigs = [...prev.configs].map(({ errors: _, ...config }) => ({
+        ...config,
+        nodes: config.nodes.map(({ errors: _, ...node }) => ({
+          ...node,
+        })),
+      }));
+      // sometimes 'errors' key is added from setNodeErrors()
+      if ('errors' in prev) {
+        delete prev['errors'];
+      }
+
+      return { ...prev, configs: newConfigs };
+    });
+    setVPCErrors([]);
   };
 
   const onCreate = () => {
+    if (vpcSelected && nodeBalancerFields?.vpcs === undefined) {
+      const subnetError = {
+        field: 'vpc[0].subnet_id',
+        reason: 'Select a Subnet within the chosen VPC.',
+      };
+      setVPCErrors((prev) => (prev ? [...prev, subnetError] : [subnetError]));
+      scrollErrorIntoViewV2(formContainerRef);
+      return;
+    }
+    clearErrors();
     /* transform node data for the requests */
     const nodeBalancerRequestData = clone(nodeBalancerFields);
+    if (
+      nodeBalancerRequestData?.vpcs &&
+      nodeBalancerRequestData.vpcs.length > 0
+    ) {
+      nodeBalancerRequestData.vpcs = nodeBalancerRequestData.vpcs.map((vpc) =>
+        vpc.ipv4_range
+          ? {
+              ...vpc,
+              ipv4_range: vpc.ipv4_range.endsWith('/30')
+                ? vpc.ipv4_range
+                : `${vpc.ipv4_range}/30`,
+            }
+          : vpc
+      );
+    }
     nodeBalancerRequestData.configs = transformConfigsForRequest(
       nodeBalancerRequestData.configs
     );
-
-    /* Clear node errors */
-    clearNodeErrors();
 
     if (hasSignedAgreement) {
       updateAgreements({
@@ -309,9 +362,16 @@ const NodeBalancerCreate = () => {
       }).catch(reportAgreementSigningError);
     }
 
-    createNodeBalancer(nodeBalancerRequestData)
+    const createNodeBalancerFn = isNodebalancerVPCEnabled
+      ? createNodeBalancerBeta
+      : createNodeBalancer;
+
+    createNodeBalancerFn(nodeBalancerRequestData)
       .then((nodeBalancer) => {
-        history.push(`/nodebalancers/${nodeBalancer.id}/summary`);
+        navigate({
+          params: { id: String(nodeBalancer.id) },
+          to: '/nodebalancers/$id/summary',
+        });
         // Analytics Event
         sendCreateNodeBalancerEvent(`Region: ${nodeBalancer.region}`);
       })
@@ -323,8 +383,30 @@ const NodeBalancerCreate = () => {
             ...(e.field && { field: e.field.replace(/(\[|\]\.)/g, '_') }),
           }))
         );
+        const vpcErrors = errors
+          .map((err) => {
+            if (!err?.field) return null;
+            if (err?.field.includes('vpcs[0].subnet_id')) {
+              return {
+                field: 'vpcs.subnet_id',
+                reason: err.reason,
+              };
+            }
+            if (err?.field.includes('ipv4_range')) {
+              const indexMatch = err.field.match(/\[(\d+)\]/);
+              const index = indexMatch ? Number(indexMatch[1]) : -1;
+              return {
+                field: `vpcs[${index}].ipv4_range`,
+                reason: err.reason,
+              };
+            }
+            return null;
+          })
+          .filter((err) => err !== null);
 
-        scrollErrorIntoView();
+        setVPCErrors(vpcErrors);
+
+        scrollErrorIntoViewV2(formContainerRef);
       });
   };
 
@@ -358,7 +440,7 @@ const NodeBalancerCreate = () => {
   };
 
   const onConfigValueChange = <
-    Key extends keyof NodeBalancerConfigFieldsWithStatusAndErrors
+    Key extends keyof NodeBalancerConfigFieldsWithStatusAndErrors,
   >(
     configId: number,
     key: Key,
@@ -378,7 +460,7 @@ const NodeBalancerCreate = () => {
     }));
   };
 
-  const tagsChange = (tags: Tag[]) => {
+  const tagsChange = (tags: TagOption[]) => {
     setNodeBalancerFields((prev) => ({
       ...prev,
       tags: tags.map((tag) => tag.value),
@@ -412,14 +494,61 @@ const NodeBalancerCreate = () => {
     if (nodeBalancerFields.region === region) {
       return;
     }
-
-    setNodeBalancerFields((prev) => ({
+    // We just changed the region so any selected IP addresses, Subnets and VPCs are likely invalid
+    setNodeBalancerFields(({ vpcs: _, ...prev }) => ({
       ...prev,
       region,
     }));
-
-    // We just changed the region so any selected IP addresses are likely invalid
+    setVPCSelected(null);
     resetNodeAddresses();
+  };
+
+  const subnetChange = (subnetIds: null | number[]) => {
+    if (
+      nodeBalancerFields?.vpcs?.every((vpc) =>
+        subnetIds?.some((id) => id === vpc.subnet_id)
+      )
+    ) {
+      return;
+    }
+    if (subnetIds === null) {
+      setNodeBalancerFields((prev) => {
+        // eslint-disable-next-line no-unused-vars, sonarjs/no-unused-vars
+        const { vpcs: _, ...rest } = prev;
+        return { ...rest };
+      });
+    } else {
+      const vpcs = subnetIds.map((id) => ({ subnet_id: id }));
+      setNodeBalancerFields((prev) => ({ ...prev, vpcs }));
+    }
+  };
+
+  const ipv4Change = (ipv4Range: null | string, index: number) => {
+    if (nodeBalancerFields?.vpcs?.[index].ipv4_range === ipv4Range) {
+      return;
+    }
+    if (ipv4Range === null) {
+      // handling auto-assign ipv4 ranges for subnets
+      setNodeBalancerFields((prev) => {
+        const { vpcs: vpcs, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        const updatedVpcs = vpcs?.map(({ subnet_id }) => ({
+          subnet_id,
+        }));
+        return { ...rest, vpcs: updatedVpcs };
+      });
+    } else {
+      const updatedVpcs = nodeBalancerFields?.vpcs?.map((vpc, idx) => {
+        if (idx === index) {
+          return { ...vpc, ipv4_range: ipv4Range };
+        }
+        return vpc;
+      });
+      setNodeBalancerFields((prev) => ({
+        ...prev,
+        vpcs: updatedVpcs,
+      }));
+    }
   };
 
   const onCloseConfirmation = () =>
@@ -438,8 +567,9 @@ const NodeBalancerCreate = () => {
     selectedRegionId: nodeBalancerFields.region ?? '',
   });
 
-  const regionLabel = regions?.find((r) => r.id === nodeBalancerFields.region)
-    ?.label;
+  const regionLabel = regions?.find(
+    (r) => r.id === nodeBalancerFields.region
+  )?.label;
 
   const price = getDCSpecificPriceByType({
     regionId: nodeBalancerFields.region,
@@ -451,6 +581,10 @@ const NodeBalancerCreate = () => {
 
   if (regionLabel) {
     summaryItems.push({ title: regionLabel });
+  }
+
+  if (nodeBalancerFields.vpcs?.length) {
+    summaryItems.push({ title: 'VPC' });
   }
 
   if (nodeBalancerFields.firewall_id) {
@@ -479,7 +613,7 @@ const NodeBalancerCreate = () => {
   }
 
   return (
-    <React.Fragment>
+    <div ref={formContainerRef}>
       <DocumentTitleSegment segment="Create a NodeBalancer" />
       <LandingHeader
         breadcrumbProps={{
@@ -501,12 +635,11 @@ const NodeBalancerCreate = () => {
       )}
       {isRestricted && (
         <Notice
+          spacingTop={16}
           text={getRestrictedResourceText({
             action: 'create',
             resourceType: 'NodeBalancers',
           })}
-          important
-          spacingTop={16}
           variant="error"
         />
       )}
@@ -521,6 +654,9 @@ const NodeBalancerCreate = () => {
             value={nodeBalancerFields.label || ''}
           />
           <TagsInput
+            disabled={isRestricted}
+            onChange={tagsChange}
+            tagError={hasErrorFor('tags')}
             value={
               nodeBalancerFields.tags
                 ? nodeBalancerFields.tags.map((tag) => ({
@@ -529,9 +665,6 @@ const NodeBalancerCreate = () => {
                   }))
                 : []
             }
-            disabled={isRestricted}
-            onChange={tagsChange}
-            tagError={hasErrorFor('tags')}
           />
         </Paper>
         <Paper>
@@ -543,16 +676,18 @@ const NodeBalancerCreate = () => {
             justifyContent="space-between"
           >
             <RegionSelect
+              currentCapability="NodeBalancers"
+              disableClearable
+              disabled={isRestricted}
+              errorText={hasErrorFor('region')}
+              isGeckoLAEnabled={isGeckoLAEnabled}
+              noMarginTop
+              onChange={(e, region) => regionChange(region?.id ?? '')}
+              regions={regions ?? []}
               textFieldProps={{
                 helperText: <RegionHelperText mb={2} />,
                 helperTextPosition: 'top',
               }}
-              currentCapability="NodeBalancers"
-              disableClearable
-              errorText={hasErrorFor('region')}
-              noMarginTop
-              onChange={(e, region) => regionChange(region?.id ?? '')}
-              regions={regions ?? []}
               value={nodeBalancerFields.region ?? ''}
             />
             <DocsLink
@@ -562,6 +697,8 @@ const NodeBalancerCreate = () => {
           </Stack>
         </Paper>
         <SelectFirewallPanel
+          disabled={isRestricted}
+          entityType="nodebalancer"
           handleFirewallChange={(firewallId: number) => {
             setNodeBalancerFields((prev) => ({
               ...prev,
@@ -575,29 +712,47 @@ const NodeBalancerCreate = () => {
               <Link to={FIREWALL_GET_STARTED_LINK}>Learn more</Link>.
             </Typography>
           }
-          disabled={isRestricted}
-          entityType="nodebalancer"
           selectedFirewallId={nodeBalancerFields.firewall_id ?? -1}
         />
+        {isNodebalancerVPCEnabled && (
+          <VPCPanel
+            disabled={isRestricted}
+            errors={vpcErrors}
+            ipv4Change={ipv4Change}
+            regionSelected={nodeBalancerFields.region ?? ''}
+            setVpcSelected={setVPCSelected}
+            subnetChange={subnetChange}
+            subnetsSelected={nodeBalancerFields.vpcs}
+            vpcSelected={vpcSelected}
+          />
+        )}
       </Stack>
       <Box marginBottom={2} marginTop={2}>
         {nodeBalancerFields.configs.map((nodeBalancerConfig, idx) => {
-          const onChange = (key: keyof NodeBalancerConfigFieldsWithStatus) => (
-            value: any
-          ) => onConfigValueChange(idx, key, value);
+          const onChange =
+            (key: keyof NodeBalancerConfigFieldsWithStatus) => (value: any) =>
+              onConfigValueChange(idx, key, value);
 
           return (
             <Accordion
+              defaultExpanded
               heading={`Configuration - Port ${
                 nodeBalancerFields.configs[idx].port ?? ''
               }`}
+              key={idx}
               sx={{
                 padding: 1,
               }}
-              defaultExpanded
-              key={idx}
             >
               <NodeBalancerConfigPanel
+                addNode={addNodeBalancerConfigNode(idx)}
+                algorithm={nodeBalancerFields.configs[idx].algorithm!}
+                checkBody={nodeBalancerFields.configs[idx].check_body!}
+                checkPassive={nodeBalancerFields.configs[idx].check_passive!}
+                checkPath={nodeBalancerFields.configs[idx].check_path!}
+                configIdx={idx}
+                disabled={isRestricted}
+                errors={nodeBalancerConfig.errors}
                 healthCheckAttempts={
                   nodeBalancerFields.configs[idx].check_attempts!
                 }
@@ -607,12 +762,25 @@ const NodeBalancerCreate = () => {
                 healthCheckTimeout={
                   nodeBalancerFields.configs[idx].check_timeout!
                 }
+                healthCheckType={nodeBalancerFields.configs[idx].check!}
+                nodeBalancerRegion={nodeBalancerFields.region}
+                nodeBalancerSubnetId={nodeBalancerFields?.vpcs?.[0].subnet_id}
+                nodeBalancerVpcId={vpcSelected?.id}
+                nodes={nodeBalancerFields.configs[idx].nodes}
+                onAlgorithmChange={onChange('algorithm')}
+                onCheckBodyChange={onChange('check_body')}
+                onCheckPassiveChange={onChange('check_passive')}
+                onCheckPathChange={onChange('check_path')}
+                onDelete={onDeleteConfig(idx)}
+                onHealthCheckAttemptsChange={onChange('check_attempts')}
+                onHealthCheckIntervalChange={onChange('check_interval')}
+                onHealthCheckTimeoutChange={onChange('check_timeout')}
                 onHealthCheckTypeChange={(value) => {
                   onChange('check')(value);
                   afterHealthCheckTypeUpdate(idx);
                 }}
-                onNodeAddressChange={(nodeIndex, value) =>
-                  onNodeAddressChange(idx, nodeIndex, value)
+                onNodeAddressChange={(nodeIndex, value, subnetId) =>
+                  onNodeAddressChange(idx, nodeIndex, value, subnetId)
                 }
                 onNodeLabelChange={(nodeIndex, value) =>
                   onNodeLabelChange(idx, nodeIndex, value)
@@ -626,34 +794,18 @@ const NodeBalancerCreate = () => {
                 onNodeWeightChange={(nodeIndex, value) =>
                   onNodeWeightChange(idx, nodeIndex, value)
                 }
+                onPortChange={onChange('port')}
+                onPrivateKeyChange={onChange('ssl_key')}
                 onProtocolChange={(value) => {
                   onChange('protocol')(value);
                   afterProtocolUpdate(idx);
                 }}
-                addNode={addNodeBalancerConfigNode(idx)}
-                algorithm={nodeBalancerFields.configs[idx].algorithm!}
-                checkBody={nodeBalancerFields.configs[idx].check_body!}
-                checkPassive={nodeBalancerFields.configs[idx].check_passive!}
-                checkPath={nodeBalancerFields.configs[idx].check_path!}
-                configIdx={idx}
-                disabled={isRestricted}
-                errors={nodeBalancerConfig.errors}
-                healthCheckType={nodeBalancerFields.configs[idx].check!}
-                nodeBalancerRegion={nodeBalancerFields.region}
-                nodes={nodeBalancerFields.configs[idx].nodes}
-                onAlgorithmChange={onChange('algorithm')}
-                onCheckBodyChange={onChange('check_body')}
-                onCheckPassiveChange={onChange('check_passive')}
-                onCheckPathChange={onChange('check_path')}
-                onDelete={onDeleteConfig(idx)}
-                onHealthCheckAttemptsChange={onChange('check_attempts')}
-                onHealthCheckIntervalChange={onChange('check_interval')}
-                onHealthCheckTimeoutChange={onChange('check_timeout')}
-                onPortChange={onChange('port')}
-                onPrivateKeyChange={onChange('ssl_key')}
                 onProxyProtocolChange={onChange('proxy_protocol')}
                 onSessionStickinessChange={onChange('stickiness')}
                 onSslCertificateChange={onChange('ssl_cert')}
+                onUdpCheckPortChange={(value) =>
+                  onChange('udp_check_port')(value)
+                }
                 port={nodeBalancerFields.configs[idx].port!}
                 privateKey={nodeBalancerFields.configs[idx].ssl_key!}
                 protocol={nodeBalancerFields.configs[idx].protocol!}
@@ -661,6 +813,7 @@ const NodeBalancerCreate = () => {
                 removeNode={removeNodeBalancerConfigNode(idx)}
                 sessionStickiness={nodeBalancerFields.configs[idx].stickiness!}
                 sslCertificate={nodeBalancerFields.configs[idx].ssl_cert!}
+                udpCheckPort={nodeBalancerFields.configs[idx].udp_check_port!}
               />
             </Accordion>
           );
@@ -687,26 +840,28 @@ const NodeBalancerCreate = () => {
         </Box>
       )}
       <Box
+        display="flex"
+        justifyContent={'flex-end'}
         sx={{
           marginTop: theme.spacing(4),
         }}
-        display="flex"
-        justifyContent={'flex-end'}
       >
         <Button
+          buttonType="primary"
+          data-qa-deploy-nodebalancer
           disabled={
             (showGDPRCheckbox && !hasSignedAgreement) ||
             isRestricted ||
             isInvalidPrice
           }
+          loading={
+            createNodeBalancerIsPending || createNodeBalancerBetaIsPending
+          }
+          onClick={onCreate}
           sx={{
             flexShrink: 0,
             mx: matchesSmDown ? theme.spacing(1) : null,
           }}
-          buttonType="primary"
-          data-qa-deploy-nodebalancer
-          loading={isPending}
-          onClick={onCreate}
           tooltipText={isInvalidPrice ? PRICE_ERROR_TOOLTIP_TEXT : ''}
         >
           Create NodeBalancer
@@ -736,14 +891,14 @@ const NodeBalancerCreate = () => {
           Are you sure you want to delete this NodeBalancer Configuration?
         </Typography>
       </ConfirmationDialog>
-    </React.Fragment>
+    </div>
   );
 };
 
 /* @todo: move to own file */
-export const lensFrom = (p1: (number | string)[]) => (
-  p2: (number | string)[]
-) => lensPath([...p1, ...p2]);
+export const lensFrom =
+  (p1: (number | string)[]) => (p2: (number | string)[]) =>
+    lensPath([...p1, ...p2]);
 
 const getPathAndFieldFromFieldString = (value: string) => {
   let field = value;
@@ -754,13 +909,13 @@ const getPathAndFieldFromFieldString = (value: string) => {
   if (configMatch && configMatch[1]) {
     path = [...path, 'configs', +configMatch[1]];
     field = field.replace(configRegExp, '');
-  }
 
-  const nodeRegExp = new RegExp(/nodes_(\d+)_/);
-  const nodeMatch = nodeRegExp.exec(value);
-  if (nodeMatch && nodeMatch[1]) {
-    path = [...path, 'nodes', +nodeMatch[1]];
-    field = field.replace(nodeRegExp, '');
+    const nodeRegExp = new RegExp(/nodes_(\d+)_/);
+    const nodeMatch = nodeRegExp.exec(value);
+    if (nodeMatch && nodeMatch[1]) {
+      path = [...path, 'nodes', +nodeMatch[1]];
+      field = field.replace(nodeRegExp, '');
+    }
   }
   return { field, path };
 };
@@ -787,7 +942,7 @@ export const fieldErrorsToNodePathErrors = (errors: APIError[]) => {
       }
   */
   return errors.reduce((acc: any, error: APIError) => {
-    const errorFields = pathOr('', ['field'], error).split('|');
+    const errorFields = error?.field?.split('|') ?? [''];
     const pathErrors: FieldAndPath[] = errorFields.map((field: string) =>
       getPathAndFieldFromFieldString(field)
     );
@@ -810,11 +965,5 @@ export const fieldErrorsToNodePathErrors = (errors: APIError[]) => {
     ];
   }, []);
 };
-
-export const nodeBalancerCreateLazyRoute = createLazyRoute(
-  '/nodebalancers/create'
-)({
-  component: NodeBalancerCreate,
-});
 
 export default NodeBalancerCreate;

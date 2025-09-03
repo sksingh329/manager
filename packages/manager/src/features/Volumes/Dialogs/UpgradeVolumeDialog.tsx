@@ -1,14 +1,13 @@
-import { Typography } from '@linode/ui';
+import { useVolumesMigrateMutation } from '@linode/queries';
+import { ActionsPanel, Typography } from '@linode/ui';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
 import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 import { Link } from 'src/components/Link';
-import { useVolumesMigrateMutation } from 'src/queries/volumes/volumes';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
-import type { Volume } from '@linode/api-v4';
+import type { APIError, Volume } from '@linode/api-v4';
 
 interface CopyProps {
   isManyVolumes?: boolean;
@@ -40,11 +39,12 @@ interface Props {
   isFetching?: boolean;
   onClose: () => void;
   open: boolean;
-  volume: Volume | undefined;
+  volume: undefined | Volume;
+  volumeError: APIError[] | null;
 }
 
 export const UpgradeVolumeDialog = (props: Props) => {
-  const { isFetching, onClose, open, volume } = props;
+  const { isFetching, onClose, open, volume, volumeError } = props;
   const { enqueueSnackbar } = useSnackbar();
 
   const {
@@ -81,12 +81,13 @@ export const UpgradeVolumeDialog = (props: Props) => {
 
   return (
     <ConfirmationDialog
+      actions={actions}
+      entityError={volumeError}
       error={
         error
           ? getAPIErrorOrDefault(error, 'Unable to migrate volume.')[0].reason
           : undefined
       }
-      actions={actions}
       isFetching={isFetching}
       onClose={onClose}
       open={open}

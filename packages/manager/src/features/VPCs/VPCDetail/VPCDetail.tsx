@@ -1,20 +1,29 @@
-import { Box, CircleProgress, StyledLinkButton } from '@linode/ui';
-import { Typography } from '@mui/material';
+import { useRegionsQuery, useVPCQuery } from '@linode/queries';
+import {
+  Box,
+  CircleProgress,
+  ErrorState,
+  StyledLinkButton,
+  Typography,
+} from '@linode/ui';
+import { truncate } from '@linode/utilities';
 import { useTheme } from '@mui/material/styles';
-import { createLazyRoute } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import * as React from 'react';
-import { useParams } from 'react-router-dom';
 
+import { DismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { EntityHeader } from 'src/components/EntityHeader/EntityHeader';
-import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import { LandingHeader } from 'src/components/LandingHeader';
+import { LKE_ENTERPRISE_AUTOGEN_VPC_WARNING } from 'src/features/Kubernetes/constants';
+import { useIsNodebalancerVPCEnabled } from 'src/features/NodeBalancers/utils';
 import { VPC_DOCS_LINK, VPC_LABEL } from 'src/features/VPCs/constants';
-import { useRegionsQuery } from 'src/queries/regions/regions';
-import { useVPCQuery } from 'src/queries/vpcs/vpcs';
-import { truncate } from 'src/utilities/truncate';
 
-import { getUniqueLinodesFromSubnets } from '../utils';
+import {
+  getIsVPCLKEEnterpriseCluster,
+  getUniqueLinodesFromSubnets,
+  getUniqueResourcesFromSubnets,
+} from '../utils';
 import { VPCDeleteDialog } from '../VPCLanding/VPCDeleteDialog';
 import { VPCEditDrawer } from '../VPCLanding/VPCEditDrawer';
 import {
@@ -26,15 +35,46 @@ import {
 } from './VPCDetail.styles';
 import { VPCSubnetsTable } from './VPCSubnetsTable';
 
+import type { VPC } from '@linode/api-v4';
+
 const VPCDetail = () => {
-  const { vpcId } = useParams<{ vpcId: string }>();
+  const params = useParams({ strict: false });
+  const { vpcId } = params;
+  const navigate = useNavigate();
   const theme = useTheme();
 
-  const { data: vpc, error, isLoading } = useVPCQuery(+vpcId);
+  const {
+    data: vpc,
+    error,
+    isFetching: isFetchingVPC,
+    isLoading,
+  } = useVPCQuery(Number(vpcId) || -1, Boolean(vpcId));
+
+  const flags = useIsNodebalancerVPCEnabled();
+
   const { data: regions } = useRegionsQuery();
 
-  const [editVPCDrawerOpen, setEditVPCDrawerOpen] = React.useState(false);
-  const [deleteVPCDialogOpen, setDeleteVPCDialogOpen] = React.useState(false);
+  const handleEditVPC = (vpc: VPC) => {
+    navigate({
+      params: { action: 'edit', vpcId: vpc.id },
+      to: '/vpcs/$vpcId/detail/$action',
+    });
+  };
+
+  const handleDeleteVPC = (vpc: VPC) => {
+    navigate({
+      params: { action: 'delete', vpcId: vpc.id },
+      to: '/vpcs/$vpcId/detail/$action',
+    });
+  };
+
+  const onCloseVPCDrawer = () => {
+    navigate({
+      params: { vpcId: vpc?.id ?? -1 },
+      to: '/vpcs/$vpcId',
+    });
+  };
+
   const [showFullDescription, setShowFullDescription] = React.useState(false);
 
   if (isLoading) {
@@ -52,10 +92,14 @@ const VPCDetail = () => {
       ? vpc.description
       : truncate(vpc.description, 150);
 
+  const isVPCLKEEnterpriseCluster = getIsVPCLKEEnterpriseCluster(vpc);
+
   const regionLabel =
     regions?.find((r) => r.id === vpc.region)?.label ?? vpc.region;
 
-  const numLinodes = getUniqueLinodesFromSubnets(vpc.subnets);
+  const numResources = flags.isNodebalancerVPCEnabled
+    ? getUniqueResourcesFromSubnets(vpc.subnets)
+    : getUniqueLinodesFromSubnets(vpc.subnets);
 
   const summaryData = [
     [
@@ -64,8 +108,8 @@ const VPCDetail = () => {
         value: vpc.subnets.length,
       },
       {
-        label: 'Linodes',
-        value: numLinodes,
+        label: flags.isNodebalancerVPCEnabled ? 'Resources' : 'Linodes',
+        value: numResources,
       },
     ],
     [
@@ -113,7 +157,7 @@ const VPCDetail = () => {
           <Typography
             sx={(theme) => ({
               color: theme.textColors.headlineStatic,
-              fontFamily: theme.font.bold,
+              font: theme.font.bold,
               fontSize: '1rem',
               padding: '6px 16px',
             })}
@@ -122,10 +166,10 @@ const VPCDetail = () => {
           </Typography>
         </Box>
         <Box display="flex" justifyContent="end">
-          <StyledActionButton onClick={() => setEditVPCDrawerOpen(true)}>
+          <StyledActionButton onClick={() => handleEditVPC(vpc)}>
             Edit
           </StyledActionButton>
-          <StyledActionButton onClick={() => setDeleteVPCDialogOpen(true)}>
+          <StyledActionButton onClick={() => handleDeleteVPC(vpc)}>
             Delete
           </StyledActionButton>
         </Box>
@@ -136,15 +180,11 @@ const VPCDetail = () => {
             return (
               <Box key={col[0].label} paddingRight={6}>
                 <StyledSummaryTextTypography>
-                  <span style={{ fontFamily: theme.font.bold }}>
-                    {col[0].label}
-                  </span>{' '}
+                  <span style={{ font: theme.font.bold }}>{col[0].label}</span>{' '}
                   {col[0].value}
                 </StyledSummaryTextTypography>
                 <StyledSummaryTextTypography>
-                  <span style={{ fontFamily: theme.font.bold }}>
-                    {col[1].label}
-                  </span>{' '}
+                  <span style={{ font: theme.font.bold }}>{col[1].label}</span>{' '}
                   {col[1].value}
                 </StyledSummaryTextTypography>
               </Box>
@@ -154,7 +194,7 @@ const VPCDetail = () => {
         {vpc.description.length > 0 && (
           <StyledDescriptionBox display="flex" flex={1}>
             <Typography>
-              <span style={{ fontFamily: theme.font.bold, paddingRight: 8 }}>
+              <span style={{ font: theme.font.bold, paddingRight: 8 }}>
                 Description
               </span>{' '}
             </Typography>
@@ -162,6 +202,7 @@ const VPCDetail = () => {
               {description}{' '}
               {description.length > 150 && (
                 <StyledLinkButton
+                  data-testid="show-description-button"
                   onClick={() => setShowFullDescription((show) => !show)}
                   sx={{ fontSize: '0.875rem' }}
                 >
@@ -173,35 +214,49 @@ const VPCDetail = () => {
         )}
       </StyledBox>
       <VPCDeleteDialog
-        id={vpc.id}
-        label={vpc.label}
-        onClose={() => setDeleteVPCDialogOpen(false)}
-        open={deleteVPCDialogOpen}
+        isFetching={isFetchingVPC}
+        onClose={onCloseVPCDrawer}
+        open={params.action === 'delete'}
+        vpc={vpc}
+        vpcError={error}
       />
       <VPCEditDrawer
-        onClose={() => setEditVPCDrawerOpen(false)}
-        open={editVPCDrawerOpen}
+        isFetching={isFetchingVPC}
+        onClose={onCloseVPCDrawer}
+        open={params.action === 'edit'}
         vpc={vpc}
+        vpcError={error}
       />
+      {isVPCLKEEnterpriseCluster && (
+        <DismissibleBanner
+          bgcolor={theme.palette.background.paper}
+          preferenceKey={`vpc-${vpc.id}`}
+          spacingTop={24}
+          style={{ padding: '8px 16px' }}
+          variant="info"
+        >
+          <Typography>{LKE_ENTERPRISE_AUTOGEN_VPC_WARNING}</Typography>
+        </DismissibleBanner>
+      )}
       <Box
+        padding={`${theme.spacingFunction(16)} ${theme.spacingFunction(8)}`}
         sx={(theme) => ({
           [theme.breakpoints.up('lg')]: {
             paddingLeft: 0,
           },
         })}
-        padding={`${theme.spacing(2)} ${theme.spacing()}`}
       >
         <Typography sx={{ fontSize: '1rem' }} variant="h2">
           Subnets ({vpc.subnets.length})
         </Typography>
       </Box>
-      <VPCSubnetsTable vpcId={vpc.id} vpcRegion={vpc.region} />
+      <VPCSubnetsTable
+        isVPCLKEEnterpriseCluster={isVPCLKEEnterpriseCluster}
+        vpcId={vpc.id}
+        vpcRegion={vpc.region}
+      />
     </>
   );
 };
-
-export const vpcDetailLazyRoute = createLazyRoute('/vpcs/$vpcId')({
-  component: VPCDetail,
-});
 
 export default VPCDetail;

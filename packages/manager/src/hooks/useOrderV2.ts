@@ -1,15 +1,12 @@
+import { useMutatePreferences, usePreferences } from '@linode/queries';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
 import { sortData } from 'src/components/OrderBy';
-import {
-  useMutatePreferences,
-  usePreferences,
-} from 'src/queries/profile/preferences';
 
-import type { RoutePaths } from '@tanstack/react-router';
-import type { MigrationRouteTree } from 'src/routes';
-import type { OrderSetWithPrefix } from 'src/types/ManagerPreferences';
+import type { OrderSetWithPrefix } from '@linode/utilities';
+import type { LinkProps, RegisteredRouter } from '@tanstack/react-router';
+import type { TableSearchParams } from 'src/routes/types';
 
 export type Order = 'asc' | 'desc';
 
@@ -32,7 +29,7 @@ export interface UseOrderV2Props<T> {
       order: Order;
       orderBy: string;
     };
-    from: RoutePaths<MigrationRouteTree>;
+    from: LinkProps['to'];
   };
   /**
    * preference key to save to user preferences
@@ -112,8 +109,8 @@ export const useOrderV2 = <T>({
           orderBy: newOrderBy,
         };
 
-    navigate({
-      search: (prev) => ({
+    navigate<RegisteredRouter, string, string>({
+      search: (prev: TableSearchParams) => ({
         ...prev,
         ...searchParams,
         ...urlData,

@@ -1,16 +1,20 @@
 import { getSSLFields } from '@linode/api-v4/lib/databases/databases';
-import { Button, CircleProgress, TooltipIcon, Typography } from '@linode/ui';
-import Grid from '@mui/material/Unstable_Grid2/Grid2';
+import { useDatabaseCredentialsQuery } from '@linode/queries';
+import { Box, CircleProgress, TooltipIcon, Typography } from '@linode/ui';
+import { downloadFile } from '@linode/utilities';
+import Grid from '@mui/material/Grid';
+import { Button } from 'akamai-cds-react-components';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 
 import DownloadIcon from 'src/assets/icons/lke-download.svg';
 import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
+import { Link } from 'src/components/Link';
 import { DB_ROOT_USERNAME } from 'src/constants';
-import { useDatabaseCredentialsQuery } from 'src/queries/databases/databases';
-import { downloadFile } from 'src/utilities/downloadFile';
+import { useFlags } from 'src/hooks/useFlags';
 import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
 
+import { getReadOnlyHost, isDefaultDatabase } from '../../utilities';
 import {
   StyledGridContainer,
   StyledLabelTypography,
@@ -19,6 +23,7 @@ import {
 import { useStyles } from './DatabaseSummaryConnectionDetails.style';
 
 import type { Database, SSLFields } from '@linode/api-v4/lib/databases/types';
+import type { Theme } from '@mui/material/styles';
 
 interface Props {
   database: Database;
@@ -36,12 +41,14 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
   const { database } = props;
   const { classes } = useStyles();
   const { enqueueSnackbar } = useSnackbar();
+  const flags = useFlags();
   const isLegacy = database.platform !== 'rdbms-default';
+  const displayConnectionType =
+    flags.databaseVpc && isDefaultDatabase(database);
 
   const [showCredentials, setShowPassword] = React.useState<boolean>(false);
-  const [isCACertDownloading, setIsCACertDownloading] = React.useState<boolean>(
-    false
-  );
+  const [isCACertDownloading, setIsCACertDownloading] =
+    React.useState<boolean>(false);
 
   const {
     data: credentials,
@@ -54,8 +61,8 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
     database.platform === 'rdbms-default'
       ? 'akmadmin'
       : database.engine === 'postgresql'
-      ? 'linpostgres'
-      : DB_ROOT_USERNAME;
+        ? 'linpostgres'
+        : DB_ROOT_USERNAME;
 
   const password =
     showCredentials && credentials ? credentials?.password : '••••••••••';
@@ -109,12 +116,10 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
 
   const disableShowBtn = ['failed', 'provisioning'].includes(database.status);
   const disableDownloadCACertificateBtn = database.status === 'provisioning';
-  const readOnlyHostValue =
-    database?.hosts?.standby ?? database?.hosts?.secondary ?? '';
 
   const readOnlyHost = () => {
     const defaultValue = isLegacy ? '-' : 'N/A';
-    const value = readOnlyHostValue ? readOnlyHostValue : defaultValue;
+    const value = getReadOnlyHost(database) || defaultValue;
     const hasHost = value !== '-' && value !== 'N/A';
     return (
       <>
@@ -124,7 +129,7 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
         )}
         {isLegacy && (
           <TooltipIcon
-            status="help"
+            status="info"
             sxTooltipIcon={sxTooltipIcon}
             text={privateHostCopy}
           />
@@ -132,7 +137,7 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
         {!isLegacy && hasHost && (
           <TooltipIcon
             componentsProps={hostTooltipComponentProps}
-            status="help"
+            status="info"
             sxTooltipIcon={sxTooltipIcon}
             text={HOST_TOOLTIP_COPY}
           />
@@ -145,8 +150,10 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
     return (
       <Button
         className={classes.showBtn}
+        data-testid="show-hide-credentials"
         disabled={disableShowBtn}
         onClick={handleClick}
+        variant="link"
       >
         {btnText}
       </Button>
@@ -157,17 +164,19 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
     <>
       <Button
         className={classes.caCertBtn}
+        data-testid="download-ca-certificate"
         disabled={disableDownloadCACertificateBtn}
-        loading={isCACertDownloading}
         onClick={handleDownloadCACertificate}
+        processing={isCACertDownloading}
+        variant="link"
       >
         <DownloadIcon />
         Download CA Certificate
       </Button>
       {disableDownloadCACertificateBtn && (
-        <span className="tooltipIcon">
+        <span className={classes.tooltipIcon}>
           <TooltipIcon
-            status="help"
+            status="info"
             sxTooltipIcon={sxTooltipIcon}
             text="Your Database Cluster is currently provisioning."
           />
@@ -181,17 +190,25 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
       <Typography className={classes.header} variant="h3">
         Connection Details
       </Typography>
-      <StyledGridContainer container lg={7} md={10} spacing={0}>
-        <Grid md={4} xs={3}>
+      <StyledGridContainer container size={{ lg: 7, md: 10 }} spacing={0}>
+        <Grid
+          size={{
+            md: 4,
+            xs: 3,
+          }}
+        >
           <StyledLabelTypography>Username</StyledLabelTypography>
         </Grid>
-        <StyledValueGrid md={8} xs={9}>
-          {username}
-        </StyledValueGrid>
-        <Grid md={4} xs={3}>
+        <StyledValueGrid size={{ md: 8, xs: 9 }}>{username}</StyledValueGrid>
+        <Grid
+          size={{
+            md: 4,
+            xs: 3,
+          }}
+        >
           <StyledLabelTypography>Password</StyledLabelTypography>
         </Grid>
-        <StyledValueGrid md={8} xs={9}>
+        <StyledValueGrid size={{ md: 8, xs: 9 }}>
           {password}
           {showCredentials && credentialsLoading ? (
             <div className={classes.progressCtn}>
@@ -212,13 +229,13 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
           )}
           {disableShowBtn && (
             <TooltipIcon
+              status="info"
+              sxTooltipIcon={sxTooltipIcon}
               text={
                 database.status === 'provisioning'
                   ? 'Your Database Cluster is currently provisioning.'
                   : 'Your root password is unavailable when your Database Cluster has failed.'
               }
-              status="help"
-              sxTooltipIcon={sxTooltipIcon}
             />
           )}
           {showCredentials && credentials && (
@@ -228,16 +245,26 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
             />
           )}
         </StyledValueGrid>
-        <Grid md={4} xs={3}>
+        <Grid
+          size={{
+            md: 4,
+            xs: 3,
+          }}
+        >
           <StyledLabelTypography>Database name</StyledLabelTypography>
         </Grid>
-        <StyledValueGrid md={8} xs={9}>
+        <StyledValueGrid size={{ md: 8, xs: 9 }}>
           {isLegacy ? database.engine : 'defaultdb'}
         </StyledValueGrid>
-        <Grid md={4} xs={3}>
+        <Grid
+          size={{
+            md: 4,
+            xs: 3,
+          }}
+        >
           <StyledLabelTypography>Host</StyledLabelTypography>
         </Grid>
-        <StyledValueGrid md={8} xs={9}>
+        <StyledValueGrid size={{ md: 8, xs: 9 }}>
           {database.hosts?.primary ? (
             <>
               {database.hosts?.primary}
@@ -248,7 +275,7 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
               {!isLegacy && (
                 <TooltipIcon
                   componentsProps={hostTooltipComponentProps}
-                  status="help"
+                  status="info"
                   sxTooltipIcon={sxTooltipIcon}
                   text={HOST_TOOLTIP_COPY}
                 />
@@ -262,26 +289,67 @@ export const DatabaseSummaryConnectionDetails = (props: Props) => {
             </Typography>
           )}
         </StyledValueGrid>
-        <Grid md={4} xs={3}>
+        <Grid
+          size={{
+            md: 4,
+            xs: 3,
+          }}
+        >
           <StyledLabelTypography>
             {isLegacy ? 'Private Network Host' : 'Read-only Host'}
           </StyledLabelTypography>
         </Grid>
-        <StyledValueGrid md={8} xs={9}>
+        <StyledValueGrid size={{ md: 8, xs: 9 }}>
           {readOnlyHost()}
         </StyledValueGrid>
-        <Grid md={4} xs={3}>
+        <Grid
+          size={{
+            md: 4,
+            xs: 3,
+          }}
+        >
           <StyledLabelTypography>Port</StyledLabelTypography>
         </Grid>
-        <StyledValueGrid md={8} xs={9}>
+        <StyledValueGrid size={{ md: 8, xs: 9 }}>
           {database.port}
         </StyledValueGrid>
-        <Grid md={4} xs={3}>
+        <Grid
+          size={{
+            md: 4,
+            xs: 3,
+          }}
+        >
           <StyledLabelTypography>SSL</StyledLabelTypography>
         </Grid>
-        <StyledValueGrid md={8} xs={9}>
+        <StyledValueGrid size={{ md: 8, xs: 9 }}>
           {database.ssl_connection ? 'ENABLED' : 'DISABLED'}
         </StyledValueGrid>
+        {displayConnectionType && (
+          <>
+            <Grid
+              size={{
+                md: 4,
+                xs: 3,
+              }}
+            >
+              <StyledLabelTypography>Connection Type</StyledLabelTypography>
+            </Grid>
+            <StyledValueGrid size={{ md: 8, xs: 9 }}>
+              <Box
+                sx={(theme: Theme) => ({
+                  marginRight: theme.spacingFunction(20),
+                })}
+              >
+                {database?.private_network?.vpc_id ? 'VPC' : 'Public'}
+              </Box>
+              <Link
+                to={`/databases/${database?.engine}/${database?.id}/networking`}
+              >
+                View Details
+              </Link>
+            </StyledValueGrid>
+          </>
+        )}
       </StyledGridContainer>
       <div className={classes.actionBtnsCtn}>
         {database.ssl_connection ? caCertificateJSX : null}

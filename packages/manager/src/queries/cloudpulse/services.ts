@@ -4,19 +4,24 @@ import { queryFactory } from './queries';
 
 import type {
   APIError,
+  Filter,
   JWEToken,
   JWETokenPayLoad,
   MetricDefinition,
   ResourcePage,
+  Service,
   ServiceTypesList,
 } from '@linode/api-v4';
+import type { Params } from '@linode/api-v4';
 
 export const useGetCloudPulseMetricDefinitionsByServiceType = (
   serviceType: string | undefined,
-  enabled: boolean
+  enabled: boolean,
+  params?: Params,
+  filter?: Filter
 ) => {
   return useQuery<ResourcePage<MetricDefinition>, APIError[]>({
-    ...queryFactory.metricsDefinitons(serviceType),
+    ...queryFactory.metricsDefinitons(serviceType, params, filter),
     enabled,
   });
 };
@@ -37,6 +42,16 @@ export const useCloudPulseJWEtokenQuery = (
 export const useCloudPulseServiceTypes = (enabled: boolean) => {
   return useQuery<ServiceTypesList, APIError[]>({
     ...queryFactory.lists._ctx.serviceTypes,
+    enabled,
+  });
+};
+
+export const useCloudPulseServiceByServiceType = (
+  serviceType: string,
+  enabled: boolean = false
+) => {
+  return useQuery<Service, APIError[]>({
+    ...queryFactory.serviceByServiceType(serviceType),
     enabled,
   });
 };

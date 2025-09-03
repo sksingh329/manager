@@ -1,14 +1,15 @@
 import { Autocomplete, Box } from '@linode/ui';
-import { Grid } from '@mui/material';
+import { GridLegacy } from '@mui/material';
 import React from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import type { FieldPathByValue } from 'react-hook-form';
 
-import { DimensionOperatorOptions } from '../../constants';
+import { dimensionOperatorOptions } from '../../constants';
 import { ClearIconButton } from './ClearIconButton';
+import { ValueFieldRenderer } from './DimensionFilterValue/ValueFieldRenderer';
 
 import type { CreateAlertDefinitionForm, DimensionFilterForm } from '../types';
 import type { Dimension, DimensionFilterOperatorType } from '@linode/api-v4';
-import type { FieldPathByValue } from 'react-hook-form';
 
 interface DimensionFilterFieldProps {
   /**
@@ -50,13 +51,15 @@ export const DimensionFilterField = (props: DimensionFilterFieldProps) => {
       operator: null,
       value: null,
     };
-    setValue(
-      name,
-      operation === 'selectOption'
-        ? { ...fieldValue, dimension_label: selected.value }
-        : fieldValue,
-      { shouldValidate: true }
-    );
+    if (operation === 'selectOption') {
+      setValue(`${name}.dimension_label`, selected.value, {
+        shouldValidate: true,
+      });
+      setValue(`${name}.operator`, fieldValue.operator);
+      setValue(`${name}.value`, fieldValue.value);
+    } else {
+      setValue(name, fieldValue);
+    }
   };
 
   const dimensionFieldWatcher = useWatch({
@@ -64,29 +67,45 @@ export const DimensionFilterField = (props: DimensionFilterFieldProps) => {
     name: `${name}.dimension_label`,
   });
 
+  const dimensionOperatorWatcher = useWatch({
+    control,
+    name: `${name}.operator`,
+  });
+
+  const entities = useWatch({
+    control,
+    name: 'entity_ids',
+  });
+  const serviceType = useWatch({
+    control,
+    name: 'serviceType',
+  });
   const selectedDimension =
     dimensionOptions && dimensionFieldWatcher
-      ? dimensionOptions.find(
+      ? (dimensionOptions.find(
           (dim) => dim.dimension_label === dimensionFieldWatcher
-        ) ?? null
+        ) ?? null)
       : null;
 
-  const valueOptions = () => {
-    if (selectedDimension !== null) {
-      return selectedDimension.values.map((val) => ({
-        label: val,
-        value: val,
-      }));
-    }
-    return [];
-  };
-
   return (
-    <Grid container data-testid={`${name}-id`} gap={2}>
-      <Grid item md={3} xs={12}>
+    <GridLegacy
+      container
+      data-testid={`${name}-id`}
+      flexWrap="wrap"
+      spacing={2}
+    >
+      <GridLegacy item md={3} xs={12}>
         <Controller
+          control={control}
+          name={`${name}.dimension_label`}
           render={({ field, fieldState }) => (
             <Autocomplete
+              data-qa-dimension-filter={`${name}-data-field`}
+              data-testid="data-field"
+              disabled={dataFieldDisabled}
+              errorText={fieldState.error?.message}
+              label="Data Field"
+              onBlur={field.onBlur}
               onChange={(
                 _,
                 newValue: { label: string; value: string },
@@ -94,28 +113,29 @@ export const DimensionFilterField = (props: DimensionFilterFieldProps) => {
               ) => {
                 handleDataFieldChange(newValue, operation);
               }}
+              options={dataFieldOptions}
+              placeholder="Select a Data Field"
               value={
                 dataFieldOptions.find(
                   (option) => option.value === field.value
                 ) ?? null
               }
-              data-testid="data-field"
-              disabled={dataFieldDisabled}
-              errorText={fieldState.error?.message}
-              label="Data Field"
-              onBlur={field.onBlur}
-              options={dataFieldOptions}
-              placeholder="Select a Data field"
             />
           )}
-          control={control}
-          name={`${name}.dimension_label`}
         />
-      </Grid>
-      <Grid item md={2} xs={12}>
+      </GridLegacy>
+      <GridLegacy item lg={3} md={4} xs={12}>
         <Controller
+          control={control}
+          name={`${name}.operator`}
           render={({ field, fieldState }) => (
             <Autocomplete
+              data-qa-dimension-filter={`${name}-operator`}
+              data-testid="operator"
+              disabled={!dimensionFieldWatcher}
+              errorText={fieldState.error?.message}
+              label="Operator"
+              onBlur={field.onBlur}
               onChange={(
                 _,
                 newValue: { label: string; value: DimensionFilterOperatorType },
@@ -124,63 +144,45 @@ export const DimensionFilterField = (props: DimensionFilterFieldProps) => {
                 field.onChange(
                   operation === 'selectOption' ? newValue.value : null
                 );
+                setValue(`${name}.value`, null);
               }}
+              options={dimensionOperatorOptions}
+              placeholder="Select an Operator"
               value={
-                DimensionOperatorOptions.find(
+                dimensionOperatorOptions.find(
                   (option) => option.value === field.value
                 ) ?? null
               }
-              data-testid="operator"
-              errorText={fieldState.error?.message}
-              label="Operator"
-              onBlur={field.onBlur}
-              options={DimensionOperatorOptions}
             />
           )}
-          control={control}
-          name={`${name}.operator`}
         />
-      </Grid>
-      <Grid item md={3} xs={12}>
-        <Box display="flex" gap={2}>
-          <Controller
-            render={({ field, fieldState }) => (
-              <Autocomplete
-                isOptionEqualToValue={(option, value) =>
-                  option.value === value.value
-                }
-                onChange={(
-                  _,
-                  selected: { label: string; value: string },
-                  operation
-                ) => {
-                  field.onChange(
-                    operation === 'selectOption' ? selected.value : null
-                  );
-                }}
-                value={
-                  valueOptions().find(
-                    (option) => option.value === field.value
-                  ) ?? null
-                }
-                data-testid="value"
-                disabled={!dimensionFieldWatcher}
-                errorText={fieldState.error?.message}
-                label="Value"
-                onBlur={field.onBlur}
-                options={valueOptions()}
-                placeholder="Select a Value"
-                sx={{ flex: 1 }}
-              />
-            )}
-            control={control}
-            name={`${name}.value`}
-          />
-          <Box alignContent="center" mt={5}>
-            <ClearIconButton handleClick={onFilterDelete} />
-          </Box>
+      </GridLegacy>
+      <GridLegacy item lg={3} md={4} xs={12}>
+        <Controller
+          control={control}
+          name={`${name}.value`}
+          render={({ field, fieldState }) => (
+            <ValueFieldRenderer
+              dimensionLabel={dimensionFieldWatcher}
+              disabled={!dimensionFieldWatcher}
+              entities={entities}
+              errorText={fieldState.error?.message}
+              name={name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              operator={dimensionOperatorWatcher}
+              serviceType={serviceType}
+              value={field.value}
+              values={selectedDimension?.values ?? []}
+            />
+          )}
+        />
+      </GridLegacy>
+      <GridLegacy item>
+        <Box alignContent="flex-start" mt={6}>
+          <ClearIconButton handleClick={onFilterDelete} />
         </Box>
-      </Grid>
-    </Grid>
+      </GridLegacy>
+    </GridLegacy>
   );
 };

@@ -1,22 +1,23 @@
+import { linodeFactory } from '@linode/utilities';
+import { imageFactory } from '@src/factories';
+import { mockGetAllImages } from 'support/intercepts/images';
+import { ui } from 'support/ui';
 import { apiMatcher } from 'support/util/intercepts';
 import { randomLabel, randomNumber, randomString } from 'support/util/random';
-import { mockGetAllImages } from 'support/intercepts/images';
-import { imageFactory, linodeFactory } from '@src/factories';
 import { chooseRegion } from 'support/util/regions';
-import { ui } from 'support/ui';
 
 const region = chooseRegion();
 
 const mockLinode = linodeFactory.build({
-  region: region.id,
   id: 123456,
+  region: region.id,
 });
 
 const mockImage = imageFactory.build({
-  label: randomLabel(),
-  is_public: false,
   eol: null,
   id: `private/${randomNumber()}`,
+  is_public: false,
+  label: randomLabel(),
 });
 
 const createLinodeWithImageMock = (url: string, preselectedImage: boolean) => {
@@ -79,7 +80,7 @@ describe('create linode from image, mocked data', () => {
     ];
 
     mockGetAllImages([]).as('getImages');
-    cy.visitWithLogin('/linodes/create?type=Images');
+    cy.visitWithLogin('/linodes/create/images');
     cy.wait('@getImages');
     noImagesMessages.forEach((message: string) => {
       cy.findByText(message, { exact: false }).should('be.visible');
@@ -87,12 +88,12 @@ describe('create linode from image, mocked data', () => {
   });
 
   it('creates linode from image on images tab', () => {
-    createLinodeWithImageMock('/linodes/create?type=Images', false);
+    createLinodeWithImageMock('/linodes/create/images', false);
   });
 
   it('creates linode from preselected image on images tab', () => {
     createLinodeWithImageMock(
-      `/linodes/create/?type=Images&imageID=${mockImage.id}`,
+      `/linodes/create/images?imageID=${mockImage.id}`,
       true
     );
   });

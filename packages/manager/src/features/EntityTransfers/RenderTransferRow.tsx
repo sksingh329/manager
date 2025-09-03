@@ -1,12 +1,11 @@
 import { StyledLinkButton } from '@linode/ui';
+import { Hidden } from '@linode/ui';
+import { capitalize, pluralize } from '@linode/utilities';
 import * as React from 'react';
 
 import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
-import { Hidden } from 'src/components/Hidden';
 import { MaskableText } from 'src/components/MaskableText/MaskableText';
 import { TableCell } from 'src/components/TableCell';
-import { capitalize } from 'src/utilities/capitalize';
-import { pluralize } from 'src/utilities/pluralize';
 
 import {
   StyledCopyTooltip,
@@ -19,8 +18,8 @@ import {
 } from './RenderTransferRow.styles';
 import { TransfersPendingActionMenu } from './TransfersPendingActionMenu';
 
-import type { TransferEntities } from '@linode/api-v4/lib/entity-transfers';
-
+import type { TransfersPermissions } from './TransfersTable';
+import type { TransferEntities } from '@linode/api-v4';
 interface Props {
   created: string;
   entities: TransferEntities;
@@ -30,6 +29,7 @@ interface Props {
     entities: TransferEntities
   ) => void;
   handleTokenClick: (token: string, entities: TransferEntities) => void;
+  permissions?: Record<TransfersPermissions, boolean>;
   status?: string;
   token: string;
   transferType?: 'pending' | 'received' | 'sent';
@@ -45,6 +45,7 @@ export const RenderTransferRow = React.memo((props: Props) => {
     status,
     token,
     transferType,
+    permissions,
   } = props;
 
   const entitiesAndTheirCounts = Object.entries(entities);
@@ -98,6 +99,7 @@ export const RenderTransferRow = React.memo((props: Props) => {
               onCancelClick={() =>
                 handleCancelPendingTransferClick(token, entities)
               }
+              permissions={permissions}
             />
           </TableCell>
         </>

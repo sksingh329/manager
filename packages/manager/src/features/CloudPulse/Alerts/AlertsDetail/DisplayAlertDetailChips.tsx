@@ -1,4 +1,4 @@
-import { Grid, useTheme } from '@mui/material';
+import { GridLegacy, useTheme } from '@mui/material';
 import React from 'react';
 
 import { getAlertChipBorderRadius } from '../Utils/utils';
@@ -49,27 +49,31 @@ export const DisplayAlertDetailChips = React.memo(
       : [];
     const theme = useTheme();
     return (
-      <Grid container item spacing={1}>
+      <GridLegacy container data-qa-item={label} item spacing={1}>
         {chipValues.map((value, index) => (
           <React.Fragment key={`${label}_${index}`}>
-            <Grid item md={labelGridColumns} xs={12}>
+            <GridLegacy item md={labelGridColumns} xs={12}>
               {index === 0 && (
-                <StyledAlertTypography fontFamily={theme.font.bold}>
+                <StyledAlertTypography sx={{ font: theme.font.bold }}>
                   {label}:
                 </StyledAlertTypography>
               )}
-            </Grid>
-            <Grid item md={valueGridColumns} xs={12}>
-              <Grid
+            </GridLegacy>
+            <GridLegacy item md={valueGridColumns} xs={12}>
+              <GridLegacy
                 container
-                flexWrap={mergeChips ? 'nowrap' : 'wrap'}
-                gap={mergeChips ? 0 : 1}
+                sx={{
+                  flexWrap: mergeChips ? 'nowrap' : 'wrap',
+                  gap: mergeChips ? 0 : 1,
+                }}
               >
                 {value.map((label, index) => (
-                  <Grid
+                  <GridLegacy
                     item
                     key={index}
-                    marginLeft={mergeChips && index > 0 ? -1 : 0}
+                    sx={{
+                      marginLeft: mergeChips && index > 0 ? -1 : 0,
+                    }}
                   >
                     <StyledAlertChip
                       borderRadius={getAlertChipBorderRadius({
@@ -78,16 +82,17 @@ export const DisplayAlertDetailChips = React.memo(
                         length: value.length,
                         mergeChips,
                       })}
+                      data-qa-chip={label}
                       label={label}
                       variant="outlined"
                     />
-                  </Grid>
+                  </GridLegacy>
                 ))}
-              </Grid>
-            </Grid>
+              </GridLegacy>
+            </GridLegacy>
           </React.Fragment>
         ))}
-      </Grid>
+      </GridLegacy>
     );
   }
 );

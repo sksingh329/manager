@@ -1,11 +1,19 @@
-import { Box, IconButton, Notice, Paper, Stack, Typography } from '@linode/ui';
+import { useStackScriptQuery } from '@linode/queries';
+import {
+  Box,
+  IconButton,
+  Notice,
+  Paper,
+  Stack,
+  Typography,
+  useTheme,
+} from '@linode/ui';
 import React from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
 import Info from 'src/assets/icons/info.svg';
 import { ShowMoreExpansion } from 'src/components/ShowMoreExpansion';
 import { oneClickApps } from 'src/features/OneClickApps/oneClickApps';
-import { useStackScriptQuery } from 'src/queries/stackscripts';
 
 import { getMarketplaceAppLabel } from '../../Marketplace/utilities';
 import { UserDefinedFieldInput } from './UserDefinedFieldInput';
@@ -24,6 +32,9 @@ interface Props {
 }
 
 export const UserDefinedFields = ({ onOpenDetailsDrawer }: Props) => {
+  const theme = useTheme();
+  const isDarkMode = theme.name === 'dark';
+
   const { control, formState } = useFormContext<CreateLinodeRequest>();
 
   const [stackscriptId, stackscriptData] = useWatch({
@@ -41,9 +52,8 @@ export const UserDefinedFields = ({ onOpenDetailsDrawer }: Props) => {
 
   const userDefinedFields = stackscript?.user_defined_fields;
 
-  const [requiredUDFs, optionalUDFs] = separateUDFsByRequiredStatus(
-    userDefinedFields
-  );
+  const [requiredUDFs, optionalUDFs] =
+    separateUDFsByRequiredStatus(userDefinedFields);
 
   const clusterSize = stackscriptData?.['cluster_size'];
 
@@ -54,6 +64,10 @@ export const UserDefinedFields = ({ onOpenDetailsDrawer }: Props) => {
       ? oneClickApps[stackscriptId]
       : undefined;
 
+  const iconUrl = isDarkMode
+    ? `/assets/white/${marketplaceAppInfo?.logo_url}`
+    : `/assets/${marketplaceAppInfo?.logo_url}`;
+
   if (!stackscript || userDefinedFields?.length === 0) {
     return null;
   }
@@ -63,11 +77,7 @@ export const UserDefinedFields = ({ onOpenDetailsDrawer }: Props) => {
       <Stack spacing={2}>
         {marketplaceAppInfo ? (
           <Stack alignItems="center" direction="row" gap={2}>
-            <img
-              alt={`${stackscript.label} logo`}
-              height={60}
-              src={`/assets/${marketplaceAppInfo.logo_url}`}
-            />
+            <img alt={`${stackscript.label} logo`} height={50} src={iconUrl} />
             <Typography variant="h2">
               {getMarketplaceAppLabel(stackscript.label)} Setup
             </Typography>

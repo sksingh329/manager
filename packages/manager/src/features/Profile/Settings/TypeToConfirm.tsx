@@ -1,10 +1,6 @@
+import { useMutatePreferences, usePreferences } from '@linode/queries';
 import { FormControlLabel, Paper, Toggle, Typography } from '@linode/ui';
 import React from 'react';
-
-import {
-  useMutatePreferences,
-  usePreferences,
-} from 'src/queries/profile/preferences';
 
 export const TypeToConfirm = () => {
   // Type-to-confirm is enabled by default when no preference is set.
@@ -26,16 +22,16 @@ export const TypeToConfirm = () => {
       <FormControlLabel
         control={
           <Toggle
+            checked={!!typeToConfirmPreference}
             onChange={(_, checked) =>
               updatePreferences({ type_to_confirm: checked })
             }
-            checked={typeToConfirmPreference}
           />
         }
+        disabled={isLoading}
         label={`Type-to-confirm is ${
           typeToConfirmPreference ? 'enabled' : 'disabled'
         }`}
-        disabled={isLoading}
       />
     </Paper>
   );

@@ -1,4 +1,8 @@
 import {
+  useNodeBalancerQuery,
+  useNodebalancerUpdateMutation,
+} from '@linode/queries';
+import {
   Accordion,
   Button,
   FormHelperText,
@@ -6,28 +10,21 @@ import {
   TextField,
 } from '@linode/ui';
 import { useTheme } from '@mui/material';
-import { createLazyRoute } from '@tanstack/react-router';
+import { useMatch, useNavigate, useParams } from '@tanstack/react-router';
 import * as React from 'react';
-import { useParams } from 'react-router-dom';
 
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
-import {
-  useNodeBalancerQuery,
-  useNodebalancerUpdateMutation,
-} from 'src/queries/nodebalancers';
-import { useNodeBalancersFirewallsQuery } from 'src/queries/nodebalancers';
 
 import { NodeBalancerDeleteDialog } from '../NodeBalancerDeleteDialog';
 import { NodeBalancerFirewalls } from './NodeBalancerFirewalls';
 
 export const NodeBalancerSettings = () => {
   const theme = useTheme();
-  const { nodeBalancerId } = useParams<{ nodeBalancerId: string }>();
-  const id = Number(nodeBalancerId);
-  const { data: nodebalancer } = useNodeBalancerQuery(id);
-  const { data: attachedFirewallData } = useNodeBalancersFirewallsQuery(id);
-  const displayFirewallInfoText = attachedFirewallData?.results === 0;
+  const navigate = useNavigate();
+  const match = useMatch({ strict: false });
+  const { id } = useParams({ strict: false });
+  const { data: nodebalancer } = useNodeBalancerQuery(Number(id), Boolean(id));
 
   const isNodeBalancerReadOnly = useIsResourceRestricted({
     grantLevel: 'read_only',
@@ -39,23 +36,25 @@ export const NodeBalancerSettings = () => {
     error: labelError,
     isPending: isUpdatingLabel,
     mutateAsync: updateNodeBalancerLabel,
-  } = useNodebalancerUpdateMutation(id);
+  } = useNodebalancerUpdateMutation(Number(id));
 
   const {
     error: throttleError,
     isPending: isUpdatingThrottle,
     mutateAsync: updateNodeBalancerThrottle,
-  } = useNodebalancerUpdateMutation(id);
-
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState<boolean>(
-    false
-  );
+  } = useNodebalancerUpdateMutation(Number(id));
 
   const [label, setLabel] = React.useState(nodebalancer?.label);
 
   const [connectionThrottle, setConnectionThrottle] = React.useState(
     nodebalancer?.client_conn_throttle
   );
+
+  const {
+    data: selectedNodeBalancer,
+    isFetching: isFetchingNodeBalancer,
+    error: nodeBalancerError,
+  } = useNodeBalancerQuery(Number(id), !!id);
 
   React.useEffect(() => {
     if (label !== nodebalancer?.label) {
@@ -100,21 +99,18 @@ export const NodeBalancerSettings = () => {
         </Button>
       </Accordion>
       <Accordion defaultExpanded heading="Firewalls">
-        <NodeBalancerFirewalls
-          displayFirewallInfoText={displayFirewallInfoText}
-          nodeBalancerId={id}
-        />
+        <NodeBalancerFirewalls nodeBalancerId={Number(id)} />
       </Accordion>
       <Accordion defaultExpanded heading="Client Connection Throttle">
         <TextField
+          data-qa-connection-throttle
+          disabled={isNodeBalancerReadOnly}
+          errorText={throttleError?.[0].reason}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">/ second</InputAdornment>
             ),
           }}
-          data-qa-connection-throttle
-          disabled={isNodeBalancerReadOnly}
-          errorText={throttleError?.[0].reason}
           label="Connection Throttle"
           onChange={(e) => setConnectionThrottle(Number(e.target.value))}
           placeholder="0"
@@ -126,15 +122,15 @@ export const NodeBalancerSettings = () => {
           to this number per second. 0 to disable.
         </FormHelperText>
         <Button
+          buttonType="primary"
+          data-qa-label-save
+          disabled={connectionThrottle === nodebalancer.client_conn_throttle}
+          loading={isUpdatingThrottle}
           onClick={() =>
             updateNodeBalancerThrottle({
               client_conn_throttle: connectionThrottle,
             })
           }
-          buttonType="primary"
-          data-qa-label-save
-          disabled={connectionThrottle === nodebalancer.client_conn_throttle}
-          loading={isUpdatingThrottle}
           sx={sxButton}
         >
           Save
@@ -145,23 +141,22 @@ export const NodeBalancerSettings = () => {
           buttonType="primary"
           data-testid="delete-nodebalancer"
           disabled={isNodeBalancerReadOnly}
-          onClick={() => setIsDeleteDialogOpen(true)}
+          onClick={() =>
+            navigate({
+              params: { id: String(id) },
+              to: '/nodebalancers/$id/settings/delete',
+            })
+          }
         >
           Delete
         </Button>
       </Accordion>
       <NodeBalancerDeleteDialog
-        id={nodebalancer.id}
-        label={nodebalancer?.label}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        open={isDeleteDialogOpen}
+        isFetching={isFetchingNodeBalancer}
+        nodeBalancerError={nodeBalancerError}
+        open={match.routeId === '/nodebalancers/$id/settings/delete'}
+        selectedNodeBalancer={selectedNodeBalancer}
       />
     </div>
   );
 };
-
-export const nodeBalancerSettingsLazyRoute = createLazyRoute(
-  '/nodebalancers/$nodeBalancerId/settings'
-)({
-  component: NodeBalancerSettings,
-});

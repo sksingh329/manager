@@ -1,21 +1,37 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import { FormHelperText, Notice, Stack, TextField } from '@linode/ui';
-import { createSubnetSchema } from '@linode/validation';
+import {
+  useCreateSubnetMutation,
+  useGrants,
+  useProfile,
+  useVPCQuery,
+} from '@linode/queries';
+import {
+  ActionsPanel,
+  Drawer,
+  FormHelperText,
+  Notice,
+  Select,
+  Stack,
+  TextField,
+} from '@linode/ui';
+import {
+  createSubnetSchemaIPv4,
+  createSubnetSchemaWithIPv6,
+} from '@linode/validation';
 import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
-import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
-import { Drawer } from 'src/components/Drawer';
-import { useGrants, useProfile } from 'src/queries/profile/profile';
-import { useCreateSubnetMutation, useVPCQuery } from 'src/queries/vpcs/vpcs';
+import { useVPCDualStack } from 'src/hooks/useVPCDualStack';
 import {
-  DEFAULT_SUBNET_IPV4_VALUE,
-  RESERVED_IP_NUMBER,
   calculateAvailableIPv4sRFC1918,
+  calculateAvailableIPv6Linodes,
+  DEFAULT_SUBNET_IPV4_VALUE,
   getRecommendedSubnetIPv4,
+  RESERVED_IP_NUMBER,
+  SUBNET_IPV6_PREFIX_LENGTHS,
 } from 'src/utilities/subnets';
 
-import type { CreateSubnetPayload } from '@linode/api-v4';
+import type { CreateSubnetPayload, Subnet } from '@linode/api-v4';
 
 interface Props {
   onClose: () => void;
@@ -34,7 +50,7 @@ export const SubnetCreateDrawer = (props: Props) => {
 
   const recommendedIPv4 = getRecommendedSubnetIPv4(
     DEFAULT_SUBNET_IPV4_VALUE,
-    vpc?.subnets?.map((subnet) => subnet.ipv4 ?? '') ?? []
+    vpc?.subnets?.map((subnet: Subnet) => subnet.ipv4 ?? '') ?? []
   );
 
   const {
@@ -42,6 +58,8 @@ export const SubnetCreateDrawer = (props: Props) => {
     mutateAsync: createSubnet,
     reset: resetRequest,
   } = useCreateSubnetMutation(vpcId);
+
+  const { shouldDisplayIPv6, recommendedIPv6 } = useVPCDualStack(vpc?.ipv6);
 
   const {
     control,
@@ -51,16 +69,22 @@ export const SubnetCreateDrawer = (props: Props) => {
     setError,
     watch,
   } = useForm<CreateSubnetPayload>({
-    defaultValues: {
+    mode: 'onBlur',
+    resolver: yupResolver(
+      shouldDisplayIPv6 ? createSubnetSchemaWithIPv6 : createSubnetSchemaIPv4
+    ),
+    values: {
       ipv4: recommendedIPv4,
+      ipv6: recommendedIPv6,
       label: '',
     },
-    mode: 'onBlur',
-    resolver: yupResolver(createSubnetSchema),
   });
 
   const ipv4 = watch('ipv4');
-  const numberOfAvailableIPs = calculateAvailableIPv4sRFC1918(ipv4 ?? '');
+  const numberOfAvailableIPv4IPs = calculateAvailableIPv4sRFC1918(ipv4 ?? '');
+  const numberOfAvailableIPv4Linodes = numberOfAvailableIPv4IPs
+    ? numberOfAvailableIPv4IPs - RESERVED_IP_NUMBER
+    : 0;
 
   const onCreateSubnet = async (values: CreateSubnetPayload) => {
     try {
@@ -86,18 +110,19 @@ export const SubnetCreateDrawer = (props: Props) => {
       )}
       {userCannotAddSubnet && (
         <Notice
+          spacingBottom={8}
+          spacingTop={16}
           text={
             "You don't have permissions to create a new Subnet. Please contact an account administrator for details."
           }
-          important
-          spacingBottom={8}
-          spacingTop={16}
           variant="error"
         />
       )}
       <form onSubmit={handleSubmit(onCreateSubnet)}>
         <Stack>
           <Controller
+            control={control}
+            name="label"
             render={({ field, fieldState }) => (
               <TextField
                 aria-label="Enter a subnet label"
@@ -110,31 +135,59 @@ export const SubnetCreateDrawer = (props: Props) => {
                 value={field.value}
               />
             )}
-            control={control}
-            name="label"
           />
           <Controller
+            control={control}
+            name="ipv4"
             render={({ field, fieldState }) => (
               <TextField
                 aria-label="Enter an IPv4"
                 disabled={userCannotAddSubnet}
                 errorText={fieldState.error?.message}
-                label="Subnet IP Address Range"
+                label={
+                  shouldDisplayIPv6
+                    ? 'Subnet IPv4 Address Range'
+                    : 'Subnet IP Address Range'
+                }
                 onBlur={field.onBlur}
                 onChange={field.onChange}
                 value={field.value}
               />
             )}
-            control={control}
-            name="ipv4"
           />
-          {numberOfAvailableIPs && (
+          {numberOfAvailableIPv4IPs && !shouldDisplayIPv6 && (
             <FormHelperText>
               Number of Available IP Addresses:{' '}
-              {numberOfAvailableIPs > RESERVED_IP_NUMBER
-                ? (numberOfAvailableIPs - RESERVED_IP_NUMBER).toLocaleString()
+              {numberOfAvailableIPv4IPs > RESERVED_IP_NUMBER
+                ? (
+                    numberOfAvailableIPv4IPs - RESERVED_IP_NUMBER
+                  ).toLocaleString()
                 : 0}
             </FormHelperText>
+          )}
+          {shouldDisplayIPv6 && (
+            <Controller
+              control={control}
+              name="ipv6.0.range"
+              render={({ field, fieldState }) => (
+                <Select
+                  errorText={fieldState.error?.message}
+                  helperText={`Number of Linodes: ${Math.min(
+                    numberOfAvailableIPv4Linodes,
+                    calculateAvailableIPv6Linodes(field.value)
+                  )}`}
+                  label="IPv6 Prefix Length"
+                  onChange={(_, option) => field.onChange(option.value)}
+                  options={SUBNET_IPV6_PREFIX_LENGTHS}
+                  sx={{
+                    width: 140,
+                  }}
+                  value={SUBNET_IPV6_PREFIX_LENGTHS.find(
+                    (option) => option.value === field.value
+                  )}
+                />
+              )}
+            />
           )}
         </Stack>
         <ActionsPanel

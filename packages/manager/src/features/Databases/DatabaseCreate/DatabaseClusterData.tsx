@@ -1,5 +1,6 @@
+import { useIsGeckoEnabled } from '@linode/shared';
 import { Divider, Typography } from '@linode/ui';
-import Grid from '@mui/material/Unstable_Grid2';
+import Grid from '@mui/material/Grid';
 import React from 'react';
 
 import { RegionSelect } from 'src/components/RegionSelect/RegionSelect';
@@ -9,16 +10,15 @@ import {
   StyledTextField,
 } from 'src/features/Databases/DatabaseCreate/DatabaseCreate.style';
 import { DatabaseEngineSelect } from 'src/features/Databases/DatabaseCreate/DatabaseEngineSelect';
+import { useFlags } from 'src/hooks/useFlags';
 import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
 
 import type {
   ClusterSize,
   DatabaseEngine,
   Engine,
-  MySQLReplicationType,
-  PostgresReplicationType,
+  PrivateNetwork,
   Region,
-  ReplicationCommitTypes,
 } from '@linode/api-v4';
 import type { FormikErrors } from 'formik';
 export interface DatabaseCreateValues {
@@ -29,13 +29,8 @@ export interface DatabaseCreateValues {
   cluster_size: ClusterSize;
   engine: Engine;
   label: string;
+  private_network: PrivateNetwork;
   region: string;
-  /** @Deprecated used by rdbms-legacy PostgreSQL only */
-  replication_commit_type?: ReplicationCommitTypes;
-  /** @Deprecated used by rdbms-legacy only */
-  replication_type?: MySQLReplicationType | PostgresReplicationType;
-  /** @Deprecated used by rdbms-legacy only, rdbms-default always uses TLS */
-  ssl_connection?: boolean;
   type: string;
 }
 
@@ -51,6 +46,11 @@ export const DatabaseClusterData = (props: Props) => {
   const isRestricted = useRestrictedGlobalGrantCheck({
     globalGrantType: 'add_databases',
   });
+  const flags = useFlags();
+  const { isGeckoLAEnabled } = useIsGeckoEnabled(
+    flags.gecko2?.enabled,
+    flags.gecko2?.la
+  );
 
   const labelToolTip = (
     <StyledLabelTooltip>
@@ -93,6 +93,7 @@ export const DatabaseClusterData = (props: Props) => {
           disableClearable
           disabled={isRestricted}
           errorText={errors.region}
+          isGeckoLAEnabled={isGeckoLAEnabled}
           onChange={(e, region) => onChange('region', region.id)}
           regions={regionsData}
           value={values.region}

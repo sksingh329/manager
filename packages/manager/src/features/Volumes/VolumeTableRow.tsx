@@ -1,16 +1,17 @@
+import { useNotificationsQuery, useRegionsQuery } from '@linode/queries';
 import { Box, Chip, Typography } from '@linode/ui';
+import { Hidden } from '@linode/ui';
+import { getFormattedStatus } from '@linode/utilities';
+import { useNavigate } from '@tanstack/react-router';
 import * as React from 'react';
-// eslint-disable-next-line no-restricted-imports
-import { Link, useHistory } from 'react-router-dom';
 import { makeStyles } from 'tss-react/mui';
 
-import { Hidden } from 'src/components/Hidden';
+import { Link } from 'src/components/Link';
 import { StatusIcon } from 'src/components/StatusIcon/StatusIcon';
 import { TableCell } from 'src/components/TableCell';
 import { TableRow } from 'src/components/TableRow';
-import { useNotificationsQuery } from 'src/queries/account/notifications';
+import { useFlags } from 'src/hooks/useFlags';
 import { useInProgressEvents } from 'src/queries/events/events';
-import { useRegionsQuery } from 'src/queries/regions/regions';
 
 import { HighPerformanceVolumeIcon } from '../Linodes/HighPerformanceVolumeIcon';
 import {
@@ -48,11 +49,12 @@ export const VolumeTableRow = React.memo((props: Props) => {
     volume,
   } = props;
 
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const { data: regions } = useRegionsQuery();
   const { data: notifications } = useNotificationsQuery();
   const { data: inProgressEvents } = useInProgressEvents();
+  const { volumeSummaryPage } = useFlags();
 
   const isVolumesLanding = !isDetailsPageRow;
 
@@ -94,7 +96,13 @@ export const VolumeTableRow = React.memo((props: Props) => {
     if (volume.linode_id !== null) {
       // If the volume is attached to a Linode, we force the user
       // to upgrade all of the Linode's volumes at once from the Linode details page
-      history.push(`/linodes/${volume.linode_id}/storage?upgrade=true`);
+      navigate({
+        to: '/linodes/$linodeId/storage',
+        params: {
+          linodeId: volume.linode_id,
+        },
+        search: { upgrade: true },
+      });
     } else {
       handlers.handleUpgrade();
     }
@@ -118,20 +126,39 @@ export const VolumeTableRow = React.memo((props: Props) => {
             wrap: 'nowrap',
           }}
         >
-          <Box
-            sx={(theme) => ({
-              alignItems: 'center',
-              display: 'flex',
-              gap: theme.spacing(),
-            })}
-          >
-            {volume.label}
-            {linodeCapabilities && (
-              <HighPerformanceVolumeIcon
-                linodeCapabilities={linodeCapabilities}
-              />
-            )}
-          </Box>
+          {volumeSummaryPage ? (
+            <Link to={`/volumes/${volume.id}`}>
+              <Box
+                sx={(theme) => ({
+                  alignItems: 'center',
+                  display: 'flex',
+                  gap: theme.spacingFunction(8),
+                })}
+              >
+                {volume.label}
+                {linodeCapabilities && (
+                  <HighPerformanceVolumeIcon
+                    linodeCapabilities={linodeCapabilities}
+                  />
+                )}
+              </Box>
+            </Link>
+          ) : (
+            <Box
+              sx={(theme) => ({
+                alignItems: 'center',
+                display: 'flex',
+                gap: theme.spacingFunction(8),
+              })}
+            >
+              {volume.label}
+              {linodeCapabilities && (
+                <HighPerformanceVolumeIcon
+                  linodeCapabilities={linodeCapabilities}
+                />
+              )}
+            </Box>
+          )}
 
           {isEligibleForUpgradeToNVMe && (
             <Chip
@@ -148,7 +175,8 @@ export const VolumeTableRow = React.memo((props: Props) => {
       </TableCell>
       <TableCell statusCell>
         <StatusIcon status={volumeStatusIconMap[volumeStatus]} />
-        {volumeStatus} {getEventProgress(mostRecentVolumeEvent)}
+        {getFormattedStatus(volumeStatus)}{' '}
+        {getEventProgress(mostRecentVolumeEvent)}
       </TableCell>
       {isVolumesLanding && (
         <TableCell data-qa-volume-region data-testid="region" noWrap>

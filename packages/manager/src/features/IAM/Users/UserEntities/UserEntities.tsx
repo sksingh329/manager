@@ -1,37 +1,84 @@
-import { Paper, Stack, Typography } from '@linode/ui';
-import { isEmpty } from 'ramda';
+import { useAccountUser, useUserRoles } from '@linode/queries';
+import {
+  CircleProgress,
+  ErrorState,
+  Notice,
+  Paper,
+  Typography,
+  useTheme,
+} from '@linode/ui';
+import { useParams } from '@tanstack/react-router';
 import React from 'react';
-import { useParams } from 'react-router-dom';
 
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 
-import { NO_ASSIGNED_ENTITIES_TEXT } from '../../Shared/constants';
+import { usePermissions } from '../../hooks/usePermissions';
+import {
+  ERROR_STATE_TEXT,
+  NO_ASSIGNED_ENTITIES_TEXT,
+} from '../../Shared/constants';
 import { NoAssignedRoles } from '../../Shared/NoAssignedRoles/NoAssignedRoles';
+import { AssignedEntitiesTable } from './AssignedEntitiesTable';
 
-import type { IamUserPermissions } from '@linode/api-v4';
+export const UserEntities = () => {
+  const theme = useTheme();
+  const { username } = useParams({ from: '/iam/users/$username' });
+  const { data: permissions } = usePermissions('account', ['is_account_admin']);
+  const {
+    data: assignedRoles,
+    isLoading,
+    error: assignedRolesError,
+  } = useUserRoles(username ?? '', permissions?.is_account_admin);
 
-interface Props {
-  assignedRoles?: IamUserPermissions;
-}
+  const { error } = useAccountUser(
+    username ?? '',
+    permissions?.is_account_admin
+  );
 
-export const UserEntities = ({ assignedRoles }: Props) => {
-  const { username } = useParams<{ username: string }>();
+  const hasAssignedRoles = assignedRoles
+    ? assignedRoles.entity_access.length > 0
+    : false;
 
-  const hasAssignedRoles = assignedRoles ? !isEmpty(assignedRoles) : false;
+  if (isLoading) {
+    return <CircleProgress />;
+  }
+
+  if (!permissions?.is_account_admin) {
+    return (
+      <Notice variant="error">
+        You do not have permission to view this user&apos;s entities.
+      </Notice>
+    );
+  }
+
+  if (error || assignedRolesError) {
+    return <ErrorState errorText={ERROR_STATE_TEXT} />;
+  }
 
   return (
     <>
       <DocumentTitleSegment segment={`${username} - User Entities`} />
-      <Paper>
-        <Stack spacing={3}>
-          <Typography variant="h2">Assigned Entities</Typography>
-          {hasAssignedRoles ? (
-            <p>UIE-8139 - RBAC-5: User Roles - Entities Table</p>
-          ) : (
-            <NoAssignedRoles text={NO_ASSIGNED_ENTITIES_TEXT} />
-          )}
-        </Stack>
-      </Paper>
+
+      {hasAssignedRoles ? (
+        <Paper sx={(theme) => ({ marginTop: theme.tokens.spacing.S16 })}>
+          <Typography variant="h2">Entity Access</Typography>
+          <Typography
+            sx={{
+              margin: `${theme.tokens.spacing.S12} 0 ${theme.tokens.spacing.S20}`,
+            }}
+            variant="body1"
+          >
+            View and manage entities attached to user&apos;s entity access
+            roles.
+          </Typography>
+          <AssignedEntitiesTable />
+        </Paper>
+      ) : (
+        <NoAssignedRoles
+          hasAssignNewRoleDrawer={false}
+          text={NO_ASSIGNED_ENTITIES_TEXT}
+        />
+      )}
     </>
   );
 };

@@ -3,23 +3,25 @@
  */
 
 import 'cypress-file-upload';
-import { objectStorageBucketFactory } from 'src/factories/objectStorage';
+import { mockGetAccount } from 'support/intercepts/account';
+import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
 import {
   mockCreateBucket,
   mockDeleteBucket,
   mockDeleteBucketObject,
   mockDeleteBucketObjectS3,
-  mockGetBuckets,
   mockGetBucketObjects,
+  mockGetBuckets,
   mockUploadBucketObject,
   mockUploadBucketObjectS3,
 } from 'support/intercepts/object-storage';
-import { mockAppendFeatureFlags } from 'support/intercepts/feature-flags';
-import { randomLabel } from 'support/util/random';
 import { ui } from 'support/ui';
-import { accountFactory } from 'src/factories';
-import { mockGetAccount } from 'support/intercepts/account';
+import { chooseCluster } from 'support/util/clusters';
+import { randomLabel } from 'support/util/random';
+import { getRegionById } from 'support/util/regions';
 
+import { accountFactory } from 'src/factories';
+import { objectStorageBucketFactory } from 'src/factories/objectStorage';
 describe('object storage smoke tests', () => {
   /*
    * - Tests core object storage bucket create flow using mocked API responses.
@@ -27,26 +29,24 @@ describe('object storage smoke tests', () => {
    * - Confirms bucket is listed in table.
    */
   it('can create object storage bucket - smoke', () => {
+    const mockCluster = chooseCluster();
     const bucketLabel = randomLabel();
-    const bucketRegion = 'US, Atlanta, GA';
-    const bucketCluster = 'us-southeast-1';
-    const bucketHostname = `${bucketLabel}.${bucketCluster}.linodeobjects.com`;
-
+    const mockRegion = getRegionById(mockCluster.region);
+    const bucketHostname = `${bucketLabel}.${mockCluster.id}.linodeobjects.com`;
     const mockBucket = objectStorageBucketFactory.build({
-      label: bucketLabel,
-      cluster: bucketCluster,
+      cluster: mockCluster.id,
       hostname: bucketHostname,
+      label: bucketLabel,
+      region: mockCluster.region,
     });
-
     mockGetAccount(accountFactory.build({ capabilities: ['Object Storage'] }));
     mockAppendFeatureFlags({
+      gecko2: false,
       objMultiCluster: false,
       objectStorageGen2: { enabled: false },
-      gecko2: false,
     }).as('getFeatureFlags');
 
     mockGetBuckets([]).as('getBuckets');
-
     mockCreateBucket(mockBucket).as('createBucket');
 
     cy.visitWithLogin('/object-storage');
@@ -62,8 +62,10 @@ describe('object storage smoke tests', () => {
       .findByTitle('Create Bucket')
       .should('be.visible')
       .within(() => {
-        cy.findByText('Label').click().type(bucketLabel);
-        ui.regionSelect.find().click().type(`${bucketRegion}{enter}`);
+        cy.findByLabelText('Bucket Name (required)').click();
+        cy.focused().type(bucketLabel);
+        ui.regionSelect.find().click();
+        cy.focused().type(`${mockCluster.id}{enter}`);
         ui.buttonGroup
           .findButtonByTitle('Create Bucket')
           .should('be.visible')
@@ -72,8 +74,8 @@ describe('object storage smoke tests', () => {
 
     cy.wait('@createBucket');
     cy.findByText(bucketLabel).should('be.visible');
-    cy.findByText(bucketRegion).should('be.visible');
-    cy.findByText(bucketHostname).should('be.visible');
+    cy.findByText(mockRegion.label).should('be.visible');
+    cy.findByText(mockBucket.hostname).should('be.visible');
   });
 
   /*
@@ -170,9 +172,9 @@ describe('object storage smoke tests', () => {
     const bucketLabel = randomLabel();
     const bucketCluster = 'us-southeast-1';
     const bucketMock = objectStorageBucketFactory.build({
-      label: bucketLabel,
       cluster: bucketCluster,
       hostname: `${bucketLabel}.${bucketCluster}.linodeobjects.com`,
+      label: bucketLabel,
       objects: 0,
     });
 
@@ -199,7 +201,8 @@ describe('object storage smoke tests', () => {
       .findByTitle(`Delete Bucket ${bucketLabel}`)
       .should('be.visible')
       .within(() => {
-        cy.findByLabelText('Bucket Name').click().type(bucketLabel);
+        cy.findByLabelText('Bucket Name').click();
+        cy.focused().type(bucketLabel);
         ui.buttonGroup
           .findButtonByTitle('Delete')
           .should('be.enabled')

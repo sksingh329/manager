@@ -1,73 +1,38 @@
+import { Outlet, useParams } from '@tanstack/react-router';
 import React from 'react';
-import {
-  matchPath,
-  useHistory,
-  useLocation,
-  useParams,
-} from 'react-router-dom';
 
 import { LandingHeader } from 'src/components/LandingHeader';
-import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
-import { TabLinkList } from 'src/components/Tabs/TabLinkList';
 import { TabPanels } from 'src/components/Tabs/TabPanels';
 import { Tabs } from 'src/components/Tabs/Tabs';
-import { useAccountUserPermissions } from 'src/queries/iam/iam';
+import { TanStackTabLinkList } from 'src/components/Tabs/TanStackTabLinkList';
+import { useTabs } from 'src/hooks/useTabs';
 
-import { IAM_LABEL } from '../Shared/constants';
-
-const UserDetails = React.lazy(() =>
-  import('./UserDetails/UserProfile').then((module) => ({
-    default: module.UserProfile,
-  }))
-);
-
-const UserRoles = React.lazy(() =>
-  import('./UserRoles/UserRoles').then((module) => ({
-    default: module.UserRoles,
-  }))
-);
-
-const UserEntities = React.lazy(() =>
-  import('./UserEntities/UserEntities').then((module) => ({
-    default: module.UserEntities,
-  }))
-);
+import {
+  IAM_LABEL,
+  USER_DETAILS_LINK,
+  USER_ENTITIES_LINK,
+  USER_ROLES_LINK,
+} from '../Shared/constants';
 
 export const UserDetailsLanding = () => {
-  const { username } = useParams<{ username: string }>();
-  const location = useLocation();
-  const history = useHistory();
-
-  const { data: assignedRoles } = useAccountUserPermissions(username ?? '');
-
-  const tabs = [
+  const { username } = useParams({ from: '/iam/users/$username' });
+  const { tabs, tabIndex, handleTabChange } = useTabs([
     {
-      routeName: `/iam/users/${username}/details`,
+      to: `/iam/users/$username/details`,
       title: 'User Details',
     },
     {
-      routeName: `/iam/users/${username}/roles`,
+      to: `/iam/users/$username/roles`,
       title: 'Assigned Roles',
     },
     {
-      routeName: `/iam/users/${username}/entities`,
-      title: 'Assigned Entities',
+      to: `/iam/users/$username/entities`,
+      title: 'Entity Access',
     },
-  ];
+  ]);
 
-  const navToURL = (index: number) => {
-    history.push(tabs[index].routeName);
-  };
-
-  const getDefaultTabIndex = () => {
-    return (
-      tabs.findIndex((tab) =>
-        Boolean(matchPath(tab.routeName, { path: location.pathname }))
-      ) || 0
-    );
-  };
-
-  let idx = 0;
+  const docsLinks = [USER_DETAILS_LINK, USER_ROLES_LINK, USER_ENTITIES_LINK];
+  const docsLink = docsLinks[tabIndex] ?? USER_DETAILS_LINK;
 
   return (
     <>
@@ -84,21 +49,15 @@ export const UserDetailsLanding = () => {
           },
           pathname: location.pathname,
         }}
+        docsLink={docsLink}
         removeCrumbX={4}
+        spacingBottom={4}
         title={username}
       />
-      <Tabs index={getDefaultTabIndex()} onChange={navToURL}>
-        <TabLinkList tabs={tabs} />
+      <Tabs index={tabIndex} onChange={handleTabChange}>
+        <TanStackTabLinkList tabs={tabs} />
         <TabPanels>
-          <SafeTabPanel index={idx}>
-            <UserDetails />
-          </SafeTabPanel>
-          <SafeTabPanel index={++idx}>
-            <UserRoles assignedRoles={assignedRoles} />
-          </SafeTabPanel>
-          <SafeTabPanel index={++idx}>
-            <UserEntities assignedRoles={assignedRoles} />
-          </SafeTabPanel>
+          <Outlet />
         </TabPanels>
       </Tabs>
     </>

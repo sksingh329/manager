@@ -1,9 +1,9 @@
 import { Notice, Typography } from '@linode/ui';
-import Grid from '@mui/material/Unstable_Grid2';
+import { Hidden } from '@linode/ui';
+import Grid from '@mui/material/Grid';
+import { useLocation } from '@tanstack/react-router';
 import * as React from 'react';
-import { useLocation } from 'react-router-dom';
 
-import { Hidden } from 'src/components/Hidden';
 import { useFlags } from 'src/hooks/useFlags';
 import { PLAN_SELECTION_NO_REGION_SELECTED_MESSAGE } from 'src/utilities/pricing/constants';
 
@@ -20,7 +20,7 @@ export interface PlanSelectionFilterOptionsTable {
   planFilter?: (plan: PlanWithAvailability) => boolean;
 }
 
-interface PlanSelectionDividers {
+export interface PlanSelectionDividers {
   flag: boolean;
   planType: LinodeTypeClass;
   tables: PlanSelectionFilterOptionsTable[];
@@ -33,8 +33,8 @@ export interface PlanContainerProps {
   isCreate?: boolean;
   linodeID?: number | undefined;
   onSelect: (key: string) => void;
-  planType?: LinodeTypeClass;
   plans: PlanWithAvailability[];
+  planType?: LinodeTypeClass;
   selectedDiskSize?: number;
   selectedId?: string;
   selectedRegionId?: Region['id'];
@@ -178,7 +178,7 @@ export const PlanContainer = (props: PlanContainerProps) => {
                     : plans;
                   return [
                     filteredPlans.length > 0 && (
-                      <Grid key={table.header} xs={12}>
+                      <Grid key={table.header} size={12}>
                         <Typography variant="h3">{table.header}</Typography>
                       </Grid>
                     ),
@@ -192,7 +192,7 @@ export const PlanContainer = (props: PlanContainerProps) => {
         )}
       </Hidden>
       <Hidden lgDown={isCreate} mdDown={!isCreate}>
-        <Grid xs={12}>
+        <Grid size={12}>
           {planSelectionDividers.map((planSelectionDivider) =>
             planType === planSelectionDivider.planType &&
             planSelectionDivider.flag ? (
@@ -206,6 +206,8 @@ export const PlanContainer = (props: PlanContainerProps) => {
                       filterOptions={{
                         header: table.header,
                       }}
+                      key={`plan-filter-${idx}`}
+                      plans={plans}
                       renderPlanSelection={() =>
                         renderPlanSelection({
                           header: table.header,
@@ -215,8 +217,6 @@ export const PlanContainer = (props: PlanContainerProps) => {
                       shouldDisplayNoRegionSelectedMessage={
                         shouldDisplayNoRegionSelectedMessage
                       }
-                      key={`plan-filter-${idx}`}
-                      plans={plans}
                       showNetwork={showNetwork}
                       showTransfer={showTransfer}
                     />
@@ -225,13 +225,13 @@ export const PlanContainer = (props: PlanContainerProps) => {
               })
             ) : (
               <PlanSelectionTable
+                key={planType}
+                plans={plans}
+                planType={planType}
+                renderPlanSelection={renderPlanSelection}
                 shouldDisplayNoRegionSelectedMessage={
                   shouldDisplayNoRegionSelectedMessage
                 }
-                key={planType}
-                planType={planType}
-                plans={plans}
-                renderPlanSelection={renderPlanSelection}
                 showNetwork={showNetwork}
                 showTransfer={showTransfer}
                 showUsableStorage={isDatabaseCreateFlow || isDatabaseResizeFlow}

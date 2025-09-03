@@ -1,31 +1,42 @@
-import { VPC } from '@linode/api-v4/lib/vpcs/types';
+import { useRegionsQuery } from '@linode/queries';
+import { Hidden } from '@linode/ui';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
 
-import { Action } from 'src/components/ActionMenu/ActionMenu';
-import { Hidden } from 'src/components/Hidden';
 import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { Link } from 'src/components/Link';
 import { TableCell } from 'src/components/TableCell';
 import { TableRow } from 'src/components/TableRow';
-import { useRegionsQuery } from 'src/queries/regions/regions';
 import { getRestrictedResourceText } from 'src/features/Account/utils';
 import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
+
+import {
+  getUniqueLinodesFromSubnets,
+  getUniqueResourcesFromSubnets,
+} from '../utils';
+
+import type { VPC } from '@linode/api-v4/lib/vpcs/types';
+import type { Action } from 'src/components/ActionMenu/ActionMenu';
 
 interface Props {
   handleDeleteVPC: () => void;
   handleEditVPC: () => void;
+  isNodebalancerVPCEnabled: boolean;
   vpc: VPC;
 }
 
-export const VPCRow = ({ handleDeleteVPC, handleEditVPC, vpc }: Props) => {
+export const VPCRow = ({
+  handleDeleteVPC,
+  handleEditVPC,
+  isNodebalancerVPCEnabled,
+  vpc,
+}: Props) => {
   const { id, label, subnets } = vpc;
   const { data: regions } = useRegionsQuery();
 
   const regionLabel = regions?.find((r) => r.id === vpc.region)?.label ?? '';
-  const numLinodes = subnets.reduce(
-    (acc, subnet) => acc + subnet.linodes.length,
-    0
-  );
+  const numResources = isNodebalancerVPCEnabled
+    ? getUniqueResourcesFromSubnets(vpc.subnets)
+    : getUniqueLinodesFromSubnets(vpc.subnets);
 
   const isVPCReadOnly = useIsResourceRestricted({
     grantLevel: 'read_only',
@@ -35,9 +46,9 @@ export const VPCRow = ({ handleDeleteVPC, handleEditVPC, vpc }: Props) => {
 
   const actions: Action[] = [
     {
+      disabled: isVPCReadOnly,
       onClick: handleEditVPC,
       title: 'Edit',
-      disabled: isVPCReadOnly,
       tooltip: isVPCReadOnly
         ? getRestrictedResourceText({
             action: 'edit',
@@ -47,9 +58,9 @@ export const VPCRow = ({ handleDeleteVPC, handleEditVPC, vpc }: Props) => {
         : undefined,
     },
     {
+      disabled: isVPCReadOnly,
       onClick: handleDeleteVPC,
       title: 'Delete',
-      disabled: isVPCReadOnly,
       tooltip: isVPCReadOnly
         ? getRestrictedResourceText({
             action: 'delete',
@@ -73,12 +84,13 @@ export const VPCRow = ({ handleDeleteVPC, handleEditVPC, vpc }: Props) => {
       </Hidden>
       <TableCell>{subnets.length}</TableCell>
       <Hidden mdDown>
-        <TableCell>{numLinodes}</TableCell>
+        <TableCell>{numResources}</TableCell>
       </Hidden>
       <TableCell actionCell>
         {actions.map((action) => (
           <InlineMenuAction
             actionText={action.title}
+            data-testid={action.title}
             disabled={action.disabled}
             key={action.title}
             onClick={action.onClick}

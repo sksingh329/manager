@@ -1,11 +1,12 @@
+import { useUpdateUserMutation } from '@linode/queries';
 import { Button, Paper, TextField } from '@linode/ui';
+import { useNavigate } from '@tanstack/react-router';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { useHistory } from 'react-router-dom';
 
 import { RESTRICTED_FIELD_TOOLTIP } from 'src/features/Account/constants';
-import { useUpdateUserMutation } from 'src/queries/account/users';
+import { useFlags } from 'src/hooks/useFlags';
 
 import type { User } from '@linode/api-v4';
 
@@ -14,8 +15,9 @@ interface Props {
 }
 
 export const UsernamePanel = ({ user }: Props) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const { iamRbacPrimaryNavChanges } = useFlags();
 
   const isProxyUserProfile = user?.user_type === 'proxy';
 
@@ -36,7 +38,12 @@ export const UsernamePanel = ({ user }: Props) => {
       const user = await mutateAsync(values);
 
       // Because the username changed, we need to update the username in the URL
-      history.replace(`/account/users/${user.username}`);
+      navigate({
+        to: iamRbacPrimaryNavChanges
+          ? '/users/$username'
+          : '/account/users/$username',
+        params: { username: user.username },
+      });
 
       enqueueSnackbar('Username updated successfully', { variant: 'success' });
     } catch (error) {
@@ -52,6 +59,8 @@ export const UsernamePanel = ({ user }: Props) => {
     <Paper>
       <form onSubmit={handleSubmit(onSubmit)}>
         <Controller
+          control={control}
+          name="username"
           render={({ field, fieldState }) => (
             <TextField
               disabled={isProxyUserProfile}
@@ -65,8 +74,6 @@ export const UsernamePanel = ({ user }: Props) => {
               value={field.value}
             />
           )}
-          control={control}
-          name="username"
         />
         <Button
           buttonType="primary"

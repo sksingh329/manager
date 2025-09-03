@@ -1,5 +1,6 @@
 import { TooltipIcon } from '@linode/ui';
 import * as React from 'react';
+import type { JSX } from 'react';
 
 import { TableBody } from 'src/components/TableBody';
 import { TableHead } from 'src/components/TableHead';
@@ -17,8 +18,8 @@ import type { TooltipIconStatus } from '@linode/ui';
 
 interface PlanSelectionTableProps {
   filterOptions?: PlanSelectionFilterOptionsTable;
-  planType?: LinodeTypeClass;
   plans?: PlanWithAvailability[];
+  planType?: LinodeTypeClass;
   renderPlanSelection: (
     filterOptions?: PlanSelectionFilterOptionsTable | undefined
   ) => React.JSX.Element[];
@@ -83,6 +84,7 @@ export const PlanSelectionTable = (props: PlanSelectionTableProps) => {
   ) => {
     return (
       <TooltipIcon
+        status={status}
         sxTooltipIcon={{
           height: 12,
           marginTop: '-2px',
@@ -90,7 +92,6 @@ export const PlanSelectionTable = (props: PlanSelectionTableProps) => {
           px: 0,
           py: 0,
         }}
-        status={status}
         text={text}
         width={width}
       />
@@ -130,18 +131,19 @@ export const PlanSelectionTable = (props: PlanSelectionTableProps) => {
                 isPlanCell={isPlanCell}
                 key={testId}
                 noWrap={noWrap}
+                {...(isPlanCell && { sx: { paddingLeft: 0.5 } })}
               >
                 {isPlanCell && filterOptions?.header
                   ? filterOptions?.header
                   : cellName}
                 {showTransferTooltip(cellName) &&
                   showTooltip(
-                    'help',
+                    'info',
                     'Some plans do not include bundled network transfer. If the transfer allotment is 0, all outbound network transfer is subject to charges.'
                   )}
                 {showUsableStorageTooltip(cellName) &&
                   showTooltip(
-                    'help',
+                    'info',
                     'Usable storage is smaller than the actual plan storage due to the overhead from the database platform.',
                     240
                   )}

@@ -1,15 +1,19 @@
-import { Stack } from '@linode/ui';
+import { Dialog, Stack } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
+import type { JSX } from 'react';
 
-import { Dialog } from 'src/components/Dialog/Dialog';
-
-import type { DialogProps } from 'src/components/Dialog/Dialog';
-
+import type { APIError } from '@linode/api-v4';
+import type { DialogProps } from '@linode/ui';
 export interface ConfirmationDialogProps extends DialogProps {
   /**
    * The actions to be displayed in the dialog.
    */
   actions?: ((props: DialogProps) => JSX.Element) | JSX.Element;
+  /**
+   * The error to be displayed in case fetching the entity failed.
+   */
+  entityError?: APIError[] | null | string;
 }
 
 /**
@@ -25,17 +29,17 @@ export const ConfirmationDialog = React.forwardRef<
   HTMLDivElement,
   ConfirmationDialogProps
 >((props, ref) => {
-  const { actions, children, ...dialogProps } = props;
+  const { actions, children, entityError, ...dialogProps } = props;
 
   return (
-    <Dialog {...dialogProps} PaperProps={{ role: undefined }} ref={ref}>
-      {children}
-      <Stack
-        direction="row"
-        justifyContent="flex-end"
-        spacing={2}
-        sx={{ mt: 4 }}
-      >
+    <Dialog
+      {...dialogProps}
+      error={props.error || entityError}
+      PaperProps={{ role: undefined }}
+      ref={ref}
+    >
+      <StyledDialogContentSection>{children}</StyledDialogContentSection>
+      <Stack direction="row" justifyContent="flex-end" spacing={2}>
         {actions && typeof actions === 'function'
           ? actions(dialogProps)
           : actions}
@@ -43,3 +47,10 @@ export const ConfirmationDialog = React.forwardRef<
     </Dialog>
   );
 });
+
+const StyledDialogContentSection = styled(Stack, {
+  label: 'StyledDialogContentSection',
+})(({ theme: { spacing } }) => ({
+  marginBottom: spacing(2),
+  order: -1,
+}));

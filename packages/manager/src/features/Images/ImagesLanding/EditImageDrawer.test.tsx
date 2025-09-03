@@ -9,6 +9,8 @@ import { EditImageDrawer } from './EditImageDrawer';
 
 const props = {
   image: imageFactory.build(),
+  imageError: null,
+  isFetching: false,
   onClose: vi.fn(),
   open: true,
 };

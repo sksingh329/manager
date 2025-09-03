@@ -6,7 +6,7 @@ import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { TypeToConfirmDialog } from './TypeToConfirmDialog';
 
-import type { ManagerPreferences } from 'src/types/ManagerPreferences';
+import type { ManagerPreferences } from '@linode/utilities';
 
 const props = { onClick: vi.fn(), onClose: vi.fn() };
 
@@ -16,8 +16,8 @@ const queryMocks = vi.hoisted(() => ({
   usePreferences: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock('src/queries/profile/preferences', async () => {
-  const actual = await vi.importActual('src/queries/profile/preferences');
+vi.mock('@linode/queries', async () => {
+  const actual = await vi.importActual('@linode/queries');
   return {
     ...actual,
     usePreferences: queryMocks.usePreferences,
@@ -99,13 +99,13 @@ describe('TypeToConfirmDialog Component', () => {
     });
     const { getByTestId } = renderWithTheme(
       <TypeToConfirmDialog
+        disableTypeToConfirmInput
         entity={{
           action: 'deletion',
           name: 'test',
           primaryBtnText: 'Delete',
           type: 'Linode',
         }}
-        disableTypeToConfirmInput
         label={'Linode Label'}
         loading={false}
         open={true}
@@ -128,13 +128,13 @@ describe('TypeToConfirmDialog Component', () => {
     });
     const { getByTestId } = renderWithTheme(
       <TypeToConfirmDialog
+        disableTypeToConfirmSubmit
         entity={{
           action: 'deletion',
           name: 'test',
           primaryBtnText: 'Delete',
           type: 'Linode',
         }}
-        disableTypeToConfirmSubmit
         label={'Linode Label'}
         loading={false}
         open={true}

@@ -1,8 +1,7 @@
-import { render } from '@testing-library/react';
 import React from 'react';
 
 import { kubernetesClusterFactory } from 'src/factories';
-import { wrapWithTheme } from 'src/utilities/testHelpers';
+import { renderWithTheme } from 'src/utilities/testHelpers';
 
 import { ClusterChips } from './ClusterChips';
 
@@ -23,8 +22,8 @@ const queryMocks = vi.hoisted(() => ({
   useAccount: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock('src/queries/account/account', () => {
-  const actual = vi.importActual('src/queries/account/account');
+vi.mock('@linode/queries', async () => {
+  const actual = await vi.importActual('@linode/queries');
   return {
     ...actual,
     useAccount: queryMocks.useAccount,
@@ -32,85 +31,94 @@ vi.mock('src/queries/account/account', () => {
 });
 
 describe('Kubernetes cluster action menu', () => {
-  it('renders an HA chip if the cluster is high availability', () => {
-    const { getByText } = render(
-      wrapWithTheme(<ClusterChips cluster={mockHACluster} />)
+  it('renders an HA chip if the cluster is high availability', async () => {
+    const { getByText } = renderWithTheme(
+      <ClusterChips cluster={mockHACluster} />
     );
 
     expect(getByText('HA', { exact: false }));
   });
 
-  it('does not render an HA chip if the cluster is not high availability', () => {
-    const { queryByText } = render(
-      wrapWithTheme(<ClusterChips cluster={mockCluster} />)
+  it('does not render an HA chip if the cluster is not high availability', async () => {
+    const { queryByText } = renderWithTheme(
+      <ClusterChips cluster={mockCluster} />
     );
 
     expect(queryByText('HA', { exact: false })).toBe(null);
   });
 
-  it('renders both enterprise and HA chips for an enterprise cluster if the feature is enabled', () => {
+  it('renders both enterprise and HA chips for an enterprise cluster if the feature is enabled', async () => {
     queryMocks.useAccount.mockReturnValue({
       data: {
         capabilities: ['Kubernetes Enterprise'],
       },
     });
 
-    const { getByText } = render(
-      wrapWithTheme(<ClusterChips cluster={mockEnterpriseCluster} />, {
+    const { getByText } = renderWithTheme(
+      <ClusterChips cluster={mockEnterpriseCluster} />,
+      {
         flags: {
           lkeEnterprise: {
             enabled: true,
             ga: false,
             la: true,
+            phase2Mtc: false,
+            postLa: false,
           },
         },
-      })
+      }
     );
 
     expect(getByText('HA', { exact: false })).toBeVisible();
     expect(getByText('ENTERPRISE')).toBeVisible();
   });
 
-  it('does not render an enterprise chip for an enterprise cluster if the feature is disabled', () => {
+  it('does not render an enterprise chip for an enterprise cluster if the feature is disabled', async () => {
     queryMocks.useAccount.mockReturnValue({
       data: {
         capabilities: ['Kubernetes Enterprise'],
       },
     });
 
-    const { getByText, queryByText } = render(
-      wrapWithTheme(<ClusterChips cluster={mockEnterpriseCluster} />, {
+    const { getByText, queryByText } = renderWithTheme(
+      <ClusterChips cluster={mockEnterpriseCluster} />,
+      {
         flags: {
           lkeEnterprise: {
             enabled: false,
             ga: false,
             la: true,
+            phase2Mtc: false,
+            postLa: false,
           },
         },
-      })
+      }
     );
 
     expect(getByText('HA', { exact: false })).toBeVisible();
     expect(queryByText('ENTERPRISE')).toBe(null);
   });
 
-  it('does not render an enterprise chip for a standard cluster', () => {
+  it('does not render an enterprise chip for a standard cluster', async () => {
     queryMocks.useAccount.mockReturnValue({
       data: {
         capabilities: ['Kubernetes Enterprise'],
       },
     });
 
-    const { queryByText } = render(
-      wrapWithTheme(<ClusterChips cluster={mockStandardCluster} />, {
+    const { queryByText } = renderWithTheme(
+      <ClusterChips cluster={mockStandardCluster} />,
+      {
         flags: {
           lkeEnterprise: {
             enabled: true,
             ga: false,
             la: true,
+            phase2Mtc: false,
+            postLa: false,
           },
         },
-      })
+      }
     );
 
     expect(queryByText('HA')).toBe(null);

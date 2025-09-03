@@ -16,7 +16,7 @@ describe('AlertDetailCriteria component tests', () => {
     const alertDetails = alertFactory.build({
       rule_criteria: {
         rules: alertRulesFactory.buildList(2, {
-          aggregation_type: 'avg',
+          aggregate_function: 'avg',
           dimension_filters: alertDimensionsFactory.buildList(2),
           label: 'CPU Usage',
           metric: 'cpu_usage',
@@ -26,20 +26,18 @@ describe('AlertDetailCriteria component tests', () => {
       },
     });
     const { getAllByText, getByText } = renderWithTheme(
-      <AlertDetailCriteria alertDetails={alertDetails} />
+      <AlertDetailCriteria alertDetails={alertDetails} serviceType="linode" />
     );
     const { rules } = alertDetails.rule_criteria;
     expect(getAllByText('Metric Threshold:').length).toBe(rules.length);
     expect(getAllByText('Dimension Filter:').length).toBe(rules.length);
     expect(getByText('Criteria')).toBeInTheDocument();
-    expect(getAllByText('Average').length).toBe(2);
+    expect(getAllByText('Avg').length).toBe(2);
     expect(getAllByText('CPU Usage').length).toBe(2);
     expect(getAllByText('bytes').length).toBe(2);
     expect(getAllByText(metricOperatorTypeMap['gt']).length).toBe(2);
-    const {
-      evaluation_period_seconds,
-      polling_interval_seconds,
-    } = alertDetails.trigger_conditions;
+    const { evaluation_period_seconds, polling_interval_seconds } =
+      alertDetails.trigger_conditions;
     expect(
       getByText(convertSecondsToMinutes(polling_interval_seconds))
     ).toBeInTheDocument();
@@ -55,7 +53,7 @@ describe('AlertDetailCriteria component tests', () => {
       },
     });
     const { getByText, queryByText } = renderWithTheme(
-      <AlertDetailCriteria alertDetails={alert} />
+      <AlertDetailCriteria alertDetails={alert} serviceType="linode" />
     );
     expect(getByText('Criteria')).toBeInTheDocument(); // empty criteria should be there
     expect(queryByText('Metric Threshold:')).not.toBeInTheDocument();

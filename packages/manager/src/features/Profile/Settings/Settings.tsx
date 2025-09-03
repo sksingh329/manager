@@ -1,37 +1,48 @@
 import { Stack } from '@linode/ui';
-import { createLazyRoute } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
 
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
+import { useFlags } from 'src/hooks/useFlags';
 
 import { MaskSensitiveData } from './MaskSensitiveData';
 import { Notifications } from './Notifications';
 import { PreferenceEditor } from './PreferenceEditor';
+import { TableStriping } from './TableStriping';
 import { Theme } from './Theme';
 import { TypeToConfirm } from './TypeToConfirm';
 
 export const ProfileSettings = () => {
-  const location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { iamRbacPrimaryNavChanges } = useFlags();
+  const { preferenceEditor } = useSearch({
+    from: iamRbacPrimaryNavChanges
+      ? '/profile/preferences'
+      : '/profile/settings',
+  });
 
-  const queryParams = new URLSearchParams(location.search);
-
-  const isPreferenceEditorOpen = queryParams.has('preferenceEditor');
+  const isPreferenceEditorOpen = !!preferenceEditor;
 
   const handleClosePreferenceEditor = () => {
-    queryParams.delete('preferenceEditor');
-    history.replace({ search: queryParams.toString() });
+    navigate({
+      to: iamRbacPrimaryNavChanges
+        ? '/profile/preferences'
+        : '/profile/settings',
+      search: { preferenceEditor: undefined },
+    });
   };
 
   return (
     <>
-      <DocumentTitleSegment segment="My Settings" />
+      <DocumentTitleSegment
+        segment={iamRbacPrimaryNavChanges ? 'Preferences' : 'My Settings'}
+      />
       <Stack spacing={2}>
         <Notifications />
         <Theme />
         <TypeToConfirm />
         <MaskSensitiveData />
+        <TableStriping />
       </Stack>
       <PreferenceEditor
         onClose={handleClosePreferenceEditor}
@@ -40,7 +51,3 @@ export const ProfileSettings = () => {
     </>
   );
 };
-
-export const SettingsLazyRoute = createLazyRoute('/profile/settings')({
-  component: ProfileSettings,
-});

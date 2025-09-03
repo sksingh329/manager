@@ -7,8 +7,12 @@ import type {
   TriggerConditionForm,
 } from './types';
 import type {
+  AlertDefinitionScope,
+  AlertSeverityType,
+  CloudPulseServiceType,
   CreateAlertDefinitionPayload,
   DimensionFilter,
+  EditAlertPayloadWithService,
   MetricCriteria,
   TriggerCondition,
 } from '@linode/api-v4';
@@ -19,8 +23,6 @@ export const filterFormValues = (
 ): CreateAlertDefinitionPayload => {
   const values = omitProps(formValues, [
     'serviceType',
-    'region',
-    'engineType',
     'severity',
     'rule_criteria',
     'trigger_conditions',
@@ -38,14 +40,53 @@ export const filterFormValues = (
   };
 };
 
+/**
+ * @param formValues The formValues submitted in the edit alert definition page
+ * @param serviceType The service type associated with the alert
+ * @param defaultSeverityType The severity type initially associated with the alert
+ * @param alertId The id of the alert
+ * @returns The edit alert payload filtered from the form properties.
+ */
+export const filterEditFormValues = (
+  formValues: CreateAlertDefinitionForm,
+  serviceType: CloudPulseServiceType,
+  severity: AlertSeverityType,
+  alertId: number,
+  scope: AlertDefinitionScope
+): EditAlertPayloadWithService => {
+  const values = omitProps(formValues, [
+    'serviceType',
+    'severity',
+    'rule_criteria',
+    'trigger_conditions',
+  ]);
+  const entityIds = formValues.entity_ids;
+  const rules = formValues.rule_criteria.rules;
+  const triggerConditions = formValues.trigger_conditions;
+  return {
+    ...values,
+    alertId,
+    entity_ids: entityIds,
+    rule_criteria: { rules: filterMetricCriteriaFormValues(rules) },
+    serviceType,
+    severity: formValues.severity ?? severity,
+    trigger_conditions: filterTriggerConditionFormValues(triggerConditions),
+    scope,
+  };
+};
+
 export const filterMetricCriteriaFormValues = (
   formValues: MetricCriteriaForm[]
 ): MetricCriteria[] => {
   return formValues.map((rule) => {
-    const values = omitProps(rule, ['aggregation_type', 'operator', 'metric']);
+    const values = omitProps(rule, [
+      'aggregate_function',
+      'operator',
+      'metric',
+    ]);
     return {
       ...values,
-      aggregation_type: rule.aggregation_type ?? 'avg',
+      aggregate_function: rule.aggregate_function ?? 'avg',
       dimension_filters: filterDimensionFilterFormValues(
         rule.dimension_filters
       ),
@@ -82,12 +123,12 @@ export const convertToSeconds = (secondsList: string[]) => {
     const unit = second.slice(-1)[0];
     const number = parseInt(second.slice(0, -1), 10);
     switch (unit) {
-      case 's':
-        return number;
-      case 'm':
-        return number * 60;
       case 'h':
         return number * 3600;
+      case 'm':
+        return number * 60;
+      case 's':
+        return number;
       default:
         return number * 0;
     }
